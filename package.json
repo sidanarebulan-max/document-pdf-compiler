@@ -1,0 +1,9 @@
+{
+  "name": "document-pdf-compiler",
+  "version": "1.3.0",
+  "private": true,
+  "description": "Document PDF Compiler with optional Google Drive intake API",
+  "dependencies": {
+    "googleapis": "^144.0.0"
+  }
+}
