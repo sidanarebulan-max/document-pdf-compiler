@@ -60,7 +60,7 @@
         })
       });
       const j=await r.json();
-      if(!r.ok || !j.ok) throw new Error(j.error||('HTTP '+r.status));
+      if(!r.ok || !j.ok){\n        if(r.status===401) sessionStorage.removeItem('farisApiKey');\n        throw new Error(j.error||('HTTP '+r.status));\n      }
       log('Google Drive: '+j.output.filename+' disimpan. File ID: '+j.output.driveFileId);
       driveStatus.textContent='✓ Saved to Google Drive';
       driveStatus.className='small drive-ok';
