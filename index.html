@@ -14,7 +14,7 @@
       <h1>Document PDF Compiler <span style="font-size:11px;color:#8ca2c8;font-weight:600">v1.2 Hirer + Guarantor</span></h1>
       <p>HIRER / PEMINJAM → COVER GUARANTOR → GUARANTOR / PENJAMIN</p>
     </div>
-    <div class="privacy">🔒 Local-first: fail diproses dalam browser</div>
+    <div><div class="privacy">🔒 Local-first • Google Drive sync optional</div><div id="driveStatus" class="small" style="text-align:right;margin-top:6px">☁️ Checking Drive...</div></div>
   </div>
 
   <div class="party-tabs">
@@ -115,7 +115,7 @@
         <div class="toolbar" style="margin:12px 0">
           <button class="btn primary" id="generateBtn">Merge & Generate Final PDF</button>
           <button class="btn good" id="downloadBtn" disabled>Download PDF</button>
-          <button class="btn" id="openBtn" disabled>Buka PDF</button>
+          <button class="btn" id="openBtn" disabled>Buka PDF</button>\n          <button class="btn good" id="driveSaveBtn" disabled>Save to Google Drive</button>
         </div>
 
         <div class="errorbox" id="errorBox"></div>
