@@ -51,7 +51,7 @@ module.exports = async function handler(req, res) {
     });
 
     const documentId = crypto.randomUUID();
-    await appendValues(clients.sheets, 'DOCUMENTS!A:L', [
+    const normalizedParty = String(party || 'HIRER').toUpperCase()==='GUARANTOR' ? 'GUARANTOR' : 'HIRER';\n    await appendValues(clients.sheets, 'DOCUMENTS!A:M', [
       documentId,
       customer.customerId,
       customer.name,
@@ -79,7 +79,7 @@ module.exports = async function handler(req, res) {
         documentId,
         documentType:type,
         driveFileId:uploaded.id,
-        filename:uploaded.name,
+        filename:uploaded.name,\n        party:normalizedParty,
         webViewLink:uploaded.webViewLink || null
       }
     });
