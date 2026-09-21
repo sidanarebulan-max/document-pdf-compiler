@@ -29,6 +29,20 @@
     return raw.toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'')+'_DOCUMENT.pdf';
   }
 
+  function cleanPdfText(text){
+    return String(text ?? '')
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g,'')
+      .replace(/[→⇒⟶➜➝]/g,' > ')
+      .replace(/[←⇐⟵]/g,' < ')
+      .replace(/[–—−]/g,'-')
+      .replace(/[“”]/g,'"')
+      .replace(/[‘’]/g,"'")
+      .replace(/…/g,'...')
+      .replace(/[•·]/g,'-')
+      .replace(/[^\x20-\x7E]/g,'?');
+  }
+
   async function addGuarantorCoverPage(doc){
     const page=doc.addPage([595.28,841.89]);
     const bold=await doc.embedFont(StandardFonts.HelveticaBold);
@@ -46,8 +60,9 @@
     const guarantor=(partyNames.GUARANTOR||'').toUpperCase();
 
     const centerText=(text,size,font,y,color=rgb(0.07,0.1,0.18))=>{
-      const tw=font.widthOfTextAtSize(text,size);
-      page.drawText(text,{x:(w-tw)/2,y,size,font,color});
+      const safe=cleanPdfText(text);
+      const tw=font.widthOfTextAtSize(safe,size);
+      page.drawText(safe,{x:(w-tw)/2,y,size,font,color});
     };
 
     centerText(eyebrow,11,bold,545,rgb(0.31,0.55,1));
@@ -108,6 +123,7 @@
       }
 
       if(hirerDocs.length && guarantorDocs.length){
+        lastProcessingName='COVER PAGE GUARANTOR / PENJAMIN';
         setProgress(90,'Menambah cover page Guarantor / Penjamin...');
         await addGuarantorCoverPage(doc);
         log('Cover page GUARANTOR / PENJAMIN ditambah di tengah PDF.');
