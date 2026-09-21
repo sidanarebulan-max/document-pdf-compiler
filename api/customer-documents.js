@@ -1,4 +1,4 @@
-const { getClients, findCustomer, getValues } = require('./_lib/google');
+const { getClients, findCustomer, getValues } = require('./_lib/google');\nconst { requireApiKey } = require('./_lib/security');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ ok:false, error:'METHOD_NOT_ALLOWED' });
