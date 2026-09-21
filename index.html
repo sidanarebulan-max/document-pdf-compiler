@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Document PDF Compiler</title>
+  <meta name="description" content="Gabung VSO, IC, Lesen, Payslip, Bank Statement dan dokumen lain menjadi satu PDF tersusun." />
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="brand"><h1>Document PDF Compiler <span style="font-size:11px;color:#8ca2c8;font-weight:600">v1.1 Safe</span></h1><p>VSO → IC → LESEN → PAYSLIP → BANK STATEMENT → OTHER</p></div>
+    <div class="privacy">🔒 Local-first: fail diproses dalam browser</div>
+  </div>
+
+  <div class="grid">
+    <aside class="card">
+      <div class="card-head"><h2>1. Masukkan Dokumen</h2><span class="small">Multi-file</span></div>
+      <div class="card-body">
+        <div class="drop" id="dropZone">
+          <div class="plus">＋</div>
+          <strong>Drag & Drop di sini</strong>
+          <span>PDF, JPG, PNG, WEBP, HEIC, DOCX, XLSX, XLS, TXT<br>atau klik untuk pilih banyak fail sekali gus.</span>
+          <input id="fileInput" type="file" multiple hidden accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.docx,.xlsx,.xls,.txt" />
+        </div>
+
+        <div class="field"><label>Nama customer / nama output</label><input id="customerName" placeholder="Contoh: CLARICE GABRIEL" /></div>
+
+        <div class="field"><label>Tetapan analisis</label>
+          <div class="toggle"><label>Auto klasifikasi dokumen</label><input id="autoClassify" type="checkbox" checked></div>
+          <div class="toggle"><label>OCR untuk gambar (lebih lambat)</label><input id="useOCR" type="checkbox"></div>
+          <div class="toggle"><label>Auto susun bulan terbaru → lama</label><input id="autoSort" type="checkbox" checked></div>
+          <div class="toggle"><label>PDF Safe Mode (fallback jika PDF pelik/secure)</label><input id="safePdf" type="checkbox" checked></div>
+        </div>
+
+        <div class="field"><label>Progress</label><div class="progress"><div id="progressBar"></div></div><div class="small" id="progressText" style="margin-top:6px">Belum ada proses.</div></div>
+
+        <div class="toolbar" style="margin-top:14px">
+          <button class="btn" id="analyzeBtn">Analyze Semua</button>
+          <button class="btn" id="sortBtn">Susun Semula</button>
+          <button class="btn" id="clearBtn">Kosongkan</button>
+        </div>
+
+        <div class="notice">DOCX/XLSX dirender terus dalam browser. Format kompleks mungkin sedikit berbeza daripada fail asal. Untuk PDF dan gambar, susunan/orientasi asal dikekalkan sebaik mungkin.</div>
+        <div class="footer">Tiada database. Tiada upload server. Refresh browser akan reset sesi.</div>
+      </div>
+    </aside>
+
+    <main class="card">
+      <div class="card-head"><h2>2. Semak & Susun</h2><span class="small" id="fileCount">0 fail</span></div>
+      <div class="card-body">
+        <div class="cats">
+          <div class="stat"><b id="totalFiles">0</b><span>Jumlah fail</span></div>
+          <div class="stat"><b id="totalPages">0</b><span>Anggaran page</span></div>
+          <div class="stat"><b id="reviewCount">0</b><span>Perlu semak</span></div>
+        </div>
+        <div id="sections"></div>
+      </div>
+    </main>
+
+    <section class="card right">
+      <div class="card-head"><h2>3. Final PDF</h2><span class="small">Preview & Download</span></div>
+      <div class="card-body">
+        <div class="checklist" id="checklist"></div>
+        <div class="toolbar" style="margin:12px 0">
+          <button class="btn primary" id="generateBtn">Generate Final PDF</button>
+          <button class="btn good" id="downloadBtn" disabled>Download PDF</button>
+          <button class="btn" id="openBtn" disabled>Buka PDF</button>
+        </div>
+        <div class="errorbox" id="errorBox"></div>
+        <div class="preview" id="preview"><div class="placeholder"><div><b>Belum ada PDF dijana</b>Masukkan dokumen, semak susunan, kemudian tekan <strong>Generate Final PDF</strong>.</div></div></div>
+        <div class="log" id="log">Sistem sedia.</div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div id="renderStage" class="hidden-render"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+<script src="app1.js"></script>
+<script src="app2.js"></script>
+<script src="app3.js"></script>
+<script src="app4.js"></script>
+</body>
+</html>
