@@ -11,7 +11,7 @@ module.exports = async function handler(req, res) {
     const customer = await findCustomer(clients.sheets, { phone, customerId, name });
     if (!customer) return res.status(404).json({ ok:false, error:'CUSTOMER_NOT_FOUND' });
 
-    const rows = await getValues(clients.sheets, 'DOCUMENTS!A2:L');
+    const rows = await getValues(clients.sheets, 'DOCUMENTS!A2:M');
     const documents = rows
       .filter(r => r[1] === customer.customerId)
       .map(r => ({
