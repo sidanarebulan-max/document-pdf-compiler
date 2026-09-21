@@ -1,5 +1,5 @@
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-  const { PDFDocument } = window.PDFLib;
+  const { PDFDocument, StandardFonts, rgb } = window.PDFLib;
   const CATEGORIES = [
     {id:'VSO', label:'VSO', order:1},
     {id:'IC', label:'IC', order:2},
@@ -8,6 +8,12 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
     {id:'BANK', label:'BANK STATEMENT', order:5},
     {id:'OTHER', label:'OTHER DOCUMENTS', order:6}
   ];
+  const PARTY_META = {
+    HIRER:{label:'HIRER / PEMINJAM', short:'Hirer / Peminjam'},
+    GUARANTOR:{label:'GUARANTOR / PENJAMIN', short:'Guarantor / Penjamin'}
+  };
+  let activeParty = 'HIRER';
+  let partyNames = {HIRER:'', GUARANTOR:''};
   let items = [];
   let finalBlob = null;
   let finalUrl = null;
