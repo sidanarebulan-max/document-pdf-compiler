@@ -1,4 +1,4 @@
-const crypto = require('crypto');
+const crypto = require('crypto');\nconst { requireApiKey } = require('./_lib/security');
 const {
   getClients,
   normalizeDocType,
