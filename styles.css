@@ -68,3 +68,6 @@
     .merge-status{padding:9px 10px;border-radius:10px;background:#17170e;border:1px solid #514f2b;color:#cfc783;font-size:10px;line-height:1.45}
     .merge-status.ready{background:#0d2422;border-color:#1c5e56;color:#82e1d2}
     @media(max-width:800px){.party-tabs{grid-template-columns:1fr}.party-tab{width:100%}}
+
+/* Pratonton dokumen terus di dalam kad fail */
+.file .source-thumb{width:95px;height:126px;min-width:95px;border:1px solid #365489;border-radius:9px;background:#f4f6fa;padding:2px;cursor:pointer;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#345078;text-align:center}.file .source-thumb img{width:100%;height:100%;object-fit:contain;display:block;background:#fff}.file .source-thumb small{display:block;font-size:8px;font-weight:400;margin-top:5px;color:#789}.file .source-thumb:hover{border-color:#7caaff;box-shadow:0 0 0 2px rgba(87,139,255,.25)}.file .meta{min-width:0}.file .actions{flex-wrap:wrap}@media(max-width:620px){.file .source-thumb{width:72px;height:98px;min-width:72px}.file .actions{gap:4px}}
