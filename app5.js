@@ -54,13 +54,16 @@
           phone,
           fileBase64,
           outputFilename:safeFilename(),
-          jobType:'LOAN_DOCUMENT',
-          filesUsed:items.length,
+          jobType:lastGeneratedMode==='REBATE_ONLY'?'COP_REBATE':'LOAN_DOCUMENT',
+          filesUsed:lastGeneratedMode==='REBATE_ONLY'?partyItems('REBATE').length:lastGeneratedMode==='STANDARD'?partyItems('HIRER').length+partyItems('GUARANTOR').length:items.length,
           notes:'Generated from Document PDF Compiler web UI'
         })
       });
       const j=await r.json();
-      if(!r.ok || !j.ok){\n        if(r.status===401) sessionStorage.removeItem('farisApiKey');\n        throw new Error(j.error||('HTTP '+r.status));\n      }
+      if(!r.ok || !j.ok){
+        if(r.status===401) sessionStorage.removeItem('farisApiKey');
+        throw new Error(j.error||('HTTP '+r.status));
+      }
       log('Google Drive: '+j.output.filename+' disimpan. File ID: '+j.output.driveFileId);
       driveStatus.textContent='✓ Saved to Google Drive';
       driveStatus.className='small drive-ok';
