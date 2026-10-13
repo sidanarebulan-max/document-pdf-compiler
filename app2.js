@@ -137,6 +137,86 @@
     render();
   }
 
+
+  // Pratonton fail asal sebelum digabungkan. Semua diproses dalam pelayar sahaja.
+  let sourcePreviewToken=0;
+  async function openSourcePreview(id){
+    const it=items.find(x=>x.id===id); if(!it)return;
+    const token=++sourcePreviewToken;
+    let modal=document.getElementById('sourcePreviewModal');
+    if(!modal){
+      const style=document.createElement('style');
+      style.textContent='.source-preview-overlay{position:fixed;inset:0;background:rgba(1,6,18,.91);z-index:99999;display:flex;align-items:center;justify-content:center;padding:15px}.source-preview-dialog{width:min(960px,100%);height:min(92vh,100%);background:#101b31;border:1px solid #395079;border-radius:16px;display:flex;flex-direction:column;overflow:hidden;color:#eaf1ff}.source-preview-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 17px;border-bottom:1px solid #30405f}.source-preview-info{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.source-preview-info small{display:block;color:#9db4da;margin-top:4px}.source-preview-actions{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px;border-bottom:1px solid #30405f;flex-wrap:wrap}.source-preview-actions button,.source-preview-close,.source-preview-btn{background:#234276;color:#fff;border:1px solid #5277bb;border-radius:8px;padding:7px 12px;cursor:pointer;font-size:12px}.source-preview-actions button:disabled{opacity:.35;cursor:default}.source-preview-btn{margin:6px 0;background:#1d396a}.source-preview-close{background:#692d40;flex-shrink:0}.source-preview-body{overflow:auto;min-height:0;flex:1;display:flex;align-items:flex-start;justify-content:center;padding:16px;background:#081120}.source-preview-body canvas{max-width:100%;height:auto;background:#fff}.source-preview-body img{max-width:100%;max-height:100%;object-fit:contain}.source-preview-body pre{background:#fff;color:#1a2234;padding:20px;width:100%;overflow:auto;white-space:pre-wrap}.source-preview-body table{background:#fff;color:#111;border-collapse:collapse;font-size:12px}.source-preview-body td,.source-preview-body th{border:1px solid #bbb;padding:5px}.source-preview-body .source-msg{padding:24px;text-align:center;color:#c5d5f0}.source-preview-body .source-doc{background:white;color:#222;width:100%;padding:28px;overflow-wrap:anywhere}.source-preview-body .source-doc img{max-width:100%}@media(max-width:600px){.source-preview-header{padding:9px}.source-preview-dialog{height:96vh}.source-preview-body{padding:7px}}';
+      document.head.appendChild(style);
+      modal=document.createElement('div');
+      modal.id='sourcePreviewModal'; modal.className='source-preview-overlay'; modal.hidden=true;
+      modal.innerHTML='<div class="source-preview-dialog" role="dialog" aria-modal="true" aria-label="Pratonton dokumen"><div class="source-preview-header"><div class="source-preview-info" id="sourcePreviewInfo"></div><button type="button" class="source-preview-close" id="sourcePreviewClose">Tutup ✕</button></div><div class="source-preview-actions" id="sourcePreviewActions"></div><div class="source-preview-body" id="sourcePreviewBody"></div></div>';
+      document.body.appendChild(modal);
+      modal.querySelector('#sourcePreviewClose').onclick=closeSourcePreview;
+      modal.addEventListener('click',e=>{if(e.target===modal)closeSourcePreview()});
+      document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!modal.hidden)closeSourcePreview()});
+    }
+    modal.hidden=false;modal.style.display='flex';
+    const body=modal.querySelector('#sourcePreviewBody'),actions=modal.querySelector('#sourcePreviewActions');
+    modal.querySelector('#sourcePreviewInfo').innerHTML='<strong>'+escapeHtml(it.file.name)+'</strong><small>'+escapeHtml(PARTY_META[it.party].label)+' · '+escapeHtml(it.category)+' · '+mb(it.file.size)+'</small>';
+    body.innerHTML='<div class="source-msg">Memuatkan pratonton…</div>';actions.innerHTML='';
+    const ext=extOf(it.file.name),file=it.file;
+    const stillOpen=()=>token===sourcePreviewToken&&!modal.hidden;
+    try{
+      if(ext==='pdf'){
+        const pdf=await pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
+        let pageNo=1;
+        const draw=async()=>{
+          if(!stillOpen())return;
+          body.innerHTML='<div class="source-msg">Memuatkan muka surat '+pageNo+'…</div>';
+          const page=await pdf.getPage(pageNo);if(!stillOpen())return;
+          const viewport=page.getViewport({scale:1.6});
+          const canvas=document.createElement('canvas');canvas.width=Math.ceil(viewport.width);canvas.height=Math.ceil(viewport.height);
+          await page.render({canvasContext:canvas.getContext('2d'),viewport,background:'rgb(255,255,255)'}).promise;
+          if(!stillOpen())return;
+          body.replaceChildren(canvas);actions.querySelector('#sourcePageNum').textContent='Muka surat '+pageNo+' / '+pdf.numPages;
+          actions.querySelector('#sourcePrev').disabled=pageNo<=1;
+          actions.querySelector('#sourceNext').disabled=pageNo>=pdf.numPages;
+          body.scrollTop=0;
+        };
+        if(!stillOpen())return;
+        actions.innerHTML='<button id="sourcePrev" type="button">← Sebelum</button><span id="sourcePageNum"></span><button id="sourceNext" type="button">Seterusnya →</button>';
+        actions.querySelector('#sourcePrev').onclick=()=>{if(pageNo>1){pageNo--;draw().catch(showPreviewError)}};
+        actions.querySelector('#sourceNext').onclick=()=>{if(pageNo<pdf.numPages){pageNo++;draw().catch(showPreviewError)}};
+        await draw();
+      }else if(['jpg','jpeg','png','webp','heic','heif'].includes(ext)){
+        const blob=['heic','heif'].includes(ext)?await imageToBlobForOCR(file):file;
+        if(!stillOpen())return;
+        const url=URL.createObjectURL(blob);
+        const img=document.createElement('img');img.alt=file.name;img.onload=()=>URL.revokeObjectURL(url);img.onerror=()=>{URL.revokeObjectURL(url);showPreviewError(new Error('Imej gagal dipaparkan.'))};img.src=url;body.replaceChildren(img);
+      }else if(ext==='txt'){
+        const pre=document.createElement('pre');pre.textContent=await file.text();if(stillOpen())body.replaceChildren(pre);
+      }else if(ext==='docx'){
+        const result=await mammoth.convertToHtml({arrayBuffer:await file.arrayBuffer()});
+        if(!stillOpen())return;
+        const doc=document.createElement('div');doc.className='source-doc';
+        // Mammoth output is sanitized by removing unsafe elements and event handlers.
+        const tpl=document.createElement('template');tpl.innerHTML=result.value;
+        tpl.content.querySelectorAll('script,iframe,object,embed,form,svg,math,style,link').forEach(n=>n.remove());
+        tpl.content.querySelectorAll('*').forEach(el=>{[...el.attributes].forEach(a=>{if(/^on/i.test(a.name)||['srcdoc'].includes(a.name)||(['href','src'].includes(a.name)&&/^\s*(javascript|data:text\/html):/i.test(a.value)))el.removeAttribute(a.name)})});
+        doc.appendChild(tpl.content);body.replaceChildren(doc);
+      }else if(['xlsx','xls'].includes(ext)){
+        const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});
+        if(!stillOpen())return;
+        const picker=document.createElement('select');picker.setAttribute('aria-label','Pilih helaian');
+        wb.SheetNames.forEach((name,i)=>picker.add(new Option(name,String(i))));
+        const showSheet=()=>{const sheet=wb.Sheets[wb.SheetNames[Number(picker.value)]], rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:''});const table=document.createElement('table');rows.slice(0,250).forEach(row=>{const tr=table.insertRow();row.slice(0,30).forEach(value=>{const td=tr.insertCell();td.textContent=String(value)})});body.replaceChildren(table);body.scrollTop=0;};
+        actions.replaceChildren(picker);picker.onchange=showSheet;showSheet();
+      }else body.innerHTML='<div class="source-msg">Pratonton tidak disokong untuk format ini.</div>';
+    }catch(err){if(stillOpen())showPreviewError(err)}
+    function showPreviewError(err){if(stillOpen())body.innerHTML='<div class="source-msg">Pratonton gagal: '+escapeHtml(err.message||'Fail tidak dapat dibaca')+'</div>'}
+  }
+  function closeSourcePreview(){
+    sourcePreviewToken++;
+    const modal=document.getElementById('sourcePreviewModal');
+    if(modal){modal.hidden=true;modal.style.display='none';modal.querySelector('#sourcePreviewBody').replaceChildren();}
+  }
+
   function render(){
     const current=partyItems().sort((a,b)=>a.order-b.order);
     const hirerCount=partyItems('HIRER').length;
@@ -169,10 +249,12 @@
               <select class="select-mini">${CATEGORIES.map(c=>`<option value="${c.id}" ${c.id===it.category?'selected':''}>${c.label}</option>`).join('')}</select>
             </div>
             <div class="actions">
+              <button type="button" class="source-preview-btn" title="Lihat kandungan dokumen">👁 Lihat</button>
               <button class="iconbtn up" title="Naik">↑</button>
               <button class="iconbtn down" title="Turun">↓</button>
               <button class="iconbtn danger del" title="Buang">×</button>
             </div>`;
+          div.querySelector('.source-preview-btn').onclick=()=>openSourcePreview(it.id);
           div.querySelector('select').onchange=e=>changeCat(it.id,e.target.value);
           div.querySelector('.up').onclick=()=>moveItem(it.id,-1);
           div.querySelector('.down').onclick=()=>moveItem(it.id,1);
