@@ -4,15 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Document PDF Compiler</title>
-  <meta name="description" content="Gabung dokumen Hirer/Peminjam dan Guarantor/Penjamin menjadi satu PDF tersusun." />
+  <meta name="description" content="Gabung dokumen Hirer, Guarantor dan COP Rebate menjadi PDF tersusun." />
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <div class="app">
   <div class="topbar">
     <div class="brand">
-      <h1>Document PDF Compiler <span style="font-size:11px;color:#8ca2c8;font-weight:600">v1.3 Drive Ready</span></h1>
-      <p>HIRER / PEMINJAM → COVER GUARANTOR → GUARANTOR / PENJAMIN</p>
+      <h1>Document PDF Compiler <span style="font-size:11px;color:#8ca2c8;font-weight:600">v1.4 COP Rebate</span></h1>
+      <p>HIRER / PEMINJAM → GUARANTOR / PENJAMIN → COP REBATE</p>
     </div>
     <div><div class="privacy">🔒 Local-first • Google Drive sync optional</div><div id="driveStatus" class="small" style="text-align:right;margin-top:6px">☁️ Checking Drive...</div></div>
   </div>
@@ -25,6 +25,10 @@
     <button class="party-tab" data-party="GUARANTOR">
       <span class="party-step">02</span>
       <span><b>GUARANTOR / PENJAMIN</b><small id="guarantorTabCount">0 fail</small></span>
+    </button>
+    <button class="party-tab" data-party="REBATE">
+      <span class="party-step">03</span>
+      <span><b>COP REBATE</b><small id="rebateTabCount">0 fail</small></span>
     </button>
   </div>
 
@@ -82,7 +86,7 @@
         </div>
 
         <div class="notice">
-          Tiada dokumen yang wajib. Hirer dan Guarantor boleh diisi secara berasingan. Jika kedua-duanya mempunyai dokumen, sistem akan merge Hirer dahulu, kemudian masukkan cover page Guarantor di tengah, diikuti semua dokumen Guarantor.
+          Semua dokumen adalah pilihan. COP Rebate mempunyai kategori IC depan, IC belakang, lesen, surat kerja, sijil lahir, sijil nikah dan lain-lain. Jana semua dokumen bersama atau COP Rebate sahaja.
         </div>
         <div class="footer">Local-first secara default. Google Drive sync digunakan hanya bila dikonfigurasi dan diminta.</div>
       </div>
@@ -105,7 +109,7 @@
     </main>
 
     <section class="card right">
-      <div class="card-head"><h2>3. Final PDF Gabungan</h2><span class="small">Hirer + Guarantor</span></div>
+      <div class="card-head"><h2>3. Final PDF Gabungan</h2><span class="small">3 tab • pilih output</span></div>
       <div class="card-body">
         <div class="merge-order">
           <div><span class="merge-num">1</span><b>HIRER / PEMINJAM</b><small>Susunan: VSO → IC → LESEN → PAYSLIP → BANK → OTHER</small></div>
@@ -113,8 +117,19 @@
           <div class="cover-chip"><span class="merge-num">C</span><b>COVER PAGE GUARANTOR</b><small>Automatik jika kedua-dua pihak ada dokumen</small></div>
           <div class="merge-arrow">↓</div>
           <div><span class="merge-num">2</span><b>GUARANTOR / PENJAMIN</b><small>Susunan yang sama seperti Hirer</small></div>
+          <div class="merge-arrow">↓</div>
+          <div class="cover-chip"><span class="merge-num">3</span><b>COP REBATE</b><small>IC Depan → IC Belakang → Lesen → Surat Kerja → Sijil Lahir → Sijil Nikah → Lain-lain</small></div>
         </div>
 
+        <div class="field compile-scope-field">
+          <label for="compileScope">Pilih dokumen untuk digabungkan</label>
+          <select id="compileScope">
+            <option value="ALL">Semua tab (Hirer + Guarantor + COP Rebate)</option>
+            <option value="STANDARD">Hirer + Guarantor sahaja</option>
+            <option value="REBATE_ONLY">COP Rebate sahaja</option>
+          </select>
+          <div class="small" id="compileScopeHint">Gabung semua dokumen yang telah dimuat naik.</div>
+        </div>
         <div class="checklist" id="checklist"></div>
 
         <div class="toolbar" style="margin:12px 0">
@@ -126,7 +141,7 @@
 
         <div class="errorbox" id="errorBox"></div>
         <div class="preview" id="preview">
-          <div class="placeholder"><div><b>Belum ada PDF dijana</b>Isi Hirer, Guarantor atau kedua-duanya. Semua bahagian adalah optional.</div></div>
+          <div class="placeholder"><div><b>Belum ada PDF dijana</b>Masukkan sekurang-kurangnya satu dokumen pada tab yang mahu dijana.</div></div>
         </div>
         <div class="log" id="log">Sistem sedia.</div>
       </div>
