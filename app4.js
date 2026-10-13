@@ -25,8 +25,9 @@
   }
 
   function safeFilename(){
-    const raw=$('#customerName').value.trim()||partyNames.HIRER||partyNames.GUARANTOR||'FINAL';
-    return raw.toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'')+'_DOCUMENT.pdf';
+    const raw=$('#customerName').value.trim()||partyNames.HIRER||partyNames.GUARANTOR||partyNames.REBATE||'FINAL';
+    const suffix=lastGeneratedMode==='REBATE_ONLY'?'_COP_REBATE.pdf':lastGeneratedMode==='STANDARD'?'_DOCUMENT.pdf':'_DOKUMEN_LENGKAP.pdf';
+    return (raw.toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'')||'FINAL')+suffix;
   }
 
   function cleanPdfText(text){
@@ -84,6 +85,30 @@
     centerText('Halaman pemisah automatik',8,normal,92,rgb(0.57,0.61,0.7));
   }
 
+  async function addRebateCoverPage(doc){
+  const page=doc.addPage([595.28,841.89]);
+  const bold=await doc.embedFont(StandardFonts.HelveticaBold);
+  const normal=await doc.embedFont(StandardFonts.Helvetica);
+  const w=page.getWidth(),h=page.getHeight();
+  page.drawRectangle({x:0,y:0,width:w,height:h,color:rgb(0.97,0.98,1)});
+  page.drawRectangle({x:0,y:h-18,width:w,height:18,color:rgb(0.31,0.55,1)});
+  page.drawRectangle({x:0,y:0,width:w,height:12,color:rgb(0.49,0.36,1)});
+  const center=(t,size,font,y,color=rgb(.07,.1,.18))=>{
+    const safe=cleanPdfText(t);
+    page.drawText(safe,{x:(w-font.widthOfTextAtSize(safe,size))/2,y,size,font,color});
+  };
+  center('DOCUMENT SECTION',11,bold,545,rgb(.31,.55,1));
+  center('COP REBATE',30,bold,500);
+  center('Dokumen Sokongan Rebat',14,normal,468,rgb(.36,.42,.55));
+  const name=(partyNames.REBATE||'').trim();
+  if(name)center(name.toUpperCase().slice(0,43),17,bold,405);
+  const customer=($('#customerName').value||'').trim();
+  if(customer)center(customer.toUpperCase().slice(0,50),11,normal,365);
+  center('IC DEPAN - IC BELAKANG - LESEN - SURAT KERJA',9,normal,120);
+  center('SIJIL LAHIR - SIJIL NIKAH - LAIN-LAIN',9,normal,100);
+  center('Halaman pemisah automatik',8,normal,75,rgb(.57,.61,.7));
+}
+
   async function processPartyDocs(party,docs,doc,state){
     for(let i=0;i<docs.length;i++){
       const item=docs[i];
@@ -97,82 +122,80 @@
   }
 
   async function generate(){
-    partyNames[activeParty]=$('#partyName').value.trim();
-
-    const hirerDocs=sortedPartyItems('HIRER');
-    const guarantorDocs=sortedPartyItems('GUARANTOR');
-    if(!hirerDocs.length && !guarantorDocs.length){
-      alert('Masukkan sekurang-kurangnya satu dokumen Hirer atau Guarantor dahulu.');
-      return;
-    }
-
-    clearError();
-    $('#generateBtn').disabled=true;
-    $('#downloadBtn').disabled=true;
-    $('#openBtn').disabled=true;
-    setProgress(1,'Menjana Final PDF gabungan...');
-    lastProcessingName='';
-
-    try{
-      const doc=await PDFDocument.create();
-      const state={done:0,total:hirerDocs.length+guarantorDocs.length};
-
-      if(hirerDocs.length){
-        log(`Mula bahagian HIRER / PEMINJAM (${hirerDocs.length} fail).`);
-        await processPartyDocs('HIRER',hirerDocs,doc,state);
-      }
-
-      if(hirerDocs.length && guarantorDocs.length){
-        lastProcessingName='COVER PAGE GUARANTOR / PENJAMIN';
-        setProgress(90,'Menambah cover page Guarantor / Penjamin...');
-        await addGuarantorCoverPage(doc);
-        log('Cover page GUARANTOR / PENJAMIN ditambah di tengah PDF.');
-      }
-
-      if(guarantorDocs.length){
-        log(`Mula bahagian GUARANTOR / PENJAMIN (${guarantorDocs.length} fail).`);
-        await processPartyDocs('GUARANTOR',guarantorDocs,doc,state);
-      }
-
-      if(doc.getPageCount()===0) throw new Error('Tiada page berjaya dimasukkan ke PDF akhir.');
-
-      setProgress(94,'Menyimpan dan menyemak PDF akhir...');
-      const bytes=await doc.save({useObjectStreams:true});
-      finalBlob=new Blob([bytes],{type:'application/pdf'});
-
-      if(finalUrl) URL.revokeObjectURL(finalUrl);
-      finalUrl=URL.createObjectURL(finalBlob);
-      $('#downloadBtn').disabled=false;
-      $('#openBtn').disabled=false;
-
-      let pages=doc.getPageCount();
-      try{
-        pages=await renderFinalPreview();
-      }catch(pe){
-        console.error(pe);
-        log('Preview gagal tetapi PDF berjaya dijana: '+pe.message);
-        $('#preview').innerHTML=`<div class="placeholder"><div><b>PDF siap (${pages} page)</b>Preview browser gagal dipaparkan, tetapi fail telah siap. Tekan <strong>Download PDF</strong> atau <strong>Buka PDF</strong>.</div></div>`;
-      }
-
-      const mode=hirerDocs.length&&guarantorDocs.length
-        ? 'Hirer + Cover Guarantor + Guarantor'
-        : hirerDocs.length ? 'Hirer sahaja' : 'Guarantor sahaja';
-
-      setProgress(100,`Final PDF siap • ${pages} page • ${mode}.`);
-      log(`Siap: ${safeFilename()} • ${pages} page • ${mode} • ${(finalBlob.size/1024/1024).toFixed(2)} MB`);
-    }catch(e){
-      console.error(e);
-      const where=lastProcessingName?`Fail bermasalah: ${lastProcessingName}\n`:'';
-      const detail=(e&&e.message)?e.message:String(e);
-      const msg=where+`Sebab: ${detail}`;
-      showError(msg);
-      alert('Gagal generate PDF.\n\n'+msg);
-      log('ERROR: '+msg.replace(/\n/g,' | '));
-      setProgress(0,lastProcessingName?`Gagal pada: ${lastProcessingName}`:'Gagal menjana PDF.');
-    }finally{
-      $('#generateBtn').disabled=false;
-    }
+  partyNames[activeParty]=$('#partyName').value.trim();
+  const scope=$('#compileScope').value;
+  const hirerDocs=scope==='REBATE_ONLY'?[]:sortedPartyItems('HIRER');
+  const guarantorDocs=scope==='REBATE_ONLY'?[]:sortedPartyItems('GUARANTOR');
+  const rebateDocs=scope==='STANDARD'?[]:sortedPartyItems('REBATE');
+  const allCount=hirerDocs.length+guarantorDocs.length+rebateDocs.length;
+  if(!allCount){
+    alert('Tiada dokumen dalam pilihan ini. Muat naik dokumen dahulu atau tukar pilihan gabungan.');
+    return;
   }
+  clearError();
+  $('#generateBtn').disabled=true;
+  $('#downloadBtn').disabled=true;
+  $('#openBtn').disabled=true;
+  $('#driveSaveBtn').disabled=true;
+  setProgress(1,'Menjana PDF: '+(scope==='REBATE_ONLY'?'COP Rebate':scope==='STANDARD'?'Hirer + Guarantor':'Semua tab')+'...');
+  lastProcessingName='';
+  try{
+    const doc=await PDFDocument.create();
+    const state={done:0,total:allCount};
+    if(hirerDocs.length){
+      log('Mula HIRER / PEMINJAM ('+hirerDocs.length+' fail).');
+      await processPartyDocs('HIRER',hirerDocs,doc,state);
+    }
+    if(hirerDocs.length&&guarantorDocs.length){
+      lastProcessingName='COVER PAGE GUARANTOR / PENJAMIN';
+      setProgress(90,'Menambah cover page Guarantor...');
+      await addGuarantorCoverPage(doc);
+    }
+    if(guarantorDocs.length){
+      log('Mula GUARANTOR / PENJAMIN ('+guarantorDocs.length+' fail).');
+      await processPartyDocs('GUARANTOR',guarantorDocs,doc,state);
+    }
+    if(rebateDocs.length){
+      if(hirerDocs.length||guarantorDocs.length){
+        lastProcessingName='COVER PAGE COP REBATE';
+        setProgress(90,'Menambah cover page COP Rebate...');
+        await addRebateCoverPage(doc);
+      }
+      log('Mula COP REBATE ('+rebateDocs.length+' fail).');
+      await processPartyDocs('REBATE',rebateDocs,doc,state);
+    }
+    if(doc.getPageCount()===0)throw new Error('Tiada muka surat berjaya dimasukkan ke PDF.');
+    setProgress(94,'Menyimpan dan menyediakan pratonton PDF...');
+    const bytes=await doc.save({useObjectStreams:true});
+    if(finalUrl)URL.revokeObjectURL(finalUrl);
+    finalBlob=new Blob([bytes],{type:'application/pdf'});
+    finalUrl=URL.createObjectURL(finalBlob);
+    lastGeneratedMode=scope;
+    $('#downloadBtn').disabled=false;
+    $('#openBtn').disabled=false;
+    $('#driveSaveBtn').disabled=false;
+    let pages=doc.getPageCount();
+    try{pages=await renderFinalPreview();}
+    catch(pe){
+      console.error(pe);
+      log('Pratonton gagal tetapi PDF telah berjaya dijana: '+pe.message);
+      $('#preview').innerHTML=`<div class="placeholder"><div><b>PDF siap (${pages} page)</b>Tekan Download PDF atau Buka PDF.</div></div>`;
+    }
+    const label=scope==='REBATE_ONLY'?'COP Rebate sahaja':scope==='STANDARD'?'Hirer + Guarantor':'Semua tab';
+    setProgress(100,`PDF siap • ${pages} muka surat • ${label}.`);
+    log(`Siap: ${safeFilename()} • ${pages} page • ${label} • ${(finalBlob.size/1024/1024).toFixed(2)} MB`);
+  }catch(e){
+    console.error(e);
+    const where=lastProcessingName?`Fail bermasalah: ${lastProcessingName}\n`:'';
+    const msg=where+`Sebab: ${e.message||String(e)}`;
+    showError(msg);
+    alert('Gagal generate PDF.\n\n'+msg);
+    log('ERROR: '+msg.replace(/\n/g,' | '));
+    setProgress(0,lastProcessingName?'Gagal pada: '+lastProcessingName:'Gagal menjana PDF.');
+  }finally{
+    $('#generateBtn').disabled=false;
+  }
+}
 
   document.querySelectorAll('.party-tab').forEach(btn=>{
     btn.onclick=()=>switchParty(btn.dataset.party);
@@ -200,15 +223,17 @@
       clearError();
       if(finalUrl) URL.revokeObjectURL(finalUrl);
       finalUrl=null;
-      $('#preview').innerHTML='<div class="placeholder"><div><b>Belum ada PDF dijana</b>Isi Hirer, Guarantor atau kedua-duanya.</div></div>';
+      $('#preview').innerHTML='<div class="placeholder"><div><b>Belum ada PDF dijana</b>Pilih tab dan muat naik dokumen.</div></div>';
       $('#downloadBtn').disabled=true;
       $('#openBtn').disabled=true;
+      $('#driveSaveBtn').disabled=true;
       setProgress(0,'Belum ada proses.');
       render();
       log(`Page ${label} dikosongkan.`);
     }
   };
 
+  $('#compileScope').onchange=renderChecklist;
   $('#generateBtn').onclick=generate;
   $('#downloadBtn').onclick=()=>{
     if(!finalBlob)return;
