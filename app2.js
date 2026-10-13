@@ -1,3 +1,54 @@
+
+  // Thumbnail sebenar bagi muka surat pertama, dijana sekali sahaja selepas upload.
+  // Fail tidak dihantar ke pelayan.
+  async function makeSourceThumbnail(item){
+    if(item.thumbnail || item.thumbnailBusy)return;
+    item.thumbnailBusy=true;
+    const ext=extOf(item.file.name);
+    try{
+      let canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
+      if(ext==='pdf'){
+        const pdf=await pdfjsLib.getDocument({data:new Uint8Array(await item.file.arrayBuffer())}).promise;
+        try{
+          const page=await pdf.getPage(1);
+          const vp=page.getViewport({scale:0.6});
+          const factor=Math.min(1.5,180/Math.max(1,vp.width));
+          const v=page.getViewport({scale:0.6*factor});
+          canvas.width=Math.ceil(v.width);canvas.height=Math.ceil(v.height);
+          await page.render({canvasContext:ctx,viewport:v,background:'rgb(255,255,255)'}).promise;
+        }finally{await pdf.destroy();}
+      }else if(['jpg','jpeg','png','webp','heic','heif'].includes(ext)){
+        const blob=['heic','heif'].includes(ext)?await imageToBlobForOCR(item.file):item.file;
+        const bitmap=await createImageBitmap(blob);
+        try{
+          const factor=Math.min(1,200/Math.max(bitmap.width,bitmap.height));
+          canvas.width=Math.max(1,Math.round(bitmap.width*factor));canvas.height=Math.max(1,Math.round(bitmap.height*factor));
+          ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
+        }finally{bitmap.close();}
+      }else if(ext==='docx'){
+        const raw=await mammoth.extractRawText({arrayBuffer:await item.file.arrayBuffer()});
+        canvas.width=150;canvas.height=195;
+        ctx.fillStyle='#fff';ctx.fillRect(0,0,150,195);ctx.fillStyle='#263247';ctx.font='11px sans-serif';
+        let y=15;for(const line of (raw.value||'').split(/\r?\n/)){if(y>182)break;for(let pos=0;pos<line.length && y<=182;pos+=24){ctx.fillText(line.slice(pos,pos+24),7,y,136);y+=13;}}
+      }else if(['xls','xlsx'].includes(ext)){
+        const wb=XLSX.read(await item.file.arrayBuffer(),{type:'array'});
+        canvas.width=150;canvas.height=195;ctx.fillStyle='#fff';ctx.fillRect(0,0,150,195);ctx.strokeStyle='#d6dfdf';ctx.fillStyle='#24314a';ctx.font='10px sans-serif';
+        const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+        for(let r=0;r<Math.min(rows.length,12);r++){ctx.strokeRect(3,r*16+2,144,16);ctx.fillText(rows[r].slice(0,3).join(' | ').slice(0,24),7,r*16+14,136);}
+      }else if(ext==='txt'){
+        canvas.width=150;canvas.height=195;ctx.fillStyle='#fff';ctx.fillRect(0,0,150,195);ctx.fillStyle='#263247';ctx.font='11px sans-serif';
+        const lines=(await item.file.text()).split(/\r?\n/);let y=15;
+        for(const line of lines){if(y>185)break;for(let pos=0;pos<line.length && y<=185;pos+=24){ctx.fillText(line.slice(pos,pos+24),7,y,136);y+=13;}}
+      }else return;
+      item.thumbnail=canvas.toDataURL('image/jpeg',0.76);
+    }catch(e){item.thumbnailError=true;log('Thumbnail tidak tersedia untuk '+item.file.name+': '+e.message);}
+    finally{
+      item.thumbnailBusy=false;
+      const el=document.querySelector('[data-source-thumb="'+item.id+'"]');
+      if(el && item.thumbnail)el.innerHTML='<img src="'+item.thumbnail+'" alt="Pratonton muka surat pertama">';
+    }
+  }
+
   function partyItems(party=activeParty){ return items.filter(x=>x.party===party); }
 
   async function analyzeItem(item){
@@ -49,6 +100,8 @@
       });
     }
     render();
+    // Jana thumbnail secara berperingkat, bebas daripada analisis pengelasan.
+    for(const item of items.filter(x=>files.includes(x.file)))makeSourceThumbnail(item);
     if(files.length){ await analyzeAll(false); }
   }
 
@@ -242,7 +295,7 @@
           const ext=extOf(it.file.name);
           const div=document.createElement('div'); div.className='file';
           div.innerHTML=`
-            <div class="thumb">${escapeHtml(ext)}</div>
+            <button type="button" class="thumb source-thumb" data-source-thumb="${it.id}" title="Klik untuk lihat dokumen penuh">${it.thumbnail?`<img src="${it.thumbnail}" alt="Pratonton dokumen">`:`<span>${escapeHtml(ext)}<small>Memuatkan...</small></span>`}</button>
             <div class="meta">
               <div class="name" title="${escapeHtml(it.file.name)}">${escapeHtml(it.file.name)}</div>
               <div class="sub">${mb(it.file.size)} • ${it.pages||1} page • ${formatDate(it.date)} ${it.review?'• ⚠ semak':''}${it.note?' • '+escapeHtml(it.note):''}</div>
@@ -255,6 +308,7 @@
               <button class="iconbtn danger del" title="Buang">×</button>
             </div>`;
           div.querySelector('.source-preview-btn').onclick=()=>openSourcePreview(it.id);
+          div.querySelector('.source-thumb').onclick=()=>openSourcePreview(it.id);
           div.querySelector('select').onchange=e=>changeCat(it.id,e.target.value);
           div.querySelector('.up').onclick=()=>moveItem(it.id,-1);
           div.querySelector('.down').onclick=()=>moveItem(it.id,1);
