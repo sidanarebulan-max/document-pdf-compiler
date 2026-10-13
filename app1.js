@@ -8,12 +8,24 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
     {id:'BANK', label:'BANK STATEMENT', order:5},
     {id:'OTHER', label:'OTHER DOCUMENTS', order:6}
   ];
+  const REBATE_CATEGORIES = [
+    {id:'IC_FRONT',label:'IC DEPAN',order:1},
+    {id:'IC_BACK',label:'IC BELAKANG',order:2},
+    {id:'LESEN',label:'LESEN MEMANDU',order:3},
+    {id:'SURAT_KERJA',label:'SURAT KERJA',order:4},
+    {id:'SIJIL_LAHIR',label:'SIJIL LAHIR',order:5},
+    {id:'SIJIL_NIKAH',label:'SIJIL NIKAH',order:6},
+    {id:'OTHER',label:'LAIN-LAIN DOKUMEN',order:7}
+  ];
+  const categoriesFor=party=>party==='REBATE'?REBATE_CATEGORIES:CATEGORIES;
   const PARTY_META = {
     HIRER:{label:'HIRER / PEMINJAM', short:'Hirer / Peminjam'},
-    GUARANTOR:{label:'GUARANTOR / PENJAMIN', short:'Guarantor / Penjamin'}
+    GUARANTOR:{label:'GUARANTOR / PENJAMIN', short:'Guarantor / Penjamin'},
+    REBATE:{label:'COP REBATE', short:'COP Rebate'}
   };
   let activeParty = 'HIRER';
-  let partyNames = {HIRER:'', GUARANTOR:''};
+  let partyNames = {HIRER:'', GUARANTOR:'', REBATE:''};
+  let lastGeneratedMode = 'ALL';
   let items = [];
   let finalBlob = null;
   let finalUrl = null;
