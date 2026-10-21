@@ -8,3 +8,8 @@
 @media(max-width:1080px){.vsoGrid{grid-template-columns:minmax(300px,375px) minmax(0,1fr)}}
 @media(max-width:780px){#mainWorkspaceNav{padding:10px 14px;flex-direction:column;align-items:stretch;gap:9px}.hubBrand strong{font-size:13px}.hubSwitch{width:100%}.hubTab{flex:1;padding:10px 7px}.hubTab b{font-size:12px}#vsoWorkspace{padding:20px 12px}.vsoIntro{align-items:flex-start;gap:7px;flex-direction:column}.vsoIntro h1{font-size:25px}.vsoVersion{display:none}.vsoGrid{grid-template-columns:1fr}.vsoFormPanel{padding:0 13px 17px}.vsoPreviewToolbar{padding:12px}.vsoPreviewFooter{flex-wrap:wrap}.vsoFieldRow{grid-template-columns:1fr 1fr}}
 @media(max-width:390px){.hubBrand small{display:none}.vsoFieldRow{grid-template-columns:1fr}}
+
+/* Read-only, document-derived fixed charges per vehicle variant */
+.vsoFixedDetails{border:1px solid #294576;border-radius:10px;background:#0a1933;overflow:hidden}
+.vsoFixedDetails summary{color:#b6cdf0;font-size:11px;padding:11px 12px;cursor:pointer;font-weight:700}
+#vsoFixedBreakdown{padding:0 12px 12px;display:grid;gap:7px}.vsoChargeRow,.vsoChargeTotal{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;font-size:10.5px}.vsoChargeRow span{color:#9bb5db}.vsoChargeRow b{color:#edf5ff;white-space:nowrap}.vsoChargeTotal{padding-top:10px;border-top:1px solid #30527d;color:#fff;font-weight:800;font-size:12px}
