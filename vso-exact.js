@@ -39,12 +39,12 @@
   prep.className="vsoExactPanel";
   prep.innerHTML=`
     <div class="vsoExactHeader"><strong><span aria-hidden="true">▣</span> Format VSO Asal — Templat Tetap</strong><span class="vsoExactPill">BORANG ORIGINAL</span></div>
-    <p id="vsoTemplateHelp">Rupa VSO asal dikekalkan. Hanya isi <b>maklumat pelanggan, kereta dan pinjaman</b>; logo, jadual, terma serta ruangan tandatangan tidak diubah.</p>
-    <label class="vsoExactChoose" for="vsoExactUpload">📄 Pilih PDF Template Kosong (sekali sahaja)</label>
+    <p id="vsoTemplateHelp">Templat VSO asal disediakan secara <b>berpusat dan automatik</b>. Hanya isi maklumat pelanggan, kereta serta pinjaman; semua bahagian tetap dokumen dikekalkan.</p>
+    <label class="vsoExactChoose" for="vsoExactUpload">📄 Muat naik templat sendiri (pilihan sandaran)</label>
     <button type="button" class="vsoExactChange" id="vsoExactChange">Tukar templat PDF</button>
     <input id="vsoExactUpload" type="file" accept=".pdf,application/pdf" hidden>
-    <div id="vsoExactStatus" role="status">Belum ada templat asal. Muat naik templat kosong untuk mula.</div>
-    <small>Templat kosong disimpan dalam pelayar ini. Jika tukar peranti atau padam data pelayar, muat naik semula templat. PDF akhir masih DRAF sehingga disahkan pihak pengedar.</small>`;
+    <div id="vsoExactStatus" role="status">Memuatkan templat VSO berpusat...</div>
+    <small>Templat asal dipasang terus dalam website; tiada langkah muat naik diperlukan pada pelayar atau telefon baharu. Dokumen pelanggan hanya diproses dalam pelayar. PDF akhir masih DRAF sehingga disahkan pengedar.</small>`;
   const first=host.querySelector(".vsoModeGrid");
   if(first)first.insertAdjacentElement("afterend",prep);
   const status=E("vsoExactStatus");
@@ -118,7 +118,7 @@
     await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(Error("Templat tidak boleh dibaca."));img.src=data;});
     baseData=data;blankImage=img;templateAvailable=true;
     prep.classList.add("vso-template-loaded");
-    E("vsoTemplateHelp").innerHTML="✓ <b>Templat VSO asal sedang digunakan.</b> Isi sahaja maklumat pelanggan, kereta dan pinjaman. Semua elemen lain pada borang kekal.";
+    E("vsoTemplateHelp").innerHTML="✓ <b>Templat VSO asal aktif.</b> Isi sahaja maklumat pelanggan, kereta dan pinjaman. Logo, jadual dan unsur lain dikekalkan.";
     blankHint.style.display="none";previewCanvas.style.display="block";
     drawPreview();
     showStatus(persist?"✓ Templat asal berjaya diproses. Menyimpan templat kosong...":"✓ Template asal tersedia. Anda boleh terus jana VSO.",true);
@@ -142,6 +142,25 @@
       req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
     });
   }
+
+  // Semua pengguna mendapat salinan templat bersih dari pelayan, tidak kira browser,
+  // storan setempat, telefon atau jenis peranti. Ini bukan data pelanggan.
+  async function loadCentralTemplate(){
+    try{
+      const centralUrl=new URL("assets/vso-template-blank.png?v=central-20261021",document.baseURI).href;
+      await setTemplate(centralUrl,false);
+      showStatus("✓ Templat VSO asal telah dimuatkan secara automatik dari server. Sedia digunakan di mana-mana browser.",true);
+    }catch(error){
+      console.warn("Templat pusat tidak dapat dimuatkan, cuba templat setempat:",error);
+      await restore();
+      if(!templateAvailable){
+        showStatus("Templat pusat gagal dimuatkan. Cuba segar semula halaman, atau gunakan pilihan muat naik templat sendiri.");
+      }else{
+        showStatus("✓ Menggunakan templat setempat sebagai sandaran.",true);
+      }
+    }
+  }
+
   async function restore(){
     try{
       const database=await openDb();
@@ -238,5 +257,5 @@
   host.querySelectorAll("[data-vso-mode]").forEach(x=>x.addEventListener("click",()=>requestAnimationFrame(drawPreview)));
   window.addEventListener("resize",fitPreview);
   if(typeof ResizeObserver!=="undefined")new ResizeObserver(fitPreview).observe(viewport);
-  restore();
+  loadCentralTemplate();
 })();
