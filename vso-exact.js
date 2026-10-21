@@ -7,6 +7,8 @@
   const key="lon-puncak-template-v1";
   const outputResolution=2.15;
   let blankImage=null,baseData=null,drawSeq=0,buildBusy=false,previewCanvas=null,latest=null,templateAvailable=false;
+  // Borang asal tidak diubah: hanya medan pelanggan, butiran kenderaan dan pinjaman dilukis di atas templat.
+  const controlledFields=Object.freeze(['vsoCustomer','vsoNric','vsoAddress','vsoPhone','vsoEmail','vsoModel','vsoYear','vsoColor','vsoLoan','vsoPeriod']);
   const money=n=>Math.round(n).toLocaleString("en-MY");
   const mode=()=>host.querySelector('[data-vso-mode].active')?.dataset.vsoMode||"PLAIN";
   const validData=()=>{
@@ -36,15 +38,19 @@
   const prep=document.createElement("div");
   prep.className="vsoExactPanel";
   prep.innerHTML=`
-    <div class="vsoExactHeader"><strong><span aria-hidden="true">▣</span> Template VSO Asal — 100% Ikut PDF</strong><span class="vsoExactPill">FORMAT ORIGINAL</span></div>
-    <p>Untuk menghasilkan dokumen dengan logo, garis dan kedudukan yang sama seperti VSO asal, pilih fail templat kosong di bawah <b>sekali sahaja</b>. Templat kosong akan disimpan dalam pelayar ini untuk kegunaan seterusnya.</p>
-    <label class="vsoExactChoose" for="vsoExactUpload">📄 Pilih PDF VSO Asal / Template Kosong</label>
+    <div class="vsoExactHeader"><strong><span aria-hidden="true">▣</span> Format VSO Asal — Templat Tetap</strong><span class="vsoExactPill">BORANG ORIGINAL</span></div>
+    <p id="vsoTemplateHelp">Rupa VSO asal dikekalkan. Hanya isi <b>maklumat pelanggan, kereta dan pinjaman</b>; logo, jadual, terma serta ruangan tandatangan tidak diubah.</p>
+    <label class="vsoExactChoose" for="vsoExactUpload">📄 Pilih PDF Template Kosong (sekali sahaja)</label>
+    <button type="button" class="vsoExactChange" id="vsoExactChange">Tukar templat PDF</button>
     <input id="vsoExactUpload" type="file" accept=".pdf,application/pdf" hidden>
     <div id="vsoExactStatus" role="status">Belum ada templat asal. Muat naik templat kosong untuk mula.</div>
-    <small>Dokumen dijana daripada imej halaman PDF asal, bukan jadual HTML baharu. Maklumat dalam fail sumber dipadam daripada imej templat sebelum disimpan. Fail akhir bertanda DRAF untuk semakan pengedar.</small>`;
+    <small>Templat kosong disimpan dalam pelayar ini. Jika tukar peranti atau padam data pelayar, muat naik semula templat. PDF akhir masih DRAF sehingga disahkan pihak pengedar.</small>`;
   const first=host.querySelector(".vsoModeGrid");
   if(first)first.insertAdjacentElement("afterend",prep);
   const status=E("vsoExactStatus");
+  E("vsoExactChange").addEventListener("click",()=>{
+    E("vsoExactUpload").click();
+  });
   const blankHint=document.createElement("div");
   blankHint.id="vsoExactPlaceholder";
   blankHint.innerHTML="<div class='vsoExactPlaceholderIcon'>▤</div><strong>Pratonton format VSO asal</strong><p>Muat naik PDF templat asal dahulu. Halaman dan logo asal akan dipaparkan di sini tanpa sebarang reka bentuk semula.</p>";
@@ -85,8 +91,8 @@
     text(ctx,"e.Mas 5 Premium",120.5,213.3,145,"10.2px Calibri, Arial, sans-serif");
     text(ctx,d.year,329.2,213.3,30,"10.2px Calibri, Arial, sans-serif");
     text(ctx,d.color,402.1,213.3,140,"10.2px Calibri, Arial, sans-serif");
-    text(ctx,Number.isFinite(d.net)&&d.net>0?money(d.net):"",251.6,235.9,26,"7.5px Calibri, Arial, sans-serif","right");
-    text(ctx,Number.isFinite(d.otr)&&d.otr>0?money(d.otr):"",253.5,528.2,23,"7.8px Calibri, Arial, sans-serif","right");
+    text(ctx,Number.isFinite(d.net)&&d.net>0?money(d.net):"",251.6,235.9,86,"7.5px Calibri, Arial, sans-serif","right");
+    text(ctx,Number.isFinite(d.otr)&&d.otr>0?money(d.otr):"",253.5,528.2,86,"7.8px Calibri, Arial, sans-serif","right");
     // The original VSO number is blank; drafts must not resemble issued dealership originals.
     text(ctx,"DRAF",255,101.1,38,"bold 10px Calibri, Arial, sans-serif");
   };
@@ -111,6 +117,8 @@
     const img=new Image();
     await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(Error("Templat tidak boleh dibaca."));img.src=data;});
     baseData=data;blankImage=img;templateAvailable=true;
+    prep.classList.add("vso-template-loaded");
+    E("vsoTemplateHelp").innerHTML="✓ <b>Templat VSO asal sedang digunakan.</b> Isi sahaja maklumat pelanggan, kereta dan pinjaman. Semua elemen lain pada borang kekal.";
     blankHint.style.display="none";previewCanvas.style.display="block";
     drawPreview();
     showStatus(persist?"✓ Templat asal berjaya diproses. Menyimpan templat kosong...":"✓ Template asal tersedia. Anda boleh terus jana VSO.",true);
@@ -226,7 +234,7 @@
   E("vsoDownload").onclick=downloadExact;
   E("vsoDownloadBottom").onclick=downloadExact;
   E("vsoToCompiler").onclick=toCompiler;
-  host.querySelectorAll("input,textarea,select").forEach(x=>x.addEventListener("input",drawPreview));
+  controlledFields.forEach(id=>E(id)?.addEventListener("input",drawPreview));
   host.querySelectorAll("[data-vso-mode]").forEach(x=>x.addEventListener("click",()=>requestAnimationFrame(drawPreview)));
   window.addEventListener("resize",fitPreview);
   if(typeof ResizeObserver!=="undefined")new ResizeObserver(fitPreview).observe(viewport);
