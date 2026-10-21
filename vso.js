@@ -37,7 +37,7 @@
   const workspace=document.createElement('section');workspace.id='vsoWorkspace';
   root.parentNode.insertBefore(workspace,root);
   workspace.innerHTML=`
-   <div class="vsoIntro"><div><div class="vsoEyebrow">VEHICLE SALES ORDER</div><h1>Jana VSO Proton</h1><p>Isi maklumat pelanggan, kereta dan jumlah pinjaman. Semak dokumen A4 dahulu sebelum muat turun atau hantar ke Compiler.</p></div><div class="vsoVersion">Template 01 · e.MAS 5 Premium</div></div>
+   <div class="vsoIntro"><div><div class="vsoEyebrow">VEHICLE SALES ORDER</div><h1>VSO Format Asal</h1><p>Format PDF asal dikekalkan. Hanya isi butiran pelanggan, kenderaan dan pinjaman. Semak dokumen A4 sebelum muat turun atau hantar ke Compiler.</p></div><div class="vsoVersion">Template 01 · e.MAS 5 Premium</div></div>
    <div class="vsoGrid">
     <aside class="vsoFormPanel">
      <div class="vsoSectionHead"><b>1. Pilih jenis VSO</b><span>2 pilihan</span></div>
@@ -55,7 +55,7 @@
        <label class="vsoField"><span>E-mel</span><input id="vsoEmail" type="email" placeholder="contoh@email.com"></label>
       </div>
      </div>
-     <div class="vsoSectionHead"><b>3. Maklumat kereta</b><span>Ikut template</span></div>
+     <div class="vsoSectionHead"><b>3. Maklumat kereta</b><span>Medan boleh diisi</span></div>
      <div class="vsoFields">
       <label class="vsoField"><span>Model & varian</span><select id="vsoModel"><option value="EMAS5_PREMIUM_2026">Proton e.MAS 5 Premium — 2026</option></select></label>
       <div class="vsoFieldRow">
@@ -64,7 +64,7 @@
       </div>
       <div class="vsoNotebox">Model dan harga lain akan ditambah selepas template VSO rasmi bagi setiap varian dibekalkan.</div>
      </div>
-     <div class="vsoSectionHead"><b>4. Maklumat pinjaman</b><span>Pengiraan automatik</span></div>
+     <div class="vsoSectionHead"><b>4. Maklumat pinjaman</b><span>Medan boleh diisi</span></div>
      <div class="vsoFields">
        <label class="vsoField"><span>Loan Amount (RM) *</span><input id="vsoLoan" type="number" min="1" step="1" value="60800" inputmode="decimal"></label>
        <label class="vsoField"><span>Tempoh pinjaman</span><select id="vsoPeriod"><option value="9">9 tahun</option><option value="7">7 tahun</option><option value="5">5 tahun</option><option value="3">3 tahun</option></select></label>
