@@ -11,3 +11,10 @@
 #vsoExactPlaceholder strong{font-size:15px}#vsoExactPlaceholder p{font-size:12px;color:#92aace;line-height:1.7}.vsoExactPlaceholderIcon{font-size:42px;margin-bottom:14px;color:#719ee3}
 #vsoExactCanvas{background:#fff;box-shadow:0 12px 38px rgba(0,0,0,.48);max-width:calc(100% - 12px);height:auto}
 @media(max-width:780px){.vsoExactPanel{margin:14px 0}.vsoExactHeader{align-items:start;flex-direction:column}#vsoExactPlaceholder{min-height:340px}}
+
+/* Kunci templat asal selepas fail kosong berjaya dimuat naik. Tiga kumpulan medan kekal boleh diisi. */
+.vsoExactChange{display:none;border:1px solid #31517b;background:transparent;color:#b8d1ff;border-radius:7px;padding:7px 10px;font-size:10px;cursor:pointer;margin:7px 0}
+.vsoExactPanel.vso-template-loaded .vsoExactChoose{display:none}
+.vsoExactPanel.vso-template-loaded .vsoExactChange{display:inline-flex}
+.vsoExactPanel.vso-template-loaded{border-color:#276f68;background:linear-gradient(140deg,#112c35,#0f1b30)}
+.vsoExactPanel.vso-template-loaded .vsoExactPill{background:#184b43;color:#b5ffe7}
