@@ -209,8 +209,7 @@
   }
   function setMode(value){
     mode=value==='MARKUP'?'MARKUP':'PLAIN';
-    if(mode==='MARKUP'&&Number(E('vsoLoan').value)===60800)E('vsoLoan').value='72800';
-    if(mode==='PLAIN'&&Number(E('vsoLoan').value)===72800)E('vsoLoan').value='60800';
+    // Jangan ubah jumlah pinjaman pengguna secara senyap semasa menukar mod.
     workspace.querySelectorAll('[data-vso-mode]').forEach(b=>b.classList.toggle('active',b.dataset.vsoMode===mode));
     updatePreview();
   }
