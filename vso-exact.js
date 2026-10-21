@@ -4,7 +4,7 @@
   if(!host||!viewport)return;
   const E=id=>document.getElementById(id);
   const sample={width:595.5,height:842.25};
-  const key="lon-puncak-template-v1";
+  const key="lon-puncak-template-v2-variants";
   const outputResolution=2.15;
   let blankImage=null,baseData=null,drawSeq=0,buildBusy=false,previewCanvas=null,latest=null,templateAvailable=false;
   // Borang asal tidak diubah: hanya medan pelanggan, butiran kenderaan dan pinjaman dilukis di atas templat.
@@ -15,8 +15,9 @@
     const value=id=>E(id)?.value?.trim()||"";
     const loan=Number(value("vsoLoan"));
     const kind=mode();
-    const otr=kind==="MARKUP"?Math.round(loan/0.9/10)*10:75800;
-    return {customer:value("vsoCustomer"),nric:value("vsoNric"),address:value("vsoAddress"),phone:value("vsoPhone"),email:value("vsoEmail"),year:value("vsoYear"),color:value("vsoColor"),period:value("vsoPeriod"),loan,otr,net:otr-3708,kind};
+    const v=window.VSO_VARIANTS.get(value("vsoModel"));
+    const result=window.VSO_VARIANTS.calculate(loan,kind,v.id);
+    return {customer:value("vsoCustomer"),nric:value("vsoNric"),address:value("vsoAddress"),phone:value("vsoPhone"),email:value("vsoEmail"),year:value("vsoYear"),color:value("vsoColor"),period:value("vsoPeriod"),model:v.model,variant:v,fees:v.fees,feeTotal:result.feeTotal,loan,otr:result.otr,net:result.net,kind};
   };
   const boxes=[
     [393.8,89.1,468,101.5],
@@ -33,7 +34,16 @@
     [328.8,203.4,359.7,216.5],
     [401.5,203.5,542.7,216.1],
     [230.2,228.5,255.3,237.3],
-    [231.6,520.7,255.5,529.0]
+    [231.6,520.7,255.5,529.0],
+    // Bersihkan nilai caj asal agar data varian baharu tidak bertindih.
+    [228,296.0,257,305.4],
+    [228,319.0,257,328.8],
+    [227,441.4,257,450.6],
+    [227,452.7,257,461.6],
+    [227,463.7,257,472.5],
+    [225,474.4,257,484.3],
+    [243,238.5,253.5,248.2],
+    [246.0,329.2,257,338.5]
   ];
   const prep=document.createElement("div");
   prep.className="vsoExactPanel";
@@ -88,11 +98,25 @@
     text(ctx,d.nric,397.1,143.0,144,"10.5px Calibri, Arial, sans-serif");
     text(ctx,Number.isFinite(d.loan)&&d.loan>0?`RM ${money(d.loan)}`:"",424.9,184.7,117,"10.6px Calibri, Arial, sans-serif");
     text(ctx,d.period?`${d.period} years`:"",424.5,200.1,110,"10.6px Calibri, Arial, sans-serif");
-    text(ctx,"e.Mas 5 Premium",120.5,213.3,145,"10.2px Calibri, Arial, sans-serif");
+    text(ctx,d.model,120.5,213.3,145,"10.2px Calibri, Arial, sans-serif");
     text(ctx,d.year,329.2,213.3,30,"10.2px Calibri, Arial, sans-serif");
     text(ctx,d.color,402.1,213.3,140,"10.2px Calibri, Arial, sans-serif");
     text(ctx,Number.isFinite(d.net)&&d.net>0?money(d.net):"",251.6,235.9,86,"7.5px Calibri, Arial, sans-serif","right");
     text(ctx,Number.isFinite(d.otr)&&d.otr>0?money(d.otr):"",253.5,528.2,86,"7.8px Calibri, Arial, sans-serif","right");
+    // Y-coordinate sebenar nombor dalam PDF setiap varian, dengan nilai null sebagai ruang kosong.
+    const feeText=(key,y,size="7.5px")=>{
+      const val=d.fees[key];
+      if(val===null||val===undefined)return;
+      text(ctx,money(val),253.4,y,43,size+" Calibri, Arial, sans-serif","right");
+    };
+    feeText("gst",247.0,"7.0px");
+    feeText("handling",303.9);
+    feeText("plate",327.3);
+    feeText("accessory",337.2);
+    feeText("registration",449.4);
+    feeText("roadTax",460.5);
+    feeText("claim",471.5);
+    feeText("insurance",482.7);
     // The original VSO number is blank; drafts must not resemble issued dealership originals.
     text(ctx,"DRAF",255,101.1,38,"bold 10px Calibri, Arial, sans-serif");
   };
@@ -147,7 +171,7 @@
   // storan setempat, telefon atau jenis peranti. Ini bukan data pelanggan.
   async function loadCentralTemplate(){
     try{
-      const centralUrl=new URL("assets/vso-template-blank.png?v=central-20261021",document.baseURI).href;
+      const centralUrl=new URL("assets/vso-master-variants-blank.png?v=variants-20261022",document.baseURI).href;
       await setTemplate(centralUrl,false);
       showStatus("✓ Templat VSO asal telah dimuatkan secara automatik dari server. Sedia digunakan di mana-mana browser.",true);
     }catch(error){
@@ -227,7 +251,7 @@
       page.drawImage(image,{x:0,y:0,width:sample.width,height:sample.height});
       const bytes=await pdf.save({useObjectStreams:true});
       const blob=new Blob([bytes],{type:"application/pdf"});
-      const fname=(d.customer.toUpperCase().replace(/[^A-Z0-9]+/g,"_").slice(0,45)||"CUSTOMER")+"_"+(d.kind==="MARKUP"?"MARKUP_90":"TANPA_MARKUP")+"_VSO_DRAF.pdf";
+      const fname=(d.customer.toUpperCase().replace(/[^A-Z0-9]+/g,"_").slice(0,37)||"CUSTOMER")+"_"+d.variant.id+"_"+(d.kind==="MARKUP"?"MARKUP_90":"TANPA_MARKUP")+"_VSO_DRAF.pdf";
       showStatus("✓ PDF VSO DRAF siap dijana daripada template asal.",true);
       return {blob,fname};
     }catch(err){showStatus("Gagal menjana PDF: "+err.message);return null;}
