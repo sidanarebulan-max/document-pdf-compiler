@@ -15,7 +15,7 @@ Backend: Supabase project FarisProton / Edge Function `lead-hub`
 ## Cara admin menggunakan portal
 1. Pergi ke /staff.html dan masuk guna ID admin + passcode pemilik.
 2. Bahagian `Cipta ID & Passcode`: letak nama staf, pilihan ID/passcode (boleh dikosongkan untuk auto), klik Cipta.
-3. Salin maklumat yang dipaparkan sekali sahaja dan berikan secara selamat kepada staf.
+3. Salin maklumat yang dipaparkan sekali sahaja dan berikan secara selamat kepada staf. Selepas login kali pertama, gunakan `Tukar passcode admin` untuk menggantikan passcode asal.
 4. Import senarai pelanggan (Excel, CSV atau tampal), atau tambah manual.
 5. Sahkan data nombor boleh dihubungi secara sah. Agihkan lead secara manual atau biarkan staf tekan `Ambil nombor`.
 6. Dalam `Pengurusan staf`, nyahaktif akaun atau reset passcode jika perlu.
