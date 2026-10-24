@@ -186,6 +186,18 @@ async function toggleStaff(id,active){
  try{await call("set_staff_active",{staff_id:id,active});notice("appNotice","Status akaun staf dikemas kini.");await reload()}
  catch(e){notice("appNotice",e.message,true)}
 }
+async function changeAdminPass(e){
+ e.preventDefault();const button=$("changeAdminBtn");button.disabled=true;
+ try{
+  await call("change_my_passcode",{
+   old_passcode:$("oldAdminPass").value.trim(),
+   new_passcode:$("newAdminPass").value.trim()
+  });
+  $("adminPassForm").reset();
+  notice("appNotice","Passcode admin berjaya ditukar. Gunakan passcode baharu pada masa hadapan.");
+ }catch(err){notice("appNotice","Gagal tukar passcode: "+err.message,true)}
+ finally{button.disabled=false}
+}
 async function addLead(e){
  e.preventDefault();const p=normalizePhone($("addPhone").value);
  if(!p){notice("appNotice","Nombor tidak sah. Contoh: 0123456789",true);return}
@@ -262,6 +274,7 @@ function wireEvents(){
  $("refreshBtn").addEventListener("click",reload);
  $("claimBtn").addEventListener("click",claim);
  $("createStaffForm").addEventListener("submit",createStaff);
+ $("adminPassForm").addEventListener("submit",changeAdminPass);
  $("addLeadForm").addEventListener("submit",addLead);
  $("importBtn").addEventListener("click",importLeads);
  ["leadSearch","stageFilter","messageTemplate"].forEach(id=>$(id).addEventListener(id==="leadSearch"?"input":"change",renderLeads));
