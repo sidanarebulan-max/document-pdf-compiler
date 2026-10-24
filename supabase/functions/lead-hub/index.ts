@@ -1,0 +1,263 @@
+import { createClient } from "npm:@supabase/supabase-js@2.57.4";
+
+const URL = Deno.env.get("SUPABASE_URL")!;
+const SECRET = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ||
+  JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") || "{}").default;
+if (!SECRET) throw new Error("Server secret key is unavailable");
+const db = createClient(URL, SECRET, {
+  auth: { persistSession: false, autoRefreshToken: false }
+});
+const ORIGINS = new Set([
+  "https://document-pdf-compiler.vercel.app",
+  "https://document-pdf-compiler-makanaman.vercel.app",
+  "https://document-pdf-compiler-git-main-makanaman.vercel.app"
+]);
+const allowedStages = new Set(["new", "claimed", "contacted", "follow_up", "interested", "booked", "not_interested"]);
+const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const coder = new TextEncoder();
+const toHex = (arr: Uint8Array) => Array.from(arr).map(b => b.toString(16).padStart(2, "0")).join("");
+const fromHex = (hex: string) => new Uint8Array((hex.match(/../g) || []).map(s => parseInt(s,16)));
+const randomHex = (n: number) => toHex(crypto.getRandomValues(new Uint8Array(n)));
+function randomCode(n: number): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(n*3));
+  return Array.from(bytes.slice(0,n), b => alphabet[b % alphabet.length]).join("");
+}
+async function sha256(data: string): Promise<string> {
+  return toHex(new Uint8Array(await crypto.subtle.digest("SHA-256", coder.encode(data))));
+}
+async function derive(pass: string,salt: string): Promise<string> {
+  const material=await crypto.subtle.importKey("raw",coder.encode(pass),"PBKDF2",false,["deriveBits"]);
+  const bits=await crypto.subtle.deriveBits({name:"PBKDF2",salt:fromHex(salt),iterations:180000,hash:"SHA-256"},material,256);
+  return toHex(new Uint8Array(bits));
+}
+function eqConstant(a: string,b: string): boolean {
+  if (a.length!==b.length) return false;
+  let diff=0;for(let i=0;i<a.length;i++)diff|=a.charCodeAt(i)^b.charCodeAt(i);return diff===0;
+}
+function normalizePhone(v: unknown): string|null {
+  let s=String(v??"").replace(/[^\d+]/g,"").replace(/^\+/,"");
+  if(s.startsWith("0"))s="6"+s;
+  else if(s.startsWith("1"))s="60"+s;
+  return /^601\d{8,9}$/.test(s)?s:null;
+}
+function allowedOrigin(req:Request): string {
+  const origin=req.headers.get("origin")||"";
+  return ORIGINS.has(origin)?origin:"";
+}
+function response(req:Request,payload:unknown,status=200):Response {
+  const origin=allowedOrigin(req);
+  return new Response(JSON.stringify(payload),{
+    status,headers:{"Content-Type":"application/json; charset=utf-8",
+      "Cache-Control":"no-store","Vary":"Origin",
+      ...(origin?{"Access-Control-Allow-Origin":origin}:{}),
+      "X-Content-Type-Options":"nosniff"}
+  });
+}
+function error(req:Request,message:string,status=400){return response(req,{ok:false,error:message},status)}
+type Account={id:string;staff_code:string;display_name:string;role:string;active:boolean;pass_salt:string;pass_hash:string;failed_attempts:number;locked_until:string|null};
+async function requireAccount(req:Request): Promise<Account|null> {
+  const token=(req.headers.get("Authorization")||"").replace(/^Bearer\s+/i,"").trim();
+  if(!/^[a-f0-9]{64}$/.test(token))return null;
+  const hash=await sha256(token);
+  const now=new Date().toISOString();
+  const {data:session,error:se}=await db.from("lead_hub_sessions").select("account_id").eq("token_hash",hash).is("revoked_at",null).gt("expires_at",now).maybeSingle();
+  if(se||!session)return null;
+  const {data:account,error:ae}=await db.from("lead_hub_accounts").select("id,staff_code,display_name,role,active").eq("id",session.account_id).maybeSingle();
+  if(ae||!account?.active)return null;
+  return account as Account;
+}
+function profile(a:Account){return {id:a.id,staff_code:a.staff_code,display_name:a.display_name,role:a.role};}
+async function listLeads(a:Account) {
+  const found=[];
+  for(let offset=0;offset<10000;offset+=500){
+    let query=db.from("lead_hub_leads").select("id,customer_name,phone_e164,model,source,stage,notes,assigned_id,created_at,follow_up_at,last_opened_at,consent_confirmed").order("created_at",{ascending:false}).range(offset,offset+499);
+    if(a.role!=="admin")query=query.eq("assigned_id",a.id);
+    const {data,error}=await query;if(error)throw error;
+    found.push(...data);if(data.length<500)break;
+  }
+  return found;
+}
+async function handler(req:Request):Promise<Response> {
+  const origin=req.headers.get("origin");
+  if(origin&&!ORIGINS.has(origin))return error(req,"Origin tidak dibenarkan",403);
+  if(req.method==="OPTIONS"){
+    return new Response(null,{status:204,headers:{
+      ...(allowedOrigin(req)?{"Access-Control-Allow-Origin":allowedOrigin(req)}:{}),
+      "Access-Control-Allow-Methods":"POST, GET, OPTIONS",
+      "Access-Control-Allow-Headers":"authorization, content-type",
+      "Access-Control-Max-Age":"3600","Vary":"Origin"
+    }});
+  }
+  if(req.method==="GET")return response(req,{ok:true,service:"lead-hub",version:2});
+  if(req.method!=="POST")return error(req,"Kaedah tidak dibenarkan",405);
+  if(Number(req.headers.get("content-length")||0)>200000)return error(req,"Permintaan terlalu besar",413);
+  let body:Record<string,any>;
+  try{body=await req.json();if(!body||typeof body!=="object"||Array.isArray(body))throw Error("Invalid");}
+  catch{return error(req,"Format permintaan tidak sah",400)}
+  const action=String(body.action||"");
+  if(action==="login"){
+    const code=String(body.id||"").trim().toUpperCase().slice(0,40);
+    const pass=String(body.passcode||"").trim().toUpperCase().slice(0,100);
+    if(!code||!pass)return error(req,"Masukkan ID dan passcode",400);
+    const {data:a,error:e}=await db.from("lead_hub_accounts").select("*").eq("staff_code",code).maybeSingle();
+    if(e)throw e;
+    const generic="ID atau passcode tidak tepat";
+    if(!a||!a.active)return error(req,generic,401);
+    if(a.locked_until&&Date.parse(a.locked_until)>Date.now())return error(req,"Terlalu banyak cubaan. Cuba semula selepas 15 minit.",429);
+    const actual=await derive(pass,a.pass_salt);
+    if(!eqConstant(actual,a.pass_hash)){
+      const failures=Number(a.failed_attempts||0)+1;
+      const locked=failures>=5?new Date(Date.now()+15*60*1000).toISOString():null;
+      await db.from("lead_hub_accounts").update({failed_attempts:failures>=5?0:failures,locked_until:locked}).eq("id",a.id);
+      return error(req,failures>=5?"Terlalu banyak cubaan. Akaun dikunci 15 minit.":generic,401);
+    }
+    const token=randomHex(32);
+    const expires=new Date(Date.now()+30*24*60*60*1000).toISOString();
+    const {error:ie}=await db.from("lead_hub_sessions").insert({token_hash:await sha256(token),account_id:a.id,expires_at:expires});
+    if(ie)throw ie;
+    await db.from("lead_hub_accounts").update({failed_attempts:0,locked_until:null}).eq("id",a.id);
+    return response(req,{ok:true,token,expires_at:expires,user:profile(a)});
+  }
+  const a=await requireAccount(req);
+  if(!a)return error(req,"Sesi tamat atau akses tidak dibenarkan. Sila log masuk semula.",401);
+  if(action==="me")return response(req,{ok:true,user:profile(a)});
+  if(action==="logout"){
+    const token=String(req.headers.get("Authorization")||"").replace(/^Bearer\s+/i,"").trim();
+    await db.from("lead_hub_sessions").update({revoked_at:new Date().toISOString()}).eq("token_hash",await sha256(token));
+    return response(req,{ok:true});
+  }
+  if(action==="list"){
+    const leads=await listLeads(a);
+    if(a.role!=="admin")return response(req,{ok:true,leads,staff:[profile(a)]});
+    const {data:staff,error}=await db.from("lead_hub_accounts").select("id,staff_code,display_name,role,active,created_at").order("created_at",{ascending:true});
+    if(error)throw error;
+    return response(req,{ok:true,leads,staff});
+  }
+  if(action==="claim"){
+    if(a.role!=="staff")return error(req,"Hanya staf boleh mengambil lead",403);
+    const {data,error}=await db.rpc("lead_hub_claim_next",{_staff_id:a.id});
+    if(error)return error(req,error.message,400);
+    return response(req,{ok:true,lead_id:data||null});
+  }
+  if(action==="save_lead"){
+    const id=String(body.lead_id||"");
+    const stage=String(body.stage||"");
+    if(!/^[a-f0-9-]{36}$/i.test(id)||!allowedStages.has(stage))return error(req,"Rekod atau status tidak sah");
+    if(a.role!=="admin"&&stage==="new")return error(req,"Hanya admin boleh menetapkan lead baharu",403);
+    const notes=String(body.notes||"").slice(0,3000);
+    const follow=body.follow_up_at?String(body.follow_up_at):null;
+    if(follow&&!/^\d{4}-\d{2}-\d{2}$/.test(follow))return error(req,"Tarikh susulan tidak sah");
+    let q=db.from("lead_hub_leads").update({stage,notes,follow_up_at:follow,updated_at:new Date().toISOString()}).eq("id",id);
+    if(a.role!=="admin")q=q.eq("assigned_id",a.id);
+    const {data,error}=await q.select("id");
+    if(error)throw error;
+    if(!data?.length)return error(req,"Lead bukan milik anda",403);
+    return response(req,{ok:true});
+  }
+  if(action==="opened"){
+    const id=String(body.lead_id||"");
+    if(!/^[a-f0-9-]{36}$/i.test(id))return error(req,"Rekod tidak sah");
+    let q=db.from("lead_hub_leads").update({last_opened_at:new Date().toISOString()}).eq("id",id);
+    if(a.role!=="admin")q=q.eq("assigned_id",a.id);
+    await q;
+    return response(req,{ok:true});
+  }
+  if(a.role!=="admin")return error(req,"Hanya admin dibenarkan",403);
+  if(action==="change_my_passcode"){
+    const old=String(body.old_passcode||"").trim().toUpperCase();
+    const fresh=String(body.new_passcode||"").trim().toUpperCase();
+    if(!/^[A-Z0-9-]{10,32}$/.test(fresh)||!/[A-Z]/.test(fresh)||!/[0-9]/.test(fresh))
+      return error(req,"Passcode baharu mesti 10–32 aksara, dengan huruf dan nombor",400);
+    if(fresh===old)return error(req,"Passcode baharu mesti berbeza daripada yang lama",400);
+    const {data:mine,error:me}=await db.from("lead_hub_accounts").select("pass_salt,pass_hash").eq("id",a.id).single();
+    if(me||!mine)throw me||new Error("Account not found");
+    if(!eqConstant(await derive(old,mine.pass_salt),mine.pass_hash))
+      return error(req,"Passcode lama tidak tepat",403);
+    const salt=randomHex(16);
+    const {error:pe}=await db.from("lead_hub_accounts").update({
+      pass_salt:salt,pass_hash:await derive(fresh,salt),failed_attempts:0,locked_until:null
+    }).eq("id",a.id);
+    if(pe)throw pe;
+    const currentToken=String(req.headers.get("Authorization")||"").replace(/^Bearer\s+/i,"").trim();
+    await db.from("lead_hub_sessions").delete().eq("account_id",a.id).neq("token_hash",await sha256(currentToken));
+    return response(req,{ok:true});
+  }
+  if(action==="create_staff"){
+    const name=String(body.name||"").trim().slice(0,100);
+    if(name.length<2)return error(req,"Masukkan nama staf",400);
+    const customId=String(body.custom_staff_id||"").trim().toUpperCase();
+    if(customId&&!/^[A-Z][A-Z0-9-]{3,19}$/.test(customId))return error(req,"ID pilihan mesti 4–20 aksara huruf, nombor atau sengkang",400);
+    if(customId==="FARIS-ADMIN")return error(req,"ID ini sudah digunakan",409);
+    const customPass=String(body.custom_passcode||"").trim().toUpperCase();
+    if(customPass&&(!/^[A-Z0-9-]{10,32}$/.test(customPass)||!/[A-Z]/.test(customPass)||!/[0-9]/.test(customPass)))
+      return error(req,"Passcode pilihan mesti 10–32 aksara, dengan huruf dan nombor",400);
+    const passcode=customPass||randomCode(5)+"-"+randomCode(5);
+    const salt=randomHex(16), hash=await derive(passcode,salt);
+    for(let attempts=0;attempts<4;attempts++){
+      const staffId=customId||("STF-"+randomCode(7));
+      const {data,error}=await db.from("lead_hub_accounts").insert({staff_code:staffId,display_name:name,role:"staff",pass_salt:salt,pass_hash:hash}).select("id").single();
+      if(!error)return response(req,{ok:true,staff:{id:data.id,staff_code:staffId,display_name:name,role:"staff",active:true},passcode});
+      if(error.code!=="23505")throw error;
+      if(customId)return error(req,"ID pilihan sudah wujud. Pilih ID lain.",409);
+    }
+    return error(req,"ID baharu tidak dapat dijana. Cuba lagi.",500);
+  }
+  if(action==="reset_passcode"){
+    const id=String(body.staff_id||"");
+    if(id===a.id)return error(req,"Admin tidak boleh reset diri sendiri melalui panel staf",403);
+    const {data:target}=await db.from("lead_hub_accounts").select("id,role").eq("id",id).maybeSingle();
+    if(!target||target.role!=="staff")return error(req,"Staf tidak wujud",404);
+    const passcode=randomCode(5)+"-"+randomCode(5),salt=randomHex(16);
+    const {error}=await db.from("lead_hub_accounts").update({pass_salt:salt,pass_hash:await derive(passcode,salt),failed_attempts:0,locked_until:null}).eq("id",id);
+    if(error)throw error;
+    await db.from("lead_hub_sessions").delete().eq("account_id",id);
+    return response(req,{ok:true,passcode});
+  }
+  if(action==="set_staff_active"){
+    const id=String(body.staff_id||"");
+    const active=body.active===true;
+    if(id===a.id)return error(req,"Tidak boleh ubah akaun sendiri",403);
+    const {data,error}=await db.from("lead_hub_accounts").update({active}).eq("id",id).eq("role","staff").select("id");
+    if(error)throw error;if(!data?.length)return error(req,"Staf tidak wujud",404);
+    if(!active)await db.from("lead_hub_sessions").delete().eq("account_id",id);
+    return response(req,{ok:true});
+  }
+  if(action==="import"){
+    if(!body.consent_confirmed)return error(req,"Sahkan nombor boleh dihubungi",400);
+    if(!Array.isArray(body.leads)||!body.leads.length||body.leads.length>100)return error(req,"Senarai mesti 1 hingga 100 baris",400);
+    const unique=new Map<string,any>();
+    for(const row of body.leads){
+      const phone=normalizePhone(row.phone_e164||row.phone);
+      if(!phone)continue;
+      unique.set(phone,{
+        phone_e164:phone,customer_name:String(row.customer_name||row.name||"Pelanggan").trim().slice(0,120)||"Pelanggan",
+        model:String(row.model||"Belum pasti").trim().slice(0,100)||"Belum pasti",
+        source:String(row.source||"Import").slice(0,80),consent_confirmed:true,created_by:a.id
+      });
+    }
+    if(!unique.size)return error(req,"Nombor tidak sah",400);
+    const {data,error}=await db.from("lead_hub_leads").upsert([...unique.values()],{onConflict:"phone_e164",ignoreDuplicates:true}).select("id");
+    if(error)throw error;
+    return response(req,{ok:true,inserted:data?.length||0,duplicates:unique.size-(data?.length||0),invalid:body.leads.length-unique.size});
+  }
+  if(action==="assign"){
+    const leadId=String(body.lead_id||"");
+    const staffId=body.staff_id?String(body.staff_id):null;
+    if(!/^[a-f0-9-]{36}$/i.test(leadId))return error(req,"Lead tidak sah");
+    if(staffId){
+      const {data:t}=await db.from("lead_hub_accounts").select("id").eq("id",staffId).eq("active",true).eq("role","staff").maybeSingle();
+      if(!t)return error(req,"Staf tidak aktif",400);
+    }
+    const {data:lead}=await db.from("lead_hub_leads").select("stage").eq("id",leadId).maybeSingle();
+    if(!lead)return error(req,"Lead tidak wujud",404);
+    const stage=staffId?(["new","claimed"].includes(lead.stage)?"claimed":lead.stage):"new";
+    const {error}=await db.from("lead_hub_leads").update({assigned_id:staffId,stage,updated_at:new Date().toISOString()}).eq("id",leadId);
+    if(error)throw error;
+    return response(req,{ok:true});
+  }
+  return error(req,"Tindakan tidak dikenali",404);
+}
+Deno.serve(async(req)=>{
+ try{return await handler(req);}
+ catch(e){console.error("lead-hub:",e);return error(req,"Sistem mengalami gangguan. Cuba semula.",500)}
+});
