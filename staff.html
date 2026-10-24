@@ -113,6 +113,15 @@
     <p class="muted small">Aktif atau nyahaktif akaun. Jika staf terlupa passcode, tekan Reset untuk jana passcode baharu.</p>
     <div id="staffRoster" class="staffcards"><p class="muted small">Memuatkan senarai staf...</p></div>
    </section>
+   <section class="innerpanel">
+    <h3>5. Tukar passcode admin</h3>
+    <p class="muted small">Untuk keselamatan, tukar passcode admin asal selepas berjaya masuk. Sesi telefon ini kekal aktif.</p>
+    <form id="adminPassForm">
+     <label for="oldAdminPass">Passcode admin sekarang</label><input id="oldAdminPass" type="password" autocomplete="off" required>
+     <label for="newAdminPass">Passcode admin baharu</label><input id="newAdminPass" type="password" autocomplete="off" minlength="10" maxlength="32" placeholder="Min. 10 aksara huruf dan nombor" required>
+     <button class="secondary full" id="changeAdminBtn" type="submit">Tukar Passcode Admin</button>
+    </form>
+   </section>
   </div>
  </section>
  <section class="panel">
