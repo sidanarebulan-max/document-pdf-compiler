@@ -72,7 +72,11 @@
     <h3>1. Cipta ID &amp; passcode staf</h3>
     <form id="createStaffForm">
      <label for="staffName">Nama staf</label><input id="staffName" placeholder="Contoh: Aiman" minlength="2" maxlength="100" required>
-     <button type="submit" class="primary full" id="createStaffBtn">+ Jana ID dan Passcode</button>
+     <label for="customStaffId">ID staf pilihan <span class="muted">(boleh kosong untuk auto)</span></label>
+     <input id="customStaffId" maxlength="20" autocapitalize="characters" placeholder="Contoh: AIMAN01">
+     <label for="customStaffPass">Passcode pilihan <span class="muted">(boleh kosong untuk auto)</span></label>
+     <input id="customStaffPass" maxlength="32" autocapitalize="characters" placeholder="Min. 10 aksara huruf & nombor">
+     <button type="submit" class="primary full" id="createStaffBtn">+ Cipta ID dan Passcode</button>
     </form>
     <div id="newCredential" class="credential hide">
      <p class="verified small"><b>✓ Akaun staf berjaya dicipta</b></p>
