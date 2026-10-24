@@ -162,7 +162,9 @@ async function assign(id,staffId){
 async function createStaff(e){
  e.preventDefault();const button=$("createStaffBtn");button.disabled=true;
  try{
-  const r=await call("create_staff",{name:$("staffName").value.trim()});
+  const r=await call("create_staff",{name:$("staffName").value.trim(),
+   custom_staff_id:$("customStaffId").value.trim().toUpperCase(),
+   custom_passcode:$("customStaffPass").value.trim().toUpperCase()});
   credentials(r.staff.staff_code,r.passcode);
   $("createStaffForm").reset();notice("appNotice","ID staf berjaya dijana. Salin dan berikan ID serta passcode kepada staf.");
   await reload();
