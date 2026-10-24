@@ -48,3 +48,14 @@ Backend: Supabase project FarisProton / Edge Function `lead-hub`
 
 ## Nota migrasi
 Modul awal `staff.js` dan jadual `sales_*` menggunakan Supabase Auth e-mel. Modul itu tidak dipanggil oleh halaman portal baharu. Jangan alihkan data pelanggan tanpa rancangan migrasi kerana ID lama (auth.users) berbeza dengan ID passcode (lead_hub_accounts).
+
+## Integrasi Urus Dokumen & Buat VSO (2026-10-24)
+- Staf log masuk sekali pada `/staff.html` menggunakan ID + passcode.
+- Di setiap kad pelanggan, butang **Urus Dokumen** dan **Buat VSO** membuka `/` dengan workspace yang sesuai. Tidak perlu salin nama/nombor.
+- Nama dan nombor dipindahkan melalui `sessionStorage` tab semasa, bukan query URL. Data handoff dipadam sebaik digunakan, dan tamat selepas 10 minit.
+- Butang **Document Compiler** dan **VSO Generator** di kawasan Ruang Kerja Staf boleh dibuka juga tanpa pelanggan yang dipilih.
+- Di laman utama, `staff-handoff.js` mengisi `customerName`, `customerPhone`, `vsoCustomer` dan `vsoPhone`; ada pautan kembali ke Lead Hub.
+- Jumlah pinjaman dan warna dalam contoh VSO dikosongkan semasa handoff supaya tidak tersalah guna. Staf mesti lengkapkan IC, alamat, tahun, warna, varian dan nilai pinjaman sebenar.
+- Auto-pilih varian hanya apabila nama model menyebut varian tepat yang memang sudah ada dalam VSO_VARIANTS. Jika generik/unsupported (e.MAS 5 tanpa varian, e.MAS 7 EV tanpa varian, Saga dan lain-lain), butang jana VSO dikunci sehingga staf memilih varian; jangan gunakan harga model salah.
+- Butang **Hantar ke Compiler** dalam VSO sedia ada kekal digunakan untuk gabung VSO dengan dokumen Hirer / Guarantor / COP Rebate.
+- Buat masa ini nama Sales Advisor pada template VSO asal masih bergantung pada template tersedia; **semak nama penasihat jualan sebelum gunakan VSO sebagai dokumen rasmi**.
