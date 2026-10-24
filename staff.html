@@ -1,91 +1,130 @@
 <!doctype html>
 <html lang="ms">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#0b1020">
-<title>FARIS LEAD HUB — Staff WhatsApp</title>
-<meta name="description" content="Pengurusan lead Proton dan buka aplikasi WhatsApp telefon dengan mesej siap diisi.">
-<link rel="stylesheet" href="/staff.css">
+ <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+ <meta name="theme-color" content="#0b1020">
+ <title>FARIS LEAD HUB — ID & Passcode Staf</title>
+ <meta name="description" content="Portal staf Proton: masuk menggunakan ID dan passcode, ambil nombor pelanggan, buka WhatsApp dalam telefon.">
+ <link rel="stylesheet" href="/staff.css?v=passcode2">
+ <style>
+  .credential{border:1px solid #405e98;background:linear-gradient(135deg,#101d38,#1d3156);border-radius:14px;padding:16px;margin-top:10px}
+  .credential strong{display:block;color:#96baff;font-size:10px;letter-spacing:1.5px}
+  .credential code{font-size:19px;font-weight:800;letter-spacing:1px;word-break:break-all;color:#fff;display:block;margin-top:5px}
+  .credline{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:14px}
+  .mini{font-size:11px!important;padding:8px 10px!important}
+  .staffcards{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
+  .staffrow{border:1px solid #293d62;border-radius:11px;padding:12px;background:#0b1428}
+  .staffrow b{font-size:13px}.staffrow small{color:#9bacd0;font-size:11px}
+  .staffrow .rowactions{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  .staffrow .rowactions button{font-size:11px;padding:8px 10px}
+  .verified{color:#8bf0cd}.attention{color:#f8d49c}
+  .admin-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .admin-grid>*:last-child{grid-column:1/-1}
+  @media(max-width:780px){.admin-grid{grid-template-columns:1fr}.admin-grid>*:last-child{grid-column:auto}}
+ </style>
 </head>
 <body>
 <div class="wrap">
 <header class="header">
- <div><div class="eyebrow">FARIS R+PROTON · STAFF SALES</div><h1>FARIS <span>LEAD HUB</span></h1><p>Satu website untuk dokumen pelanggan & lead WhatsApp staf</p></div>
- <nav><a class="secondary" href="/">← Document PDF Compiler</a><button id="signoutBtn" class="secondary hide" type="button">Log keluar</button></nav>
+ <div><div class="eyebrow">FARIS R+PROTON · SALES OPERATIONS</div><h1>FARIS <span>LEAD HUB</span></h1><p>Nombor pelanggan → WhatsApp telefon → status susulan</p></div>
+ <nav><a class="secondary" href="/">← PDF Compiler</a><button class="secondary hide" id="signoutBtn" type="button">Keluar</button></nav>
 </header>
+
 <section id="authSection" class="authcard">
- <div class="authinfo"><div class="mark">R+</div><h2>Pengurusan Lead Proton</h2><p>Log masuk untuk lihat nombor yang ditugaskan, ambil lead baharu dan terus buka WhatsApp pada telefon staf.</p><p class="muted small">Nombor pelanggan hanya tersedia kepada staf yang mempunyai akses. Penghantaran WhatsApp masih memerlukan staf menekan Send.</p></div>
+ <div class="authinfo">
+  <div class="mark">R+</div>
+  <h2>Masuk sekali.<br>Terus guna WhatsApp.</h2>
+  <p>Staf tak perlu daftar e-mel atau buat kata laluan sendiri. Guna ID &amp; passcode yang admin bagi, kemudian ambil nombor pelanggan yang ditugaskan.</p>
+  <p class="muted small">Sesi telefon diingati sehingga 30 hari. Passcode tidak ditunjukkan semula selepas ia dijana; admin boleh set semula bila-bila masa.</p>
+ </div>
  <div class="authform">
-  <h2 id="authTitle">Log masuk staf</h2>
+  <h2>Log masuk staf</h2>
   <form id="loginForm">
-   <label for="loginEmail">E-mel</label><input id="loginEmail" type="email" autocomplete="email" placeholder="nama@contoh.com" required>
-   <label for="loginPassword">Kata laluan</label><input id="loginPassword" type="password" autocomplete="current-password" minlength="8" required>
-   <button class="primary full" id="loginBtn" type="submit">Log masuk →</button>
+   <label for="loginId">ID Staf / ID Admin</label>
+   <input id="loginId" autocomplete="username" autocapitalize="characters" spellcheck="false" placeholder="Contoh: STF-ABC1234" required>
+   <label for="loginPass">Passcode</label>
+   <input id="loginPass" type="password" autocomplete="current-password" spellcheck="false" placeholder="Masukkan passcode" required>
+   <button id="loginBtn" type="submit" class="primary full">Masuk ke Sistem →</button>
   </form>
-  <form id="signupForm" class="hide">
-   <label for="signupName">Nama staf</label><input id="signupName" maxlength="100" required placeholder="Nama staf">
-   <label for="signupEmail">E-mel</label><input id="signupEmail" type="email" autocomplete="email" required>
-   <label for="signupPassword">Kata laluan (min. 8 aksara)</label><input id="signupPassword" type="password" autocomplete="new-password" minlength="8" required>
-   <button class="primary full" id="signupBtn" type="submit">Daftar akaun</button>
-   <p class="muted small">Akaun baharu tidak dapat melihat lead sehingga diluluskan oleh admin.</p>
-  </form>
-  <button class="textbtn" type="button" id="toggleAuthBtn">Belum ada akaun? Daftar</button>
+  <p class="muted small">Belum ada ID? Minta admin cipta ID dan passcode untuk anda. Tiada pendaftaran e-mel diperlukan.</p>
   <div id="authNotice" class="notice hide" role="status"></div>
  </div>
 </section>
+
 <section id="appSection" class="hide">
- <div class="welcome"><div><span id="currentRole" class="pill"></span><h2>Selamat datang, <span id="currentName"></span></h2><p id="appSubtitle" class="muted">Urus pelanggan yang diberikan kepada anda.</p></div><div class="welcomeactions"><button class="secondary" id="refreshBtn" type="button">↻ Segarkan</button><button class="primary" id="claimBtn" type="button">+ Ambil lead seterusnya</button></div></div>
+ <div class="welcome">
+  <div><span id="currentRole" class="pill">STAFF</span>
+   <h2>Selamat datang, <span id="currentName"></span></h2>
+   <p class="muted">ID: <span id="currentCode"></span> · WhatsApp akan dibuka dalam aplikasi telefon</p>
+  </div>
+  <div class="welcomeactions"><button class="secondary" id="refreshBtn" type="button">↻ Segarkan</button><button class="primary" id="claimBtn" type="button">+ Ambil nombor</button></div>
+ </div>
  <div class="metrics">
   <div class="metric"><span>Jumlah lead</span><strong id="metricTotal">0</strong></div>
-  <div class="metric"><span>Belum dihubungi</span><strong id="metricNew">0</strong></div>
-  <div class="metric"><span>Perlu susulan</span><strong id="metricFollow">0</strong></div>
+  <div class="metric"><span>Belum selesai</span><strong id="metricNew">0</strong></div>
+  <div class="metric"><span>Follow-up</span><strong id="metricFollow">0</strong></div>
   <div class="metric"><span>Booking</span><strong id="metricBooked">0</strong></div>
  </div>
  <section id="adminPanel" class="panel hide">
-  <div class="panelhead"><div><h2>Admin · Masukkan & agih lead</h2><p class="muted">Masukkan nombor secara manual, tampal senarai atau import Excel/CSV. Lead didedahkan kepada staf hanya selepas mereka ambil atau admin agihkan.</p></div></div>
+  <div class="panelhead"><div><h2>🔐 Admin Control Center</h2><p class="muted">Kau boleh cipta ID staf, jana passcode, tambah nombor pelanggan dan agihkan lead kepada staf. Tiada e-mel staf diperlukan.</p></div></div>
   <div class="admin-grid">
-   <form id="addLeadForm" class="innerpanel">
-    <h3>Tambah seorang pelanggan</h3>
-    <label>Nama pelanggan</label><input id="addName" maxlength="120" required placeholder="Ahmad">
-    <label>Nombor WhatsApp</label><input id="addPhone" inputmode="tel" required placeholder="0123456789">
-    <label>Model kereta</label><select id="addModel"><option>Belum pasti</option><option>Proton e.MAS 7 PHEV</option><option>Proton e.MAS 7 EV</option><option>Proton e.MAS 5</option><option>Proton X50</option><option>Proton Saga</option><option>Proton S70</option><option>Proton X70</option><option>Proton X90</option><option>Proton Persona</option><option>Proton Iriz</option><option>Model lain</option></select>
-    <label class="checkline"><input id="addConsent" type="checkbox" required> Saya sahkan nombor ini boleh dihubungi untuk tujuan jualan.</label>
-    <button class="primary full" type="submit">Simpan lead</button>
-   </form>
-   <div class="innerpanel">
-    <h3>Import banyak nombor</h3>
-    <p class="muted small">Excel / CSV: lajur Nama, WhatsApp/Telefon dan Model. Atau tampal satu nombor setiap baris; boleh juga “Nama, Nombor, Model”.</p>
-    <input type="file" id="importFile" accept=".xlsx,.xls,.csv,.txt">
-    <label>Atau tampal nombor</label><textarea id="importText" rows="5" placeholder="Ahmad, 0123456789, Proton e.MAS 7 PHEV&#10;Siti, 0171234567, Proton e.MAS 5"></textarea>
-    <label class="checkline"><input id="importConsent" type="checkbox"> Saya sahkan senarai pelanggan ini boleh dihubungi untuk tujuan jualan.</label>
-    <button id="importBtn" class="primary full" type="button">Import senarai lead</button><p class="muted small" id="importResult"></p>
-   </div>
-   <form id="staffForm" class="innerpanel">
-    <h3>Luluskan akaun staf</h3>
-    <p class="muted small">Staf daftar akaun dahulu. Admin kemudian masukkan e-mel yang sama di sini.</p>
-    <label>E-mel staf berdaftar</label><input id="staffEmail" type="email" required placeholder="staf@contoh.com">
-    <label>Nama paparan</label><input id="staffName" required placeholder="Nama staf">
-    <label>Peranan</label><select id="staffRole"><option value="staff">Staf</option><option value="admin">Admin</option></select>
-    <button class="primary full" type="submit">Luluskan / kemas kini staf</button>
-    <p class="muted small" id="staffRoster"></p>
-   </form>
+   <section class="innerpanel">
+    <h3>1. Cipta ID &amp; passcode staf</h3>
+    <form id="createStaffForm">
+     <label for="staffName">Nama staf</label><input id="staffName" placeholder="Contoh: Aiman" minlength="2" maxlength="100" required>
+     <button type="submit" class="primary full" id="createStaffBtn">+ Jana ID dan Passcode</button>
+    </form>
+    <div id="newCredential" class="credential hide">
+     <p class="verified small"><b>✓ Akaun staf berjaya dicipta</b></p>
+     <div class="credline"><div><strong>ID STAF</strong><code id="createdStaffId"></code></div><button id="copyStaffId" class="secondary mini" type="button">Salin</button></div>
+     <div class="credline"><div><strong>PASSCODE</strong><code id="createdPass"></code></div><button id="copyStaffPass" class="secondary mini" type="button">Salin</button></div>
+     <button id="copyCredential" type="button" class="primary full">Salin ID + Passcode untuk staf</button>
+     <p class="attention small">Simpan atau berikan kepada staf sekarang. Passcode tidak disimpan dalam bentuk asal dan tidak boleh dilihat semula selepas halaman ditutup.</p>
+    </div>
+   </section>
+   <section class="innerpanel">
+    <h3>2. Tambah satu nombor pelanggan</h3>
+    <form id="addLeadForm">
+      <label for="addName">Nama pelanggan</label><input id="addName" required maxlength="120" placeholder="Contoh: Ahmad">
+      <label for="addPhone">Nombor WhatsApp</label><input id="addPhone" inputmode="tel" required placeholder="0123456789">
+      <label for="addModel">Model diminati</label><select id="addModel">
+       <option>Belum pasti</option><option>Proton e.MAS 7 PHEV</option><option>Proton e.MAS 7 EV</option><option>Proton e.MAS 5</option><option>Proton Saga</option><option>Proton X50</option><option>Proton S70</option><option>Proton X70</option><option>Proton X90</option><option>Proton Iriz</option><option>Proton Persona</option>
+      </select>
+      <label class="checkline"><input id="addConsent" type="checkbox" required> Saya sahkan nombor ini boleh dihubungi untuk tujuan jualan.</label>
+      <button class="primary full" type="submit" id="addLeadBtn">+ Simpan Nombor</button>
+    </form>
+   </section>
+   <section class="innerpanel">
+    <h3>3. Import Excel / tampal senarai</h3>
+    <p class="muted small">Excel atau CSV dengan lajur Nama, WhatsApp/Telefon dan Model. Atau tampal nombor satu baris satu pelanggan.</p>
+    <input id="importFile" type="file" accept=".xlsx,.xls,.csv,.txt">
+    <label for="importText">Atau tampal senarai nombor</label>
+    <textarea id="importText" rows="4" placeholder="Ahmad, 0123456789, Proton e.MAS 7 PHEV&#10;Siti, 0171234567, Proton e.MAS 5"></textarea>
+    <label class="checkline"><input id="importConsent" type="checkbox"> Saya sahkan nombor boleh dihubungi.</label>
+    <button class="primary full" id="importBtn" type="button">Import Lead</button>
+    <p id="importResult" class="small muted"></p>
+   </section>
+   <section class="innerpanel">
+    <h3>4. Pengurusan staf</h3>
+    <p class="muted small">Aktif atau nyahaktif akaun. Jika staf terlupa passcode, tekan Reset untuk jana passcode baharu.</p>
+    <div id="staffRoster" class="staffcards"><p class="muted small">Memuatkan senarai staf...</p></div>
+   </section>
   </div>
  </section>
  <section class="panel">
-  <div class="panelhead"><div><h2>Senarai pelanggan</h2><p class="muted">Tekan WhatsApp untuk membuka aplikasi yang ada dalam telefon. Status “Dihubungi” perlu dikemas kini secara manual.</p></div></div>
+  <div class="panelhead"><div><h2>Senarai Pelanggan</h2><p class="muted">Tekan butang WhatsApp untuk buka aplikasi telefon. Pilih skrip dahulu; selepas tekan Send, kemas kini status secara manual.</p></div></div>
   <div class="filters">
    <input id="leadSearch" type="search" placeholder="Cari nama, nombor atau model...">
    <select id="stageFilter"><option value="">Semua status</option><option value="new">Belum diambil</option><option value="claimed">Sudah diambil</option><option value="contacted">Dihubungi</option><option value="follow_up">Follow-up</option><option value="interested">Berminat</option><option value="booked">Booking</option><option value="not_interested">Tidak berminat</option></select>
    <select id="messageTemplate"><option value="intro">Skrip: Pengenalan</option><option value="follow">Skrip: Follow-up</option><option value="price">Skrip: Harga / Loan</option></select>
   </div>
-  <div id="listMessage" class="muted small"></div>
-  <div id="leadList" class="lead-list" aria-live="polite"></div>
+  <p class="muted small" id="listMessage"></p>
+  <div class="lead-list" id="leadList" aria-live="polite"></div>
  </section>
  <div id="appNotice" class="notice hide" role="status"></div>
 </section>
-<footer>FARIS R+PROTON • Lead WhatsApp • Akses terhad • Dokumen PDF masih boleh digunakan melalui pautan di atas.</footer>
+<footer>FARIS R+PROTON · Staff Lead Operations · Sambungan selamat melalui HTTPS</footer>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="/staff.js"></script>
+<script src="/staff-passcode.js?v=2"></script>
 </body></html>
