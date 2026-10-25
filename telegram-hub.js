@@ -81,8 +81,8 @@ async function refresh(){
  busy=true;setBusy($("telegramRefresh"),true);
  try{
   const r=await api("telegram_status");
-  $("telegramState").textContent=r.connected?"Bot Telegram Aktif":"Bot belum disambungkan";
-  $("telegramUser").textContent=r.bot_username?"@"+r.bot_username:"Admin perlu sambungkan token bot daripada BotFather.";
+  $("telegramState").textContent=!r.connected?"Bot belum disambungkan":r.callback_ready?"Bot Telegram Aktif • Butang Sedia":"Bot aktif • Butang belum disegerakkan";
+  $("telegramUser").textContent=r.bot_username?"@"+r.bot_username+(r.callback_ready?" · Mesej & butang disambung":" · Tekan Semak Status untuk baiki webhook"):"Admin perlu sambungkan token bot daripada BotFather.";
   $("telegramDot").classList.toggle("connected",!!r.connected);
   $("tgOpenAIStatus").textContent=r.openai_enabled?"Aktif":"Belum disambung";
   $("tgOpenAIStatus").classList.toggle("on",!!r.openai_enabled);
