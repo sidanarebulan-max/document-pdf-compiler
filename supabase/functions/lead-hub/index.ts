@@ -128,10 +128,15 @@ async function handler(req:Request):Promise<Response> {
   }
   if(action==="list"){
     const leads=await listLeads(a);
-    if(a.role!=="admin")return response(req,{ok:true,leads,staff:[profile(a)]});
+    if(a.role!=="admin"){
+      const {count,error}=await db.from("lead_hub_leads").select("id",{head:true,count:"exact"})
+        .is("assigned_id",null).eq("stage","new").eq("consent_confirmed",true);
+      if(error)throw error;
+      return response(req,{ok:true,leads,staff:[profile(a)],available_count:count||0});
+    }
     const {data:staff,error}=await db.from("lead_hub_accounts").select("id,staff_code,display_name,role,active,created_at").order("created_at",{ascending:true});
     if(error)throw error;
-    return response(req,{ok:true,leads,staff});
+    return response(req,{ok:true,leads,staff,available_count:leads.filter(x=>!x.assigned_id&&x.stage==="new").length});
   }
   if(action==="claim"){
     if(a.role!=="staff")return error(req,"Hanya staf boleh mengambil lead",403);
@@ -236,9 +241,36 @@ async function handler(req:Request):Promise<Response> {
       });
     }
     if(!unique.size)return error(req,"Nombor tidak sah",400);
-    const {data,error}=await db.from("lead_hub_leads").upsert([...unique.values()],{onConflict:"phone_e164",ignoreDuplicates:true}).select("id");
+    // Auto-agih nombor baharu kepada staf aktif. Lead pendua tidak diusik.
+    // Jika tiada staf aktif, nombor masuk barisan yang boleh diambil manual.
+    const autoAssign=body.auto_assign!==false;
+    const agents: Array<{id:string;load:number}> = [];
+    if(autoAssign){
+      const {data:active,error:ae}=await db.from("lead_hub_accounts")
+        .select("id").eq("role","staff").eq("active",true).order("created_at",{ascending:true});
+      if(ae)throw ae;
+      for(const agent of active||[]){
+        const {count,error:ce}=await db.from("lead_hub_leads")
+          .select("id",{count:"exact",head:true}).eq("assigned_id",agent.id)
+          .in("stage",["new","claimed","contacted","follow_up","interested"]);
+        if(ce)throw ce;
+        agents.push({id:agent.id,load:count||0});
+      }
+    }
+    const records=[...unique.values()].map(row=>{
+      if(!agents.length)return row;
+      agents.sort((x,y)=>x.load-y.load||x.id.localeCompare(y.id));
+      const chosen=agents[0];chosen.load++;
+      return {...row,assigned_id:chosen.id,stage:"new"};
+    });
+    const {data,error}=await db.from("lead_hub_leads")
+      .upsert(records,{onConflict:"phone_e164",ignoreDuplicates:true})
+      .select("id,assigned_id");
     if(error)throw error;
-    return response(req,{ok:true,inserted:data?.length||0,duplicates:unique.size-(data?.length||0),invalid:body.leads.length-unique.size});
+    const inserted=data?.length||0;
+    const auto_assigned=(data||[]).filter(x=>!!x.assigned_id).length;
+    return response(req,{ok:true,inserted,duplicates:unique.size-inserted,
+      invalid:body.leads.length-unique.size,auto_assigned,pending:inserted-auto_assigned});
   }
   if(action==="assign"){
     const leadId=String(body.lead_id||"");
