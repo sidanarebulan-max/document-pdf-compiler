@@ -24,6 +24,7 @@ function viewAuth(){
  $("authSection").classList.remove("hide");$("appSection").classList.add("hide");$("signoutBtn").classList.add("hide");
  $("messageSettingsBtn").classList.add("hide");$("messageSettingsPanel").classList.add("hide");
  $("adminCredentialsShortcut").classList.add("hide");
+ window.FARIS_TG?.onLogout?.();
 }
 function credentials(id,passcode){
  $("createdStaffId").textContent=id;
@@ -75,6 +76,7 @@ async function showApp(){
  $("currentCode").textContent=user.staff_code;
  $("adminPanel").classList.toggle("hide",user.role!=="admin");
  $("claimBtn").classList.toggle("hide",user.role==="admin");
+ window.FARIS_TG?.onLogin?.(user);
  await reload();
 }
 async function logout(){
