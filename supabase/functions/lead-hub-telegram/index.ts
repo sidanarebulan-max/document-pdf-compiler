@@ -1072,8 +1072,8 @@ async function processUpdate(update:any,conf:any,token:string){
    await say(token,chat,"📋 SENARAI DOKUMEN\n"+caseSummary(c)+
     "\nJumlah: "+files.length+" fail"+(uncertain?" | Perlu semak: "+uncertain:"")+
     "\n\n"+list+"\n\n"+
-    (uncertain?"⚠️ Betulkan melalui /kategori NO KATEGORI.":"✅ Semua kategori telah ditetapkan.")+
-    "\nUntuk jana PDF: /siap");return;
+    (uncertain?"⚠️ Betulkan melalui /kategori NO KATEGORI.":"✅ Kategori telah ditetapkan. Keserasian fail PDF akan diuji semasa proses gabungan.")+
+    "\nUntuk jana PDF: taip 'siapkan PDF'.");return;
   }
   if(command==="/siap"){
    if(!files?.length){await say(token,chat,"Tiada dokumen dalam kes ini.");return}
