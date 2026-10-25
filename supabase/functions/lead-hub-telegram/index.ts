@@ -442,13 +442,50 @@ async function processUpdate(update:any,conf:any,token:string){
  if(!txt)return;
  const [cmd,...rest]=txt.split(/\s+/),arg=txt.slice(cmd.length).trim(),command=cmd.split("@")[0].toLowerCase();
  if(command==="/menu"||command==="/help"){
-  await say(token,chat,"FARIS LEAD HUB 🤖\n\n📄 DOKUMEN\n/pelanggan NAMA - Buka folder kes baharu\n/peminjam /penjamin /rebate - Pilih bahagian\nHantar PDF/JPG/PNG dari telefon\n/senarai - Lihat dokumen & urutan\n/kategori NO KATEGORI - Betulkan kategori\n/siap - Susun & hantar PDF akhir\n/padam - Padam kes belum siap\n\n🚘 VSO\n/vso - Panduan 9 langkah → PDF DRAF\n/batal - Batal VSO\n\n📲 LEAD\n/daftar Nama | 01... | Model | YA\n/baru - Nombor baharu + pautan WhatsApp\n/ambil - Ambil nombor belum diagih\n/skrip intro|follow|price - Pilih mesej\n\nAkses dan template WhatsApp ikut akaun FARIS.");
-  return;
+  const c=await currentCase(account.id,chat);
+  await say(token,chat,"🤖 FARIS LEAD HUB\n"+
+   (c?"\n"+caseSummary(c)+"\n📌 Kategori aktif: "+(c.active_category?DOC_NAMES[c.active_category]||c.active_category:"Belum dipilih")+"\n":"")+
+   "\n1️⃣ /pelanggan NAMA — mula satu kes\n"+
+   "2️⃣ /peminjam, /penjamin atau /rebate — pilih bahagian\n"+
+   "3️⃣ Pilih kategori dan hantar banyak fail\n"+
+   "4️⃣ /senarai — semak fail\n"+
+   "5️⃣ /siap — terima PDF gabungan\n\n"+
+   docCategoryGuide()+"\n\n"+
+   "🚘 /buatvso — jana VSO DRAF\n"+
+   "📲 /daftar, /baru, /ambil, /skrip — lead WhatsApp\n"+
+   "🗑 /padam — padam kes");return;
  }
- if(command==="/batal"){await db.from("lead_hub_telegram_wizards").delete().eq("telegram_user_id",id);await say(token,chat,"Proses VSO dibatalkan.");return}
- if(command==="/vso"){
-  await db.from("lead_hub_telegram_wizards").upsert({telegram_user_id:id,step:0,payload:{},updated_at:new Date().toISOString()},{onConflict:"telegram_user_id"});
-  await say(token,chat,"🚘 VSO Generator (DRAF). Butiran akan diminta satu-persatu. Harga menggunakan data rujukan 5 varian VSO dalam website; sahkan dengan pengedar.\n\n"+vsoSteps[0].question);return;
+ if(command==="/batal"){
+  await db.from("lead_hub_telegram_wizards").delete().eq("telegram_user_id",id);
+  await say(token,chat,"✅ Proses VSO dibatalkan. Taip /menu untuk mula semula.");return;
+ }
+ if(command==="/buatvso"||(command==="/vso"&&arg.toLowerCase()==="buat")){
+  await db.from("lead_hub_telegram_wizards").upsert({
+   telegram_user_id:id,step:0,payload:{},updated_at:new Date().toISOString()
+  },{onConflict:"telegram_user_id"});
+  await say(token,chat,"🚘 JANA VSO DRAF\n"+
+   "Bot akan tanya 9 maklumat secara berperingkat.\n"+
+   "Harga adalah rujukan; semak sebelum guna secara rasmi.\n\n"+vsoSteps[0].question);return;
+ }
+ if(Object.prototype.hasOwnProperty.call(DOC_COMMANDS,command)){
+  const c=await currentCase(account.id,chat);
+  if(!c){
+   await say(token,chat,"📁 Tiada kes pelanggan aktif.\nTaip /pelanggan NAMA dahulu.\nJika mahu jana VSO, guna /buatvso.");return;
+  }
+  const category=DOC_COMMANDS[command];
+  const {error}=await db.from("lead_hub_telegram_cases")
+    .update({active_category:category}).eq("id",c.id).eq("account_id",account.id);
+  if(error)throw error;
+  const options=category==="SIJIL"?["SIJIL","SIJIL_LAHIR","SIJIL_NIKAH"]:
+    category==="IC"?["IC","IC_FRONT","IC_BACK"]:[category];
+  const {count}=await db.from("lead_hub_telegram_files").select("id",{count:"exact",head:true})
+    .eq("case_id",c.id).eq("party",c.active_party).in("category",options);
+  await say(token,chat,"📌 KATEGORI DIPILIH\n"+
+    "👤 "+c.customer_name+"\n📁 "+c.active_party+"  →  "+DOC_NAMES[category]+"\n"+
+    "📎 Sudah ada: "+(count||0)+" fail dalam kategori ini.\n\n"+
+    "✅ Hantar semua fail sekarang (PDF/JPG/PNG).\n"+
+    "Bot simpan dalam ID kes yang sama sehingga kategori ditukar.\n\n"+
+    "Semak: /senarai  |  Gabung PDF: /siap");return;
  }
  const {data:wizard}=await db.from("lead_hub_telegram_wizards").select("step").eq("telegram_user_id",id).maybeSingle();
  if(wizard&&!txt.startsWith("/")){await handleWizard(token,chat,id,account,txt);return}
@@ -456,17 +493,27 @@ async function processUpdate(update:any,conf:any,token:string){
   const customer=arg.trim();
   if(customer.length<2||customer.length>120){await say(token,chat,"Contoh: /pelanggan AHMAD BIN ALI (nama 2–120 aksara)");return}
   const existing=await currentCase(account.id,chat);
-  if(existing){await say(token,chat,"Ada kes yang belum siap: "+existing.customer_name+". Taip /siap atau /padam sebelum buka pelanggan baharu.");return}
-  const {error}=await db.from("lead_hub_telegram_cases").insert({account_id:account.id,chat_id:chat,customer_name:customer,active_party:"HIRER"});
+  if(existing){await say(token,chat,"📁 KES MASIH AKTIF\n"+caseSummary(existing)+
+ "\nKategori sekarang: "+(existing.active_category?DOC_NAMES[existing.active_category]:"Belum dipilih")+
+ "\n\nHantar fail lagi, pilih kategori atau /siap. Selesaikan kes ini sebelum buka pelanggan baharu.");return}
+  const {data:created,error}=await db.from("lead_hub_telegram_cases")
+   .insert({account_id:account.id,chat_id:chat,customer_name:customer,active_party:"HIRER",active_category:null})
+   .select("id,customer_name,active_party").single();
   if(error)throw error;
-  await say(token,chat,"📁 Kes pelanggan "+customer+" dibuka. Bahagian sekarang: HIRER.\nHantar PDF/JPG/PNG satu persatu daripada WhatsApp melalui Share → Telegram. Seterusnya /penjamin atau /rebate jika perlu, akhir sekali /siap.");return;
+  await say(token,chat,"✅ KES DIBUKA\n"+caseSummary(created)+
+   "\n\nPilih kategori: /ic, /bank, /gaji, /lesen, /sijil, /kerja, /vso atau /lain.\n"+
+   "Hantar banyak fail, kemudian /senarai atau /siap.");return;
  }
  if(["/peminjam","/penjamin","/rebate"].includes(command)){
   const c=await currentCase(account.id,chat);
   if(!c){await say(token,chat,"Tiada kes aktif. Taip /pelanggan NAMA.");return}
   const party=command==="/peminjam"?"HIRER":command==="/penjamin"?"GUARANTOR":"REBATE";
-  await db.from("lead_hub_telegram_cases").update({active_party:party}).eq("id",c.id);
-  await say(token,chat,"Bahagian dokumen bertukar kepada "+party+". Hantar dokumen seterusnya.");return;
+  const {error}=await db.from("lead_hub_telegram_cases").update({active_party:party,active_category:null})
+   .eq("id",c.id).eq("account_id",account.id);
+  if(error)throw error;
+  await say(token,chat,"✅ BAHAGIAN DIPILIH\n👤 "+c.customer_name+
+   "\n📁 "+party+"\n\nPilih jenis dokumen, contoh /ic atau /bank.\n"+
+   "Kategori lama dikosongkan supaya fail tidak tersalah masuk.");return;
  }
  if(["/senarai","/kategori","/siap","/padam"].includes(command)){
   let c=await currentCase(account.id,chat);
