@@ -609,9 +609,52 @@ async function decideDelete(token:string,chat:number,id:number,account:any,confi
   if(de)throw de;
  }
  await db.from("lead_hub_telegram_pending_actions").delete().eq("telegram_user_id",id);
+ await rememberAction(id,account.id,chat,"delete_files",p.action==="delete_case"?null:c.id);
  await say(token,chat,"✅ Berjaya! "+(p.action==="delete_case"?"Folder pelanggan dan failnya":
   files.length+" dokumen")+" telah dipadam daripada sistem.\nMinta 'senarai' untuk semak baki fail.");
 }
+// A small server-side action memory; never uses untrusted AI for writes.
+async function rememberAction(telegramId:number,accountId:string,chat:number,lastAction:string,caseId:string|null){
+ try{
+  await db.from("lead_hub_telegram_action_context").upsert({
+   telegram_user_id:telegramId,account_id:accountId,chat_id:chat,
+   last_action:lastAction,last_case_id:caseId,updated_at:new Date().toISOString()
+  },{onConflict:"telegram_user_id"});
+ }catch(e){console.warn("Action memory unavailable",String(e).slice(0,65))}
+}
+async function loadActionContext(telegramId:number,accountId:string,chat:number){
+ const {data}=await db.from("lead_hub_telegram_action_context")
+  .select("last_action,last_case_id,updated_at")
+  .eq("telegram_user_id",telegramId).eq("account_id",accountId).eq("chat_id",chat)
+  .gt("updated_at",new Date(Date.now()-24*60*60*1000).toISOString()).maybeSingle();
+ return data||{};
+}
+function safeIntentPhrase(text:string){
+ const normalized=String(text||"").normalize("NFKC").toLowerCase()
+  .replace(/[^\p{L}\p{N}\s]/gu," ").replace(/\s+/g," ").trim();
+ if(normalized.length<6||normalized.length>130||/\d{3,}/.test(normalized))return null;
+ return normalized;
+}
+async function learnedIntent(text:string):Promise<string|null>{
+ const phrase=safeIntentPhrase(text);if(!phrase)return null;
+ try{
+  const hashed=await sha("faris-intent-v1:"+SERVER_SECRET+":"+phrase);
+  const {data}=await db.from("lead_hub_telegram_intent_aliases")
+    .select("intent").eq("phrase_hash",hashed).maybeSingle();
+  return ["list","status","help"].includes(data?.intent)?data.intent:null;
+ }catch{return null}
+}
+async function learnSafeIntent(text:string,intent:string,confidence:number){
+ if(!["list","status","help"].includes(intent)||confidence<.93)return;
+ const phrase=safeIntentPhrase(text);if(!phrase)return;
+ try{
+  const hashed=await sha("faris-intent-v1:"+SERVER_SECRET+":"+phrase);
+  await db.from("lead_hub_telegram_intent_aliases").upsert({
+   phrase_hash:hashed,intent,source:"ai_read_only"
+  },{onConflict:"phrase_hash",ignoreDuplicates:true});
+ }catch(e){console.warn("Safe intent caching",String(e).slice(0,65))}
+}
+
 async function interpretChat(conf:any,account:any,telegramId:number,chat:number,text:string){
  const c=await currentCase(account.id,chat);
  const {data:caseFiles}=c?await db.from("lead_hub_telegram_files")
@@ -632,6 +675,8 @@ async function interpretChat(conf:any,account:any,telegramId:number,chat:number,
  const system="Anda pembantu AI Telegram FARIS R+PROTON, bercakap Bahasa Melayu Malaysia secara ringkas dan mesra. "+
   "Balas sebagai JSON SAHAJA: {\"intent\":\"answer|help|status|list|lead_new|lead_claim|category|party|vso_start\",\"category\":\"IC|BANK|PAYSLIP|LESEN|SIJIL|SURAT_KERJA|VSO|OTHER|\",\"party\":\"HIRER|GUARANTOR|REBATE|\",\"reply\":\"jawapan\",\"confidence\":0.0}. "+
   "Pilih intent selain answer HANYA jika pengguna JELAS MEMINTA tindakan, bukan bertanya cara melakukan tindakan. "+
+  "Untuk soalan menyenaraikan fail semasa/baki, pilih intent=list; untuk kira bilangan pilih status. "+
+  "Set confidence 0.0-1.0 berdasarkan kepastian; gunakan nilai tinggi hanya jika jelas. "+
   "Jangan pilih tindakan berbahaya seperti padam, siapkan PDF, daftar nombor, atau hantar mesej; bot menangani sendiri. "+
   "Jika bertanya harga kereta/loan terkini, jangan reka harga; sarankan semak quotation VSO rasmi. "+
   "Jangan dakwa AI sudah mengimbas dokumen atau menghantar WhatsApp tanpa bukti. "+
@@ -700,6 +745,7 @@ async function interpretChat(conf:any,account:any,telegramId:number,chat:number,
  if(!obj)return {kind:"answer",reply:"Aku faham. 😊 Cuba beritahu apa yang kau nak buat: susun dokumen pelanggan, semak fail, buat VSO atau ambil lead WhatsApp. Tulis ayat biasa pun boleh."};
  const allowed=["answer","help","status","list","lead_new","lead_claim","category","party","vso_start"];
  let intent=allowed.includes(obj.intent)?obj.intent:"answer";
+ await learnSafeIntent(text,intent,Number(obj.confidence));
  // Do not let an uncertain AI interpretation modify an assigned case or claim a lead.
  if(["category","party","vso_start","lead_claim"].includes(intent)&&
   (!Number.isFinite(Number(obj.confidence))||Number(obj.confidence)<0.90))intent="answer";
@@ -778,7 +824,17 @@ async function processUpdate(update:any,conf:any,token:string){
  const {account,link}=linked;
  if(msg.document||msg.photo){await handleDoc(token,conf,chat,account,msg);return}
  if(!txt)return;
- const initialIntent=parseNatural(txt);
+ const ctx=await loadActionContext(id,account.id,chat);
+ const initialIntent=parseNatural(txt,ctx);
+ // Read-only intent patterns previously inferred confidently by the AI.
+ const cached=initialIntent.kind==="chat"?await learnedIntent(txt):null;
+ if(cached==="list"){await rememberAction(id,account.id,chat,"list",ctx.last_case_id||null);}
+ if(cached==="list"||cached==="status"||cached==="help"){
+  const routedCommand=cached==="list"?"/senarai":cached==="status"?"/status":"/menu";
+  // Keep original non-command workflows intact below.
+  // Cached read-only intents are passed through the same authorization checks.
+  return processUpdate({...update,message:{...msg,text:routedCommand}},conf,token);
+ }
  if(initialIntent.kind==="confirm_delete"){
   await decideDelete(token,chat,id,account,true);return;
  }
@@ -900,6 +956,7 @@ async function processUpdate(update:any,conf:any,token:string){
   if(error)throw error;
   await db.from("lead_hub_telegram_chat_memory").delete()
     .eq("telegram_user_id",id).eq("account_id",account.id);
+  await rememberAction(id,account.id,chat,"new_case",created.id);
   await say(token,chat,"✅ KES DIBUKA\n"+caseSummary(created)+
    "\n\nPilih kategori: /ic, /bank, /gaji, /lesen, /sijil, /kerja, /vso atau /lain.\n"+
    "Hantar banyak fail, kemudian /senarai atau /siap.");return;
@@ -952,7 +1009,13 @@ async function processUpdate(update:any,conf:any,token:string){
    "\nPelanggan: "+c.customer_name+"\nSemak: /senarai");return;
   }
   if(command==="/senarai"){
-   if(!files?.length){await say(token,chat,"Belum ada dokumen. Hantar PDF, PNG atau JPG.");return}
+   await rememberAction(id,account.id,chat,"list",c.id);
+   if(!files?.length){
+    await say(token,chat,"📋 SENARAI DOKUMEN\n"+caseSummary(c)+
+      "\n\n📎 Baki sekarang: 0 fail. Tiada dokumen dalam kes ini.\n"+
+      "Kalau ada fail baharu, hantar PDF/JPG/PNG. Semua akan masuk ke folder pelanggan ini.");
+    return;
+   }
    const list=files.map((x:any,i:number)=>(i+1)+". "+(x.needs_review?"⚠️":"✅")+
     " ["+x.party+"] "+(DOC_NAMES[x.category]||x.category)+" — "+
     String(x.original_name).slice(0,55)).join("\n");
@@ -980,6 +1043,7 @@ async function processUpdate(update:any,conf:any,token:string){
    "📌 Untuk pelanggan baharu: /pelanggan NAMA\n"+
    "Untuk padam fail kes terakhir daripada storan: /padam.");
    await db.from("lead_hub_telegram_cases").update({state:"completed",completed_at:new Date().toISOString()}).eq("id",c.id);
+   await rememberAction(id,account.id,chat,"merge",c.id);
    return;
   }
  }
