@@ -38,8 +38,15 @@ export function parseNatural(raw){
   const n=numberValue(one[1]);
   if(n>=1&&n<=50)return {kind:"remove_files",numbers:[n]};
  }
- if(/^(?:ya\s+buang|ya\s+padam|sahkan\s+buang|sahkan\s+padam|confirm\s+delete)$/i.test(t))return {kind:"confirm_delete"};
- if(/^(?:batal\s+buang|jangan\s+buang|tak\s+jadi\s+buang|cancel\s+delete)$/i.test(t))return {kind:"cancel_delete"};
+ // Approval is only actionable when the server finds a matching unexpired
+ // pending deletion for this Telegram user, account and private chat.
+ if(/^(?:(?:ya|yes|yup|ok|okay|betul|setuju|sahkan|confirm|boleh|teruskan)(?:\s+(?:sila|tolong|je|saja|sahaja|terus|sekarang|semua|yang tadi|itu|ni|ini))*\s+)?(?:padam|buang|delete|remove)(?:\s+(?:je|saja|sahaja|terus|sekarang|semua|semuanya|yang tadi|itu|ni|ini))*$/i.test(t)||
+   /^(?:ya|yes|ok|okay)\s+(?:teruskan|confirm|sahkan)\s+(?:padam|buang|delete)$/i.test(t)||
+   /^(?:sahkan|confirm)\s+(?:pemadaman|padam|buang)(?:\s+ini)?$/i.test(t))
+  return {kind:"confirm_delete"};
+ if(/^(?:batal|cancel|jangan|tak\s+jadi|tak\s+nak|x\s*jadi|tidak|no)(?:\s+(?:buang|padam|delete|remove|pemadaman|semua|dulu|je|saja|terus))?$/i.test(t)||
+    /^(?:jangan\s+(?:padam|buang)(?:\s+(?:dulu|lagi))?|tak\s+payah\s+(?:padam|buang))$/i.test(t))
+  return {kind:"cancel_delete"};
  if(/^(?:padam|buang)\s+(?:kes|folder|semua\s+fail|semua\s+dokumen)\s*(?:ini|sekarang)?$/.test(t))return {kind:"delete_case"};
  if(/^(?:hi|hello|hai|helo|assalamualaikum|salam|selamat pagi|selamat petang|selamat malam|terima kasih|thanks|tq)$/i.test(t))return {kind:"greeting"};
  if(/^(?:menu|help|bantuan|tolong|cara guna|apa fungsi bot|macam mana guna|apa yang bot boleh buat)$/i.test(t))return {kind:"route",command:"/menu"};
