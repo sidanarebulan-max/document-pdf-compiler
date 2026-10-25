@@ -157,6 +157,17 @@ function register(){
  $("telegramDisableDeepSeek").addEventListener("click",disableDeepSeek);
  $("telegramSaveRouting").addEventListener("click",saveAIRouting);
  $("telegramGenerateLink").addEventListener("click",getLinkCode);
+ $("telegramSyncCommands").addEventListener("click",async()=>{
+  if(!currentUser||currentUser.role!=="admin"){
+   notify("Menu bot hanya boleh dikemas kini oleh admin.",true);return;
+  }
+  const btn=$("telegramSyncCommands");btn.disabled=true;
+  try{
+   const r=await api("telegram_sync_commands");
+   notify("✅ "+r.commands+" arahan mudah berjaya dikemas kini dalam menu Telegram. Buka semula bot dan tekan / untuk melihat pilihan.");
+  }catch(e){notify("Tidak dapat kemas kini menu bot: "+e.message,true)}
+  finally{btn.disabled=false}
+ });
  $("telegramUnlink").addEventListener("click",unlink);
  $("telegramCopyCode").addEventListener("click",async()=>{
   const code=$("telegramLinkCode").textContent;
@@ -169,6 +180,7 @@ window.FARIS_TG={
   currentUser=user;
   $("telegramSettingsBtn").classList.remove("hide");
   $("telegramAdminSettings").classList.toggle("hide",user.role!=="admin");
+  $("telegramSyncCommands").classList.toggle("hide",user.role!=="admin");
   loaded=false;
  },
  onLogout(){
