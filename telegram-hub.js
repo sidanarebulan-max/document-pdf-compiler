@@ -29,15 +29,20 @@ async function codexStatus(){
   const d=await codexApi("status_admin");
   $("codexEnabled").checked=d.enabled;
   const online=d.devices.filter(x=>x.online),active=d.devices.filter(x=>x.is_active);
-  $("codexWorkerStatusBadge").textContent=online.length?online.length+" PC Online":active.length?"PC Offline":"Belum Dipair";
-  $("codexWorkerStatusBadge").classList.toggle("on",online.length>0);
-  $("codexWorkerInfo").textContent=online.length
-   ?"✅ "+online.length+" PC bersambung. Tugasan menunggu: "+d.pending
-   :active.length
-    ?"⚠️ PC sudah dipair, tetapi worker tidak online. Buka START_WORKER.cmd pada PC. Tugasan menunggu: "+d.pending
-    :"Belum ada PC dipautkan. Jana kod pairing, kemudian jalankan pemasangan ZIP FARIS.";
+  const chatCapable=online.filter(x=>x.supports_chat);
+  $("codexWorkerStatusBadge").textContent=chatCapable.length?"AI CHAT V4 ONLINE":
+   online.length?"Worker V3 (Dokumen Sahaja)":active.length?"PC Offline":"Belum Dipair";
+  $("codexWorkerStatusBadge").classList.toggle("on",chatCapable.length>0);
+  $("codexWorkerInfo").textContent=chatCapable.length
+   ?"✅ Codex V4 boleh jawab chat dan imbas dokumen. DeepSeek menjadi sandaran jika Codex gagal. Tugasan menunggu: "+d.pending
+   :online.length
+    ?"⚠️ Worker masih versi lama. Untuk AI Chat melalui Codex, pasang ZIP FARIS Codex Chat V4 dan restart 04_START_WORKER.cmd. Sementara itu DeepSeek jawab soalan."
+    :active.length
+     ?"⚠️ Worker offline. DeepSeek menjawab chat. Buka 04_START_WORKER.cmd pada PC."
+     :"Belum ada PC dipautkan. Untuk Codex, pasang worker FARIS dan jana kod pairing.";
   $("codexDeviceList").textContent=d.devices.map(x=>
-   (x.online?"🟢 ":"⚪ ")+x.device_name+" — "+(x.is_active?(x.online?"ONLINE":"OFFLINE"):"DINYAHAKTIF")
+   (x.online?"🟢 ":"⚪ ")+x.device_name+" — "+(x.is_active?(x.online?
+     (x.supports_chat?"CHAT V4 + DOKUMEN":"DOKUMEN SAHAJA"):"OFFLINE"):"DINYAHAKTIF")
   ).join(" | ");
  }catch(e){$("codexWorkerInfo").textContent="Ralat semak worker: "+e.message}
  finally{btn.disabled=false}
