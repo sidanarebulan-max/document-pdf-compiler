@@ -348,7 +348,13 @@ async function processUpdate(update:any,conf:any,token:string){
   await say(token,chat,"Bahagian dokumen bertukar kepada "+party+". Hantar dokumen seterusnya.");return;
  }
  if(["/senarai","/kategori","/siap","/padam"].includes(command)){
-  const c=await currentCase(account.id,chat);
+  let c=await currentCase(account.id,chat);
+  if(!c&&command==="/padam"){
+    const {data:previous}=await db.from("lead_hub_telegram_cases")
+      .select("*").eq("account_id",account.id).eq("chat_id",chat)
+      .eq("state","completed").order("completed_at",{ascending:false}).limit(1).maybeSingle();
+    c=previous;
+  }
   if(!c){await say(token,chat,"Tiada kes aktif. Taip /pelanggan NAMA.");return}
   const {data:files,error}=await db.from("lead_hub_telegram_files").select("*").eq("case_id",c.id).order("created_at");
   if(error)throw error;
@@ -469,7 +475,10 @@ async function controller(req:Request){
   if(current?.bot_id&&String(current.bot_id)!==String(me.id)&&current.enabled)
     return fail(req,"Putuskan sambungan bot lama dahulu sebelum menukar bot.",409);
   const webhookSecret=randomHex(32),protectedToken=await encrypt(token);
-  const {error}=await db.from("lead_hub_telegram_settings").upsert({id:1,bot_id:me.id,bot_username:me.username,bot_token_cipher:protectedToken.cipher,bot_token_iv:protectedToken.iv,webhook_secret_hash:await sha(webhookSecret),enabled:false,updated_at:new Date().toISOString()},{onConflict:"id"});
+  const changes={bot_id:me.id,bot_username:me.username,bot_token_cipher:protectedToken.cipher,bot_token_iv:protectedToken.iv,webhook_secret_hash:await sha(webhookSecret),enabled:false,updated_at:new Date().toISOString()};
+  const {error}=current
+    ?await db.from("lead_hub_telegram_settings").update(changes).eq("id",1)
+    :await db.from("lead_hub_telegram_settings").insert({id:1,...changes});
   if(error)throw error;
   try{
     await telegramCall(token,"setWebhook",{url:PROJECT_URL+"/functions/v1/lead-hub-telegram",secret_token:webhookSecret,allowed_updates:["message"],drop_pending_updates:false,max_connections:4});
@@ -487,7 +496,11 @@ async function controller(req:Request){
   const apiKey=String(payload.api_key||"").trim();
   if(!/^sk-[A-Za-z0-9_-]{18,}$/.test(apiKey))return fail(req,"OpenAI API key tidak sah");
   const protectedKey=await encrypt(apiKey);
-  const {error}=await db.from("lead_hub_telegram_settings").upsert({id:1,ai_api_key_cipher:protectedKey.cipher,ai_api_key_iv:protectedKey.iv,ai_model:"gpt-4.1-mini",updated_at:new Date().toISOString()},{onConflict:"id"});
+  const current=await config();
+  const changes={ai_api_key_cipher:protectedKey.cipher,ai_api_key_iv:protectedKey.iv,ai_model:"gpt-4.1-mini",updated_at:new Date().toISOString()};
+  const {error}=current
+    ?await db.from("lead_hub_telegram_settings").update(changes).eq("id",1)
+    :await db.from("lead_hub_telegram_settings").insert({id:1,...changes});
   if(error)throw error;
   return out(req,{ok:true});
  }
