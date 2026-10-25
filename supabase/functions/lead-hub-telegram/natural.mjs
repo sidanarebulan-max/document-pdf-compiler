@@ -62,7 +62,7 @@ export function parseNatural(raw){
  for(const [cmd,rx] of cats)if(rx.test(catText))return {kind:"route",command:cmd};
  if(/^(?:senarai|list|tunjuk senarai|bagi senarai|semak dokumen|check dokumen|list dokumen|apa dokumen yang ada|dokumen apa dah masuk|apa fail dah masuk|senarai fail)$/i.test(t))
   return {kind:"route",command:"/senarai"};
- if(/^(?:status|status kes|status dokumen|berapa fail|berapa dokumen|berapa file|jumlah fail|jumlah dokumen|berapa dah masuk|dah dapat berapa dokumen|dah dapat berapa fail|apa kategori aktif|sekarang bahagian apa)$/i.test(t))
+ if(/^(?:status|status kes|status dokumen|berapa (?:fail|dokumen|file)(?: (?:dah|sudah|telah) (?:masuk|diterima))?|jumlah fail|jumlah dokumen|berapa dah masuk|dah dapat berapa dokumen|dah dapat berapa fail|apa kategori aktif|sekarang bahagian apa)$/i.test(t))
   return {kind:"status"};
  if(/^(?:siap|siapkan|gabung|gabungkan|merge|compile|jadikan)\s*(?:semua)?\s*(?:dokumen|fail|pdf)?\s*(?:sekarang|ni|ini|semua)?$/i.test(t)||
     /^(?:buat|generate|jana|hantar|bagi)\s+(?:pdf lengkap|pdf gabungan|pdf siap|dokumen lengkap)$/i.test(t))
