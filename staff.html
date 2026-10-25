@@ -60,7 +60,7 @@
   .msg-bubble{white-space:pre-wrap;overflow-wrap:anywhere;background:#165743;color:#eafff4;border-radius:13px 13px 4px 13px;padding:13px;max-width:95%;font-size:13px;line-height:1.65;align-self:flex-start}
   @media(max-width:800px){.msg-settings-grid{grid-template-columns:1fr}.msg-settings-preview{padding:11px}
     .msg-settings-actions>*{flex:1}.header nav{width:100%}.header nav>*{flex:1}}
-  .workflow-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.tg-head{align-items:center;flex-wrap:wrap}.tg-status{display:flex;align-items:center;flex-wrap:wrap;gap:12px;background:#0c1d38;border:1px solid #284773;padding:14px;border-radius:12px}.tg-status>div{flex:1}.tg-status p{margin:4px 0}.tg-dot{width:12px;height:12px;background:#738096;border-radius:50%;box-shadow:0 0 0 4px #7380962c}.tg-dot.connected{background:#24be91;box-shadow:0 0 0 4px #24be912c}.tg-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}.tg-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.tg-actions>*{flex:1;min-width:140px}.divider-tg{border-top:1px solid #3a4e71;margin:19px 0}.tg-secret{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px;border-radius:10px;background:#163456;margin-top:12px}.tg-secret b{letter-spacing:1px;color:#b5e4ff}.tg-open{display:block;text-align:center;padding:13px;background:#14689b;border-radius:10px;color:#fff!important;text-decoration:none;font-weight:800}.tg-guide{margin-top:12px}.tg-commands{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.tg-commands>div{display:flex;flex-direction:column;align-items:flex-start;gap:7px}.tg-commands code{white-space:normal;overflow-wrap:anywhere;font-size:12px;color:#a3d2fb;background:#1b2d4b;padding:7px;border-radius:6px}@media(max-width:800px){.tg-grid,.tg-commands{grid-template-columns:1fr}.tg-status button{width:100%}}  .workflow-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .workflow-action{display:flex;justify-content:space-between;align-items:center;text-align:left;gap:12px;padding:15px!important;border:1px solid #36517c!important;min-height:72px}
   .workflow-action span:nth-child(2){flex:1}.workflow-action b{display:block;font-size:13px}.workflow-action small{display:block;color:#94b0d6;font-size:11px;margin-top:5px}
   .workflow-icon{font-size:23px}.leadwork{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:9px}
@@ -73,7 +73,7 @@
 <div class="wrap">
 <header class="header">
  <div><div class="eyebrow">FARIS R+PROTON · SALES OPERATIONS</div><h1>FARIS <span>LEAD HUB</span></h1><p>Nombor pelanggan → WhatsApp telefon → status susulan</p></div>
- <nav><a class="secondary" href="/">← PDF Compiler</a><button class="secondary hide" id="messageSettingsBtn" type="button" aria-expanded="false" aria-controls="messageSettingsPanel">⚙ Tetapan Mesej</button><button class="secondary hide" id="adminCredentialsShortcut" type="button">🔐 ID Admin</button><button class="secondary hide" id="signoutBtn" type="button">Keluar</button></nav>
+ <nav><a class="secondary" href="/">← PDF Compiler</a><button class="secondary hide" id="messageSettingsBtn" type="button" aria-expanded="false" aria-controls="messageSettingsPanel">⚙ Tetapan Mesej</button><button class="secondary hide" id="telegramSettingsBtn" type="button" aria-expanded="false" aria-controls="telegramPanel">✈ Telegram Bot</button><button class="secondary hide" id="adminCredentialsShortcut" type="button">🔐 ID Admin</button><button class="secondary hide" id="signoutBtn" type="button">Keluar</button></nav>
 </header>
 
 <section id="authSection" class="authcard">
@@ -155,6 +155,43 @@
      </div>
    </div>
  </section>
+ <section id="telegramPanel" class="panel hide" aria-labelledby="telegramTitle">
+ <div class="panelhead tg-head"><div><h2 id="telegramTitle">✈ Telegram Bot · FARIS LEAD HUB</h2>
+ <p class="muted">Satu sistem untuk fail pelanggan, VSO DRAF dan nombor WhatsApp. Kongsi fail daripada WhatsApp ke Telegram secara manual; bot tidak membaca inbox WhatsApp.</p></div>
+ <button id="telegramClose" class="secondary" type="button">Tutup ✕</button></div>
+ <div id="telegramNotice" class="notice hide" role="status"></div>
+ <div class="tg-status"><span id="telegramDot" class="tg-dot"></span><div><b id="telegramState">Belum disambung</b><p class="muted small" id="telegramUser">Sambungkan bot melalui Admin.</p></div>
+ <button id="telegramRefresh" class="secondary" type="button">↻ Semak Status</button></div>
+ <div class="tg-grid">
+  <section class="innerpanel" id="telegramAdminSettings">
+   <h3>1. Sambung Bot Telegram (Admin sahaja)</h3>
+   <p class="muted small">Buka <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer">@BotFather</a> → /newbot → salin token bot. Token tidak dipaparkan semula selepas disimpan.</p>
+   <form id="telegramConnectForm"><label for="telegramBotToken">Bot API Token</label>
+   <input id="telegramBotToken" type="password" autocomplete="new-password" placeholder="123456789:AA..." required>
+   <div class="tg-actions"><button id="telegramConnect" type="submit" class="primary">Sambung &amp; Aktifkan Bot</button><button class="secondary" id="telegramDisconnect" type="button">Putus Sambungan</button></div></form>
+   <div class="divider-tg"></div><h3>Imbasan Dokumen AI (Pilihan)</h3>
+   <p class="muted small">Jika dihidupkan, kandungan dokumen pelanggan dihantar ke OpenAI API untuk pengelasan. Pastikan kebenaran dan dasar privasi dipatuhi. Tanpa AI, bot masih mengelas ikut nama fail dan memerlukan semakan.</p>
+   <form id="telegramAIForm"><label for="telegramAPIKey">OpenAI API Key</label>
+   <input id="telegramAPIKey" type="password" autocomplete="new-password" placeholder="sk-..." required>
+   <div class="tg-actions"><button class="secondary" id="telegramSaveAI" type="submit">Aktifkan AI Scan</button><button class="secondary" id="telegramDisableAI" type="button">Matikan AI Scan</button></div></form>
+   <p id="telegramAIStatus" class="muted small">AI belum diaktifkan.</p>
+  </section>
+  <section class="innerpanel"><h3>2. Pautkan ID Staf / Admin ke Telegram</h3>
+   <p class="muted small">Tekan Jana Kod. Buka bot dan hantar kod sambungan. Kod hanya aktif selama 10 minit dan sekali guna.</p>
+   <div class="tg-actions"><button class="primary" id="telegramGenerateLink" type="button">Jana Kod Pautan</button><button class="secondary" id="telegramUnlink" type="button">Nyahpaut Saya</button></div>
+   <div class="hide" id="telegramLinkResult"><div class="tg-secret">Kod: <b id="telegramLinkCode"></b><button class="secondary" id="telegramCopyCode" type="button">Salin</button></div>
+   <a id="telegramConnectLink" href="#" class="tg-open" target="_blank" rel="noopener noreferrer">Buka Bot Telegram ↗</a></div>
+   <p id="telegramLinkStatus" class="muted small">Belum dipautkan.</p>
+  </section>
+ </div>
+ <section class="innerpanel tg-guide"><h3>3. Arahan Dalam Telegram Chat</h3>
+ <div class="tg-commands">
+ <div><b>📁 Dokumen</b><code>/pelanggan NAMA</code><code>/peminjam</code><code>/penjamin</code><code>/rebate</code><code>/senarai</code><code>/kategori 2 IC</code><code>/siap</code><code>/padam</code></div>
+ <div><b>🚘 VSO DRAF</b><code>/vso</code><p class="muted small">Bot minta butiran pelanggan, kereta dan pinjaman dalam 9 langkah, kemudian hantar PDF DRAF.</p></div>
+ <div><b>📲 WhatsApp Lead</b><code>/daftar Nama | 0123456789 | Proton e.MAS 5 | YA</code><code>/baru</code><code>/ambil</code><code>/skrip intro</code><code>/skrip follow</code><code>/skrip price</code></div></div>
+ <p class="muted small">Urutan: HIRER (VSO → IC → LESEN → PAYSLIP → BANK → OTHER) → GUARANTOR → COP REBATE. Fail kurang yakin mesti dibetulkan dengan /kategori sebelum /siap.</p>
+ <p class="muted small">Fail PDF/JPG/PNG sahaja, ≤18 MB setiap fail, maksimum 15 fail bagi satu kes. VSO Telegram ialah DRAF, bukan format rasmi pengedar. Nombor lead kelihatan kepada admin melalui website.</p>
+ </section></section>
  <div class="metrics">
   <div class="metric"><span>Jumlah lead</span><strong id="metricTotal">0</strong></div>
   <div class="metric"><span>Belum selesai</span><strong id="metricNew">0</strong></div>
@@ -256,5 +293,6 @@
 <footer>FARIS R+PROTON · Staff Lead Operations · Sambungan selamat melalui HTTPS</footer>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="/staff-passcode.js?v=admin-credentials-20261026"></script>
+<script src="/staff-passcode.js?v=telegram-20261026"></script>
+<script src="/telegram-hub.js?v=1"></script>
 </body></html>
