@@ -511,7 +511,7 @@ async function askDelete(token:string,chat:number,id:number,account:any,intent:a
  const selected=intent.kind==="delete_case"?files:numbers.map(n=>files[n-1]);
  const ids=selected.map((x:any)=>x.id);
  const requestTag=crypto.randomUUID().replaceAll("-","").slice(0,10);
- const expiry=new Date(Date.now()+3*60*1000).toISOString();
+ const expiry=new Date(Date.now()+10*60*1000).toISOString();
  const {error:pendingError}=await db.from("lead_hub_telegram_pending_actions").upsert({
   telegram_user_id:id,account_id:account.id,chat_id:chat,
   action:intent.kind==="delete_case"?"delete_case":"remove_files",
@@ -523,7 +523,7 @@ async function askDelete(token:string,chat:number,id:number,account:any,intent:a
  await say(token,chat,"⚠️ PENGESAHAN PADAM\n👤 "+c.customer_name+"\n"+
   (intent.kind==="delete_case"?"🗑 Padam folder beserta fail:\n":"🗑 Padam dokumen ini:\n")+label+
   "\n\nFail yang dipadam tidak boleh dipulihkan melalui bot."+
-  "\n\nTekan salah satu butang di bawah, atau balas 'ya padam terus' / 'batal buang'. Sah 3 minit.",{
+  "\n\nTekan salah satu butang di bawah, atau balas 'ya padam terus' / 'batal buang'. Sah 10 minit.",{
    reply_markup:{inline_keyboard:[[
     {text:"✅ Ya, padam",callback_data:"faris_delete_yes:"+requestTag},
     {text:"❌ Batal",callback_data:"faris_delete_no:"+requestTag}
@@ -681,6 +681,12 @@ async function processUpdate(update:any,conf:any,token:string){
  if(update.callback_query){
   const callback=update.callback_query;
   const action=String(callback.data||"");
+  if(action==="faris_delete_processing"){
+   try{await telegramCall(token,"answerCallbackQuery",{
+    callback_query_id:callback.id,text:"⏳ Sedang memproses. Notis akan muncul di sini."
+   });}catch{/* feedback already in progress */}
+   return;
+  }
   const parsedCallback=action.match(/^faris_delete_(yes|no):([a-f0-9]{10})$/);
   if(!parsedCallback)return;
   const deleteApproved=parsedCallback[1]==="yes",requestTag=parsedCallback[2];
@@ -995,7 +1001,8 @@ async function controller(req:Request){
    token=await botToken(conf);
    await processUpdate(payload,conf,token);
   }catch(e){console.error("Telegram update failed:",String(e).slice(0,200));
-   try{const chat=payload?.message?.chat?.id;if(chat&&token)await say(token,chat,"⚠️ Arahan tidak berjaya diproses. Cuba semula atau guna website FARIS LEAD HUB.");}catch{/* do not leak */}
+   try{const chat=payload?.message?.chat?.id||payload?.callback_query?.message?.chat?.id;
+    if(chat&&token)await say(token,chat,"⚠️ Proses tidak berjaya diselesaikan. Semak 'senarai' dan cuba semula. Tiada kejayaan padam disahkan.");}catch{/* do not leak */}
   }})();
   // Telegram receives a quick acknowledgement while the document is processed server-side.
   if(typeof EdgeRuntime!=="undefined")EdgeRuntime.waitUntil(job);else await job;
