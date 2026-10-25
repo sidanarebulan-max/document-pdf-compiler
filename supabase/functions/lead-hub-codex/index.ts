@@ -107,11 +107,11 @@ async function handler(req:Request){
  const d=await device(req);
  if(!d)return err(req,"Worker token invalid/disabled. Pair again.",401);
  if(action==="heartbeat"){
-  if(p.supports_chat===true){
-    await db.from("lead_hub_codex_devices").update({supports_chat:true})
-     .eq("id",d.id).eq("is_active",true);
-  }
-  return response(req,{ok:true,device_id:d.id});
+  // Revert capability if an older worker is restarted after a V4 install.
+  const chatCapable=p.supports_chat===true;
+  await db.from("lead_hub_codex_devices").update({supports_chat:chatCapable})
+    .eq("id",d.id).eq("is_active",true);
+  return response(req,{ok:true,device_id:d.id,supports_chat:chatCapable});
  }
  if(action==="claim_chat"){
   const lease=random(24);
