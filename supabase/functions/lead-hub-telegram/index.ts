@@ -580,7 +580,7 @@ async function interpretChat(conf:any,account:any,telegramId:number,chat:number,
    (x.role==="user"||x.role==="assistant")&&typeof x.content==="string").map((x:any)=>({
     role:x.role,content:String(x.content).slice(0,550)})):[];
  const system="Anda pembantu AI Telegram FARIS R+PROTON, bercakap Bahasa Melayu Malaysia secara ringkas dan mesra. "+
-  "Balas sebagai JSON SAHAJA: {\"intent\":\"answer|help|status|list|lead_new|lead_claim|category|party|vso_start\",\"category\":\"IC|BANK|PAYSLIP|LESEN|SIJIL|SURAT_KERJA|VSO|OTHER|\",\"party\":\"HIRER|GUARANTOR|REBATE|\",\"reply\":\"jawapan\"}. "+
+  "Balas sebagai JSON SAHAJA: {\"intent\":\"answer|help|status|list|lead_new|lead_claim|category|party|vso_start\",\"category\":\"IC|BANK|PAYSLIP|LESEN|SIJIL|SURAT_KERJA|VSO|OTHER|\",\"party\":\"HIRER|GUARANTOR|REBATE|\",\"reply\":\"jawapan\",\"confidence\":0.0}. "+
   "Pilih intent selain answer HANYA jika pengguna JELAS MEMINTA tindakan, bukan bertanya cara melakukan tindakan. "+
   "Jangan pilih tindakan berbahaya seperti padam, siapkan PDF, daftar nombor, atau hantar mesej; bot menangani sendiri. "+
   "Jika bertanya harga kereta/loan terkini, jangan reka harga; sarankan semak quotation VSO rasmi. "+
@@ -625,7 +625,10 @@ async function interpretChat(conf:any,account:any,telegramId:number,chat:number,
  }
  if(!obj)return {kind:"answer",reply:"Aku faham. 😊 Cuba beritahu apa yang kau nak buat: susun dokumen pelanggan, semak fail, buat VSO atau ambil lead WhatsApp. Tulis ayat biasa pun boleh."};
  const allowed=["answer","help","status","list","lead_new","lead_claim","category","party","vso_start"];
- const intent=allowed.includes(obj.intent)?obj.intent:"answer";
+ let intent=allowed.includes(obj.intent)?obj.intent:"answer";
+ // Do not let an uncertain AI interpretation modify an assigned case or claim a lead.
+ if(["category","party","vso_start","lead_claim"].includes(intent)&&
+  (!Number.isFinite(Number(obj.confidence))||Number(obj.confidence)<0.90))intent="answer";
  const result={kind:intent,category:obj.category,party:obj.party,
   reply:String(obj.reply||"").replace(/https?:\/\/\S+/g,"").slice(0,1100)};
  const updated=[...recent,{role:"user",content:userText},{role:"assistant",content:result.reply}].slice(-4);
