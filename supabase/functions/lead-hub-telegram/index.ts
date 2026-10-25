@@ -219,7 +219,8 @@ async function handleWizard(token:string,chat:number,telegramId:number,account:a
    await telegramSendDocument(token,chat,bytes,name+"_VSO_DRAF.pdf","✅ VSO DRAF siap. Sila semak butiran, harga dan pengesahan pengedar.");
    // Attach VSO draft to the active collection so /siap can include it first.
    const activeCase=await currentCase(account.id,chat);
-   if(activeCase){
+   const cleanName=(v:string)=>v.toLowerCase().replace(/[^a-z0-9]+/g,"").trim();
+   if(activeCase&&cleanName(activeCase.customer_name)===cleanName(payload.name)){
      const fileId=uuid(),path=account.id+"/"+activeCase.id+"/"+fileId+".pdf";
      const {error:storageError}=await db.storage.from(BUCKET)
        .upload(path,bytes,{contentType:"application/pdf",upsert:false});
@@ -413,7 +414,11 @@ async function processUpdate(update:any,conf:any,token:string){
    if(error){await say(token,chat,"Tidak dapat ambil lead: "+error.message);return}
    if(!data){await say(token,chat,"Tiada lead belum diagih.");return}
   }
-  const {data:leads,error}=await db.from("lead_hub_leads").select("customer_name,phone_e164,model,stage,assigned_id").eq("assigned_id",account.id).in("stage",["new","claimed"]).order("created_at",{ascending:false}).limit(5);
+  let leadQuery=db.from("lead_hub_leads")
+    .select("customer_name,phone_e164,model,stage,assigned_id").in("stage",["new","claimed"])
+    .order("created_at",{ascending:false}).limit(5);
+  if(account.role!=="admin")leadQuery=leadQuery.eq("assigned_id",account.id);
+  const {data:leads,error}=await leadQuery;
   if(error)throw error;
   if(!leads?.length){await say(token,chat,"Tiada lead baharu ditugaskan pada ID anda. Admin boleh tambah dan agihkan nombor baharu melalui website.");return}
   await say(token,chat,"📲 "+leads.length+" lead baharu untuk "+account.display_name+". Skrip: "+link.selected_template+".");
