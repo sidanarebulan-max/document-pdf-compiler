@@ -20,6 +20,30 @@
   .verified{color:#8bf0cd}.attention{color:#f8d49c}
   .admin-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .admin-grid>*:last-child{grid-column:1/-1}
+  .lead-section-head{align-items:center;flex-wrap:wrap}
+  .lead-section-head p{margin:5px 0}
+  .lead-refresh{min-width:148px}
+  .lead-list{grid-template-columns:1fr!important}
+  .lead{padding:12px 14px!important;max-width:none}
+  .lead-compact{display:flex;align-items:center;gap:12px;justify-content:space-between}
+  .lead-identity{appearance:none;flex:1;min-width:0;background:transparent;border:0;color:inherit;text-align:left;padding:5px 4px;display:flex;align-items:center;gap:12px;cursor:pointer;border-radius:10px}
+  .lead-identity:focus-visible{outline:2px solid #77a9ff;outline-offset:2px}
+  .lead-chevron{font-size:12px;color:#acc8f9;transition:transform .15s}
+  .lead-identity[aria-expanded="true"] .lead-chevron{transform:rotate(180deg)}
+  .lead-primary{min-width:0;flex:1;display:grid;gap:4px}
+  .lead-customer{font-size:14px;font-weight:750;word-break:break-word}
+  .lead-phone{font-size:13px;font-weight:650;color:#c0d8fe;word-break:break-all}
+  .lead-secondary{font-size:11px;color:#8098be}
+  .lead-quick-wa{flex:none;min-height:42px!important;padding:10px 17px!important;white-space:nowrap}
+  .lead-expanded{margin-top:12px;border-top:1px solid #2b3c5f;padding-top:12px}
+  .lead-expanded[hidden]{display:none!important}
+  .lead-expanded-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .lead-expanded .notes{width:100%;margin-top:10px}
+  .lead-expanded .leadcontrols{margin:12px 0 7px}
+  .lead-expanded .leadwork{margin-top:12px}
+  .lead-expanded .secondary.save-details{padding:10px 18px;min-width:140px}
+  @media(max-width:650px){.lead-compact{gap:7px}.lead-quick-wa{padding:10px 11px!important;font-size:12px!important}
+    .lead-refresh{width:100%}.lead-identity{gap:6px}.lead{padding:10px!important}}
   .workflow-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .workflow-action{display:flex;justify-content:space-between;align-items:center;text-align:left;gap:12px;padding:15px!important;border:1px solid #36517c!important;min-height:72px}
   .workflow-action span:nth-child(2){flex:1}.workflow-action b{display:block;font-size:13px}.workflow-action small{display:block;color:#94b0d6;font-size:11px;margin-top:5px}
@@ -63,7 +87,7 @@
    <h2>Selamat datang, <span id="currentName"></span></h2>
    <p class="muted">ID: <span id="currentCode"></span> · WhatsApp akan dibuka dalam aplikasi telefon</p>
   </div>
-  <div class="welcomeactions"><button class="secondary" id="refreshBtn" type="button">↻ Segarkan</button><button class="primary" id="claimBtn" type="button">+ Ambil nombor</button></div>
+  <div class="welcomeactions"><button class="primary" id="claimBtn" type="button">+ Ambil nombor belum diagih</button></div>
  </div>
  <div class="metrics">
   <div class="metric"><span>Jumlah lead</span><strong id="metricTotal">0</strong></div>
@@ -111,6 +135,7 @@
        <option>Belum pasti</option><option>Proton e.MAS 7 PHEV</option><option>Proton e.MAS 7 EV</option><option>Proton e.MAS 5</option><option>Proton Saga</option><option>Proton X50</option><option>Proton S70</option><option>Proton X70</option><option>Proton X90</option><option>Proton Iriz</option><option>Proton Persona</option>
       </select>
       <label class="checkline"><input id="addConsent" type="checkbox" required> Saya sahkan nombor ini boleh dihubungi untuk tujuan jualan.</label>
+      <label class="checkline"><input id="addAutoAssign" type="checkbox" checked> <span>Auto agihkan kepada staf aktif. Nombor akan muncul dalam senarai staf selepas tekan Refresh.</span></label>
       <button class="primary full" type="submit" id="addLeadBtn">+ Simpan Nombor</button>
     </form>
    </section>
@@ -121,6 +146,7 @@
     <label for="importText">Atau tampal senarai nombor</label>
     <textarea id="importText" rows="4" placeholder="Ahmad, 0123456789, Proton e.MAS 7 PHEV&#10;Siti, 0171234567, Proton e.MAS 5"></textarea>
     <label class="checkline"><input id="importConsent" type="checkbox"> Saya sahkan nombor boleh dihubungi.</label>
+    <label class="checkline"><input id="importAutoAssign" type="checkbox" checked> <span>Auto agihkan nombor kepada staf aktif.</span></label>
     <button class="primary full" id="importBtn" type="button">Import Lead</button>
     <p id="importResult" class="small muted"></p>
    </section>
@@ -141,13 +167,15 @@
   </div>
  </section>
  <section class="panel">
-  <div class="panelhead"><div><h2>Senarai Pelanggan</h2><p class="muted">Tekan butang WhatsApp untuk buka aplikasi telefon. Pilih skrip dahulu; selepas tekan Send, kemas kini status secara manual.</p></div></div>
+  <div class="panelhead lead-section-head"><div><h2>Senarai Pelanggan</h2><p class="muted">Tekan WhatsApp untuk mesej pelanggan. Tekan nama atau nombor untuk buka status, tarikh dan catatan.</p><p class="small muted" id="lastRefresh" aria-live="polite">Belum disegarkan.</p></div>
+      <button class="secondary lead-refresh" id="refreshBtn" type="button">↻ Refresh Nombor</button></div>
   <div class="filters">
    <input id="leadSearch" type="search" placeholder="Cari nama, nombor atau model...">
    <select id="stageFilter"><option value="">Semua status</option><option value="new">Belum diambil</option><option value="claimed">Sudah diambil</option><option value="contacted">Dihubungi</option><option value="follow_up">Follow-up</option><option value="interested">Berminat</option><option value="booked">Booking</option><option value="not_interested">Tidak berminat</option></select>
    <select id="messageTemplate"><option value="intro">Skrip: Pengenalan</option><option value="follow">Skrip: Follow-up</option><option value="price">Skrip: Harga / Loan</option></select>
   </div>
   <p class="muted small" id="listMessage"></p>
+  <p class="small muted" id="queueCount" aria-live="polite"></p>
   <div class="lead-list" id="leadList" aria-live="polite"></div>
  </section>
  <div id="appNotice" class="notice hide" role="status"></div>
