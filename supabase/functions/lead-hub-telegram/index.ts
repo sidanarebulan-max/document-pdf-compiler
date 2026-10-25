@@ -40,6 +40,44 @@ async function telegramCall(token:string,method:string,payload:Record<string,unk
  }finally{clearTimeout(timeout)}
 }
 async function botToken(conf:any){if(!conf?.bot_token_cipher||!conf?.bot_token_iv)throw Error("Bot belum disambung");return decrypt(conf.bot_token_cipher,conf.bot_token_iv)}
+
+// Repair old message-only webhooks without asking admin for their BotFather token again.
+// A short-lived previous-secret grace period keeps in-flight Telegram messages valid.
+async function repairCallbackWebhook(conf:any):Promise<boolean>{
+ if(!conf?.enabled)return false;
+ if(conf.webhook_callbacks_configured===true)return true;
+ if(!conf.webhook_secret_hash)return false;
+ const newSecret=randomHex(32),newHash=await sha(newSecret);
+ const previousHash=conf.webhook_previous_secret_hash||conf.webhook_secret_hash;
+ const {data:claim,error:claimError}=await db.from("lead_hub_telegram_settings")
+  .update({
+   webhook_secret_hash:newHash,webhook_previous_secret_hash:previousHash,
+   webhook_previous_valid_until:new Date(Date.now()+15*60*1000).toISOString()
+  }).eq("id",1).eq("webhook_callbacks_configured",false)
+  .eq("webhook_secret_hash",conf.webhook_secret_hash).select("id");
+ if(claimError)throw claimError;
+ if(!claim?.length)return false;
+ try{
+  const token=await botToken(conf);
+  await telegramCall(token,"setWebhook",{
+   url:PROJECT_URL+"/functions/v1/lead-hub-telegram",secret_token:newSecret,
+   allowed_updates:["message","callback_query"],
+   drop_pending_updates:false,max_connections:4
+  });
+  const info=await telegramCall(token,"getWebhookInfo",{});
+  if(!info?.allowed_updates?.includes("callback_query"))
+   throw Error("Telegram webhook did not confirm callback_query");
+  const {error}=await db.from("lead_hub_telegram_settings")
+   .update({webhook_callbacks_configured:true,updated_at:new Date().toISOString()})
+   .eq("id",1).eq("webhook_secret_hash",newHash);
+  if(error)throw error;
+  return true;
+ }catch(e){
+  console.error("Telegram webhook callback repair:",String(e).slice(0,110));
+  return false;
+ }
+}
+
 async function say(token:string,chat:number|string,text:string,more:Record<string,unknown>={}){
  return telegramCall(token,"sendMessage",{chat_id:chat,text:text.slice(0,3900),link_preview_options:{is_disabled:true},...more});
 }
@@ -1054,9 +1092,9 @@ async function controller(req:Request){
     :await db.from("lead_hub_telegram_settings").insert({id:1,...changes});
   if(error)throw error;
   try{
-    await telegramCall(token,"setWebhook",{url:PROJECT_URL+"/functions/v1/lead-hub-telegram",secret_token:webhookSecret,allowed_updates:["message"],drop_pending_updates:false,max_connections:4});
+    await telegramCall(token,"setWebhook",{url:PROJECT_URL+"/functions/v1/lead-hub-telegram",secret_token:webhookSecret,allowed_updates:["message","callback_query"],drop_pending_updates:false,max_connections:4});
   }catch(e){return fail(req,"Bot disimpan tetapi webhook gagal: "+String(e),502)}
-  await db.from("lead_hub_telegram_settings").update({enabled:true}).eq("id",1);
+  await db.from("lead_hub_telegram_settings").update({enabled:true,webhook_callbacks_configured:true,webhook_previous_secret_hash:null,webhook_previous_valid_until:null}).eq("id",1);
   try{await telegramCall(token,"setMyCommands",{commands:TELEGRAM_COMMAND_MENU})}
   catch(e){console.warn("Bot commands registration failed:",String(e).slice(0,60))}
   return out(req,{ok:true,bot_username:me.username,bot_url:"https://t.me/"+me.username});
