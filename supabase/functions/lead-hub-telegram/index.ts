@@ -443,11 +443,14 @@ async function currentCase(accountId:string,chat:number){
  // The user may switch between several unfinished customer folders.
  const {data:focus}=await db.from("lead_hub_telegram_dialog")
   .select("active_case_id").eq("account_id",accountId).eq("chat_id",chat).maybeSingle();
- if(focus?.active_case_id){
+ if(focus){
+  // Never silently switch to an older customer's case after the selected
+  // case has been completed or deleted. The user must explicitly resume it.
+  if(!focus.active_case_id)return null;
   const {data:chosen}=await db.from("lead_hub_telegram_cases").select("*")
    .eq("id",focus.active_case_id).eq("account_id",accountId)
    .eq("chat_id",chat).eq("state","collecting").maybeSingle();
-  if(chosen)return chosen;
+  return chosen||null;
  }
  const {data}=await db.from("lead_hub_telegram_cases").select("*")
   .eq("account_id",accountId).eq("chat_id",chat).eq("state","collecting")
