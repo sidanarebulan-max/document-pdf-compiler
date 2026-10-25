@@ -570,8 +570,14 @@ async function decideDelete(token:string,chat:number,id:number,account:any,confi
 }
 async function interpretChat(conf:any,account:any,telegramId:number,chat:number,text:string){
  const c=await currentCase(account.id,chat);
- const {count}=c?await db.from("lead_hub_telegram_files")
-   .select("id",{head:true,count:"exact"}).eq("case_id",c.id):{count:0};
+ const {data:caseFiles}=c?await db.from("lead_hub_telegram_files")
+   .select("category,needs_review").eq("case_id",c.id):{data:[]};
+ const count=caseFiles?.length||0;
+ const categoryCounts:Record<string,number>={};let unconfirmed=0;
+ for(const file of caseFiles||[]){
+  categoryCounts[file.category]=(categoryCounts[file.category]||0)+1;
+  if(file.needs_review)unconfirmed++;
+ }
  const {data:saved}=await db.from("lead_hub_telegram_chat_memory")
    .select("recent_turns,updated_at").eq("telegram_user_id",telegramId)
    .eq("account_id",account.id).maybeSingle();
@@ -586,7 +592,8 @@ async function interpretChat(conf:any,account:any,telegramId:number,chat:number,
   "Jika bertanya harga kereta/loan terkini, jangan reka harga; sarankan semak quotation VSO rasmi. "+
   "Jangan dakwa AI sudah mengimbas dokumen atau menghantar WhatsApp tanpa bukti. "+
   "Maklumat kerja yang sah: kes aktif="+Boolean(c)+", bahagian="+(c?.active_party||"tiada")+
-  ", kategori dipilih="+(c?.active_category||"AUTO")+", bilangan fail="+(count||0)+
+  ", kategori dipilih="+(c?.active_category||"AUTO")+", bilangan fail="+count+
+  ", kategori fail="+JSON.stringify(categoryCounts)+", belum sah="+unconfirmed+
   ", peranan pengguna="+account.role+". "+
   "Boleh jelaskan: tulis 'buka folder nama Ahmad', 'ini IC', hantar fail, 'senarai', 'siapkan PDF', "+
   "'ada nombor baru', 'buat VSO', 'buang fail no 1 sampai 3'. "+
@@ -603,9 +610,10 @@ async function interpretChat(conf:any,account:any,telegramId:number,chat:number,
     .select("id",{head:true,count:"exact"})
     .eq("telegram_user_id",telegramId).in("status",["queued","working"]);
    if(!outstanding){
-    const context={current_customer:c?.customer_name?"(folder aktif)":null,
+    const context={customer_folder:c?.customer_name?String(c.customer_name).slice(0,60):null,
       party:c?.active_party||"tiada",category:c?.active_category||"AUTO",
-      total_documents:count||0,role:account.role,recent_turns:recent};
+      total_documents:count,category_counts:categoryCounts,unconfirmed_documents:unconfirmed,
+      role:account.role,recent_turns:recent};
     const {error:queueError}=await db.from("lead_hub_codex_chat_jobs").insert({
       telegram_user_id:telegramId,account_id:account.id,chat_id:chat,
       user_text:userText,context,status:"queued"
@@ -781,6 +789,8 @@ async function processUpdate(update:any,conf:any,token:string){
    .insert({account_id:account.id,chat_id:chat,customer_name:customer,active_party:"HIRER",active_category:null})
    .select("id,customer_name,active_party").single();
   if(error)throw error;
+  await db.from("lead_hub_telegram_chat_memory").delete()
+    .eq("telegram_user_id",id).eq("account_id",account.id);
   await say(token,chat,"✅ KES DIBUKA\n"+caseSummary(created)+
    "\n\nPilih kategori: /ic, /bank, /gaji, /lesen, /sijil, /kerja, /vso atau /lain.\n"+
    "Hantar banyak fail, kemudian /senarai atau /siap.");return;
