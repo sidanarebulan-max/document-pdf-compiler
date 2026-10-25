@@ -3,6 +3,7 @@
 const TYPES=new Set(["IC","BANK","PAYSLIP","LESEN","SIJIL","SURAT_KERJA","VSO","OTHER"]);
 const PARTIES=new Set(["HIRER","GUARANTOR","REBATE"]);
 const SAFE_READ=new Set(["help","list","status","lead_new"]);
+const NEW_CUSTOMER_INTENT=new Set(["new_customer","new_case","start_customer"]);
 const EXPLICIT_WRITE=new Set(["category","party","vso_start","lead_claim"]);
 const RISKY=new Set(["delete_request","merge_request","send_message","register_lead"]);
 export function policyModelIntent(input){
@@ -12,6 +13,10 @@ export function policyModelIntent(input){
  const confidence=Number(input.confidence);
  const score=Number.isFinite(confidence)?Math.min(1,Math.max(0,confidence)):0;
  const reply=String(input.reply||"").trim().slice(0,1300);
+ if(NEW_CUSTOMER_INTENT.has(intent)){
+  return score>=0.75?{kind:"new_customer",confidence:score}:
+   {kind:"ask",reply:"Nak mula folder pelanggan baharu? Kalau ya, cakap 'new customer'."};
+ }
  if(RISKY.has(intent)){
   const hints={delete_request:"Aku faham kau nak buang dokumen. Nyatakan nombor tepat, contoh 'buang fail 1 sampai 3'. Aku akan minta pengesahan sebelum padam.",
    merge_request:"Aku rasa kau nak gabungkan dokumen. Untuk sahkan, taip 'siapkan PDF'. Aku akan semak kategori dahulu.",
