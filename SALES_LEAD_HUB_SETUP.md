@@ -218,3 +218,18 @@ Tujuan: sentiasa cuba memahami arahan dalam bahasa Melayu santai, bahasa campur,
 - Unit tests `intent-policy.mjs`: 13/13 lulus; regresi variasi `smpi` / `siapkn`: 8/8 lulus.
 
 **Status:** fail di GitHub sudah dikemas kini, tetapi percubaan menerbitkan Edge Function ke Supabase terhalang oleh pemeriksaan keselamatan alat. Semakan `get_edge_function` masih memaparkan versi **v17** tanpa `intent-policy.mjs`. Oleh itu ciri V18 belum tersedia pada Telegram live sehingga deploy yang dibenarkan diselesaikan. Jangan wakilkan ia sudah live.
+
+## Telegram Single Case Card — senyapkan spam apabila banyak fail dihantar (26 Oktober 2026)
+
+**Punca:** `handleDoc` menghantar satu mesej "✅ DOKUMEN DITERIMA" untuk **setiap fail**, dan `lead-hub-codex` menghantar lagi satu "🤖 CHATGPT CODEX — SEMAKAN SIAP" bagi setiap keputusan AI. Apabila staf menghantar 20 fail, chat menerima puluhan balasan bot.
+
+**Pembaikan aktif pada server:**
+- `lead-hub-telegram` v18 dan `lead-hub-codex` v5 menggunakan modul `case-card.mjs` yang sama. Untuk setiap kes pelanggan, mesej status Telegram pertama dihantar **sekali**, kemudian bot memanggil `editMessageText` pada `message_id` yang sama apabila fail diterima/diproses/ditukar kategori/dibuang. Bot tidak menghantar mesej ACK individu untuk fail yang berjaya.
+- Kad memaparkan nama pelanggan, ID kes, jumlah fail, bilangan ✅ siap/⏳ menunggu AI/⚠️ perlu semak, bilangan mengikut kategori, serta senarai bernombor dengan nama fail. Panjang dijaga di bawah Telegram 4096 aksara; paparan senarai ringkas akan menunjukkan baki item jika terlalu panjang. Semak penuh dengan mesej `senarai`.
+- PostgreSQL `lead_hub_telegram_case_cards` menyimpan `message_id` tunggal per `case_id`, revision, synced revision dan lease; fungsi atomik `lead_hub_case_card_touch/claim/finish` mengelakkan penghantaran kad berganda oleh beberapa webhook yang berlumba.
+- Fungsi `EdgeRuntime.waitUntil` membolehkan penggabungan update hampir serentak (1.7 saat) dan proses edit tanpa menunggu webhook memproses semua fail secara berurutan. Gagal mengedit: status dibiarkan `dirty` dan boleh cuba semula selepas kemas kini seterusnya. Jika kad asal dipadam atau tidak lagi boleh diedit oleh Telegram, bot akan mencipta satu kad pengganti.
+- Setiap keputusan Codex menukar status item ⏳ kepada ✅/⚠️ di kad yang sama. Notifikasi per-fail Codex telah dihentikan. Pembetulan kategori dan pemadaman fail separa juga mengemas kini kad.
+- Perintah eksplisit `senarai`, `status`, hasil PDF `siap` dan mesej ralat kritikal masih dibalas secara berasingan apabila diminta kerana pengguna perlu menerima hasil tindakan; fail asal yang dihantar oleh staf kekal kelihatan seperti biasa dalam Telegram.
+- Tiada mesej lama dipadam, tiada fail pelanggan diubah semasa pembangunan. Kes lama yang masih aktif akan menerima kad tunggal baharu pada **muat naik fail selepas penerbitan**.
+- Ujian modul: 50 fail → 3605 aksara (bawah 3900), status ✅/⏳/⚠️ betul, kad terhad pada satu ID kes. Ujian RPC PostgreSQL `touch → claim → finish` lulus dalam transaksi yang di-rollback, tanpa data ujian tertinggal. Kedua-dua Edge Functions dilaporkan ACTIVE dan telah disemak mengandungi mod kemas kini kad.
+- Ujian penghantaran fail baharu dalam Telegram pengguna belum dibuat; gunakan fail dummy dan semak hanya satu kad status dihantar serta dikemas kini selepas keputusan AI.
