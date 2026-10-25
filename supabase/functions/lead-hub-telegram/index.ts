@@ -1054,6 +1054,8 @@ async function processUpdate(update:any,conf:any,token:string){
    "Cakap dengan aku macam biasa, tak perlu letak / di depan. 😊\n"+
    (c?"\n"+caseSummary(c)+"\nKategori aktif: "+(DOC_NAMES[c.active_category]||"Auto")+"\n":"")+
    "\nCONTOH AYAT:\n"+
+   "👤 'new' → aku tanya nama pelanggan\n"+
+   "📁 'sambung kes Haris' → kembali ke kes lama\n"+
    "📁 'buka folder nama Ahmad'\n"+
    "📎 'ini IC' → hantar banyak fail\n"+
    "🧾 'aku nak masuk slip gaji'\n"+
