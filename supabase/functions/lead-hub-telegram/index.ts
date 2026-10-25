@@ -46,6 +46,25 @@ function normalPhone(raw:any){let v=String(raw??"").replace(/[^\d+]/g,"").replac
 const TYPES=["VSO","IC","IC_FRONT","IC_BACK","LESEN","PAYSLIP","BANK","SURAT_KERJA","SIJIL_LAHIR","SIJIL_NIKAH","SIJIL","OTHER"];
 const REBATE_TYPES=["VSO","IC","IC_FRONT","IC_BACK","LESEN","PAYSLIP","BANK","SURAT_KERJA","SIJIL_LAHIR","SIJIL_NIKAH","SIJIL","OTHER"];
 const RANK:{[k:string]:number}={VSO:1,IC:2,IC_FRONT:2,IC_BACK:2,LESEN:3,PAYSLIP:4,BANK:5,SURAT_KERJA:6,SIJIL_LAHIR:7,SIJIL_NIKAH:8,SIJIL:9,OTHER:10};
+const TELEGRAM_COMMAND_MENU=[
+ {command:"pelanggan",description:"Buka kes pelanggan baharu"},
+ {command:"ic",description:"Kumpul IC, banyak fail"},
+ {command:"bank",description:"Kumpul penyata bank"},
+ {command:"gaji",description:"Kumpul slip gaji"},
+ {command:"lesen",description:"Kumpul lesen"},
+ {command:"sijil",description:"Kumpul sijil lahir / nikah"},
+ {command:"kerja",description:"Kumpul surat kerja"},
+ {command:"vso",description:"Kumpul fail VSO"},
+ {command:"lain",description:"Kumpul fail lain"},
+ {command:"peminjam",description:"Tukar bahagian: peminjam"},
+ {command:"penjamin",description:"Tukar bahagian: penjamin"},
+ {command:"rebate",description:"Tukar bahagian: rebate"},
+ {command:"senarai",description:"Semak dokumen pelanggan"},
+ {command:"siap",description:"Hantar PDF siap susun"},
+ {command:"buatvso",description:"Jana VSO DRAF dengan borang chat"},
+ {command:"baru",description:"Semak lead WhatsApp"},
+ {command:"menu",description:"Bantuan ringkas"}
+];
 const DOC_COMMANDS:Record<string,string>={
  "/ic":"IC","/bank":"BANK","/gaji":"PAYSLIP","/lesen":"LESEN",
  "/sijil":"SIJIL","/kerja":"SURAT_KERJA","/vso":"VSO","/lain":"OTHER"
@@ -662,6 +681,13 @@ async function controller(req:Request){
   if(error)throw error;return out(req,{ok:true});
  }
  if(actor.role!=="admin")return fail(req,"Hanya admin boleh ubah tetapan bot",403);
+ if(action==="telegram_sync_commands"){
+  const conf=await config();
+  if(!conf?.enabled)return fail(req,"Bot Telegram belum aktif",400);
+  const bot=await botToken(conf);
+  await telegramCall(bot,"setMyCommands",{commands:TELEGRAM_COMMAND_MENU});
+  return out(req,{ok:true,commands:TELEGRAM_COMMAND_MENU.length});
+ }
  if(action==="telegram_connect"){
   const token=String(payload.token||"").trim();
   if(!/^\d{7,12}:[A-Za-z0-9_-]{30,}$/.test(token))return fail(req,"Token bot tidak sah. Dapatkan daripada BotFather.");
@@ -680,6 +706,8 @@ async function controller(req:Request){
     await telegramCall(token,"setWebhook",{url:PROJECT_URL+"/functions/v1/lead-hub-telegram",secret_token:webhookSecret,allowed_updates:["message"],drop_pending_updates:false,max_connections:4});
   }catch(e){return fail(req,"Bot disimpan tetapi webhook gagal: "+String(e),502)}
   await db.from("lead_hub_telegram_settings").update({enabled:true}).eq("id",1);
+  try{await telegramCall(token,"setMyCommands",{commands:TELEGRAM_COMMAND_MENU})}
+  catch(e){console.warn("Bot commands registration failed:",String(e).slice(0,60))}
   return out(req,{ok:true,bot_username:me.username,bot_url:"https://t.me/"+me.username});
  }
  if(action==="telegram_disconnect"){
