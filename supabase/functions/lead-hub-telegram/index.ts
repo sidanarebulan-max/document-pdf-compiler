@@ -1311,6 +1311,67 @@ async function controller(req:Request){
    telegram_linked:!!link,ai_model:conf?.ai_model||"gpt-4.1-mini",
    deepseek_model:"deepseek-flash"});
  }
+ if(action==="telegram_ai_diagnose"){
+  if(actor.role!=="admin")return fail(req,"Hanya admin boleh menguji sambungan AI",403);
+  const conf=await config();
+  const checkProvider=async(provider:"deepseek"|"openai")=>{
+   const isDeepSeek=provider==="deepseek";
+   const cipher=isDeepSeek?conf?.deepseek_api_key_cipher:conf?.ai_api_key_cipher;
+   const iv=isDeepSeek?conf?.deepseek_api_key_iv:conf?.ai_api_key_iv;
+   if(!cipher||!iv)return {state:"not_configured",http_status:null,detail:"Kunci API belum disimpan"};
+   try{
+    const key=await decrypt(cipher,iv);
+    const endpoint=isDeepSeek?"https://api.deepseek.com/chat/completions":"https://api.openai.com/v1/chat/completions";
+    const model=isDeepSeek?"deepseek-flash":"gpt-4.1-mini";
+    const response=await fetch(endpoint,{
+     method:"POST",headers:{Authorization:"Bearer "+key,"Content-Type":"application/json"},
+     body:JSON.stringify({model,stream:false,max_tokens:12,
+       ...(isDeepSeek?{thinking:{type:"disabled"}}:{}),
+       messages:[{role:"system",content:"Return the word OK only."},{role:"user",content:"Ping"}]}),
+     signal:AbortSignal.timeout(9000)
+    });
+    const status=response.status;
+    if(status===402)return {state:"insufficient_balance",http_status:status,
+      detail:"Kredit API tidak mencukupi. Tambah nilai di platform pembekal."};
+    if(status===401||status===403)return {state:"invalid_key",http_status:status,
+      detail:"Kunci API ditolak. Semak atau masukkan kunci baharu."};
+    if(status===429)return {state:"rate_limited",http_status:status,
+      detail:"Had penggunaan sementara dicapai. Cuba semula kemudian."};
+    if(!response.ok)return {state:"provider_error",http_status:status,
+      detail:"Pembekal memulangkan HTTP "+status+". Semak akaun atau parameter API."};
+    const data=await response.json().catch(()=>null);
+    const reply=String(data?.choices?.[0]?.message?.content||"").trim();
+    if(!reply)return {state:"no_reply",http_status:200,
+     detail:"API tersambung tetapi model tidak memberikan teks."};
+    return {state:"healthy",http_status:200,detail:"Ujian AI berjaya ("+model+")."};
+   }catch(e){
+    return {state:"unreachable",http_status:null,
+     detail:/timeout|abort/i.test(String(e))?
+      "Sambungan AI tamat masa.":
+      "Panggilan API gagal. Semak tetapan atau sambungan pembekal."};
+   }
+  };
+  // Read-only configuration and small synthetic pings. No customer content is sent.
+  const [{data:devices,error:devError},deepseek,openai]=await Promise.all([
+   db.from("lead_hub_codex_devices")
+    .select("is_active,supports_chat,last_seen_at"),
+   checkProvider("deepseek"),checkProvider("openai")
+  ]);
+  if(devError)throw devError;
+  const active=(devices||[]).filter((d:any)=>d.is_active&&
+   Date.parse(d.last_seen_at)>Date.now()-90000);
+  const capable=active.filter((d:any)=>d.supports_chat===true);
+  const codex=capable.length?
+   {state:"healthy",detail:"Codex Chat V4 aktif pada PC yang dipautkan."}:
+   active.length?
+    {state:"document_only",detail:"PC online tetapi worker belum melaporkan Chat V4. Restart 04_START_WORKER.cmd."}:
+    {state:"offline",detail:"Worker PC offline. Buka 04_START_WORKER.cmd pada PC."};
+  return out(req,{
+   ok:true,deepseek,openai,codex,
+   chat_ready:capable.length>0||deepseek.state==="healthy"||openai.state==="healthy",
+   check_type:"Ujian sintetik tanpa dokumen pelanggan",tested_at:new Date().toISOString()
+  });
+ }
  if(action==="telegram_link_code"){
   const conf=await config();if(!conf?.enabled||!conf?.bot_username)return fail(req,"Admin perlu sambungkan bot Telegram dahulu");
   const code=randomHex(12).toUpperCase();
