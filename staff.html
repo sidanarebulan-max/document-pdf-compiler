@@ -219,13 +219,24 @@
    <p id="telegramLinkStatus" class="muted small">Belum dipautkan.</p>
   </section>
  </div>
- <section class="innerpanel tg-guide"><h3>3. Arahan Dalam Telegram Chat</h3>
- <div class="tg-commands">
- <div><b>📁 Dokumen</b><code>/pelanggan NAMA</code><code>/peminjam</code><code>/penjamin</code><code>/rebate</code><code>/senarai</code><code>/kategori 2 IC</code><code>/siap</code><code>/padam</code></div>
- <div><b>🚘 VSO DRAF</b><code>/vso</code><p class="muted small">Bot minta butiran pelanggan, kereta dan pinjaman dalam 9 langkah, kemudian hantar PDF DRAF.</p></div>
- <div><b>📲 WhatsApp Lead</b><code>/daftar Nama | 0123456789 | Proton e.MAS 5 | YA</code><code>/baru</code><code>/ambil</code><code>/skrip intro</code><code>/skrip follow</code><code>/skrip price</code></div></div>
- <p class="muted small">Urutan: HIRER (VSO → IC → LESEN → PAYSLIP → BANK → OTHER) → GUARANTOR → COP REBATE. Fail kurang yakin mesti dibetulkan dengan /kategori sebelum /siap.</p>
- <p class="muted small">Fail PDF/JPG/PNG sahaja, ≤18 MB setiap fail, maksimum 15 fail bagi satu kes. VSO Telegram ialah DRAF, bukan format rasmi pengedar. Nombor lead kelihatan kepada admin melalui website.</p>
+ <section class="innerpanel tg-guide">
+  <div class="panelhead">
+    <div><h3>3. Arahan Bot Telegram — Versi Mudah</h3>
+     <p class="muted small">Buka kes sekali sahaja. Pilih kategori sekali dan terus hantarkan semua fail kategori itu. Bot ingat ID kes dan kategori sehingga ditukar.</p></div>
+    <button class="secondary" type="button" id="telegramSyncCommands">↻ Kemaskini Menu Bot</button>
+  </div>
+  <div class="tg-commands">
+   <div><b>1 · Buka pelanggan & bahagian</b>
+     <code>/pelanggan Nama Penuh</code><code>/peminjam</code><code>/penjamin</code><code>/rebate</code></div>
+   <div><b>2 · Pilih jenis dokumen</b>
+     <code>/ic</code><code>/bank</code><code>/gaji</code><code>/lesen</code>
+     <code>/sijil</code><code>/kerja</code><code>/vso</code><code>/lain</code></div>
+   <div><b>3 · Semak dan siapkan</b>
+     <code>/senarai</code><code>/siap</code><code>/kategori 2 IC</code><code>/padam</code>
+     <p class="muted small">Untuk hasilkan VSO DRAF baharu, guna <code>/buatvso</code>. Untuk nombor pelanggan, guna <code>/baru</code>, <code>/ambil</code> atau <code>/daftar</code>.</p></div>
+  </div>
+  <p class="muted small">Contoh: /pelanggan Ahmad → /bank → hantar 5 penyata bank → /gaji → hantar 3 slip gaji → /lesen → hantar gambar lesen → /senarai → /siap. Semua fail bawah satu ID kes.</p>
+  <p class="muted small">Susunan PDF dikekalkan mengikut bahagian dan kategori PDF Compiler. Bot menerima PDF/JPG/PNG sehingga 18 MB satu fail, maksimum 50 fail setiap kes dan 100 halaman PDF gabungan. Dokumen yang tidak dikelaskan secara manual dan masih diragui perlu disemak dahulu.</p>
  </section></section>
  <div class="metrics">
   <div class="metric"><span>Jumlah lead</span><strong id="metricTotal">0</strong></div>
@@ -329,5 +340,5 @@
 </div>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="/staff-passcode.js?v=telegram-20261026"></script>
-<script src="/telegram-hub.js?v=dual-ai-20261026"></script>
+<script src="/telegram-hub.js?v=simple-commands-20261026"></script>
 </body></html>
