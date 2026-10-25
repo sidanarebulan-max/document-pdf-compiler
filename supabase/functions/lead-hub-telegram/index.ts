@@ -818,7 +818,17 @@ async function processUpdate(update:any,conf:any,token:string){
    if(!file){await say(token,chat,"Cara: /kategori 2 IC (rujuk nombor dalam /senarai)");return}
    const allowed=file.party==="REBATE"?REBATE_TYPES:TYPES;
    if(!allowed.includes(cat)){await say(token,chat,"Kategori tidak sah untuk "+file.party+". Pilihan: "+allowed.join(", "));return}
-   await db.from("lead_hub_telegram_files").update({category:cat,confidence:1,needs_review:false,classification_method:"manual"}).eq("id",file.id);
+   const {error:fixError}=await db.from("lead_hub_telegram_files")
+    .update({category:cat,confidence:1,needs_review:false,classification_method:"manual"})
+    .eq("id",file.id).eq("case_id",c.id);
+   if(fixError)throw fixError;
+   // Save de-identified correction metrics for supervised improvements.
+   if(file.category!==cat){
+    await db.from("lead_hub_telegram_classification_feedback").insert({
+     account_id:account.id,case_id:c.id,original_category:file.category,
+     confirmed_category:cat,source_method:file.classification_method
+    });
+   }
    await say(token,chat,"✅ KATEGORI DIKEMAS KINI\nFail #"+n+" → "+(DOC_NAMES[cat]||cat)+
    "\nPelanggan: "+c.customer_name+"\nSemak: /senarai");return;
   }
