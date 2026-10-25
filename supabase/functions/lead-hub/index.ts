@@ -213,24 +213,47 @@ async function handler(req:Request):Promise<Response> {
     return response(req,{ok:true});
   }
   if(a.role!=="admin")return error(req,"Hanya admin dibenarkan",403);
-  if(action==="change_my_passcode"){
+  if(action==="change_my_credentials"||action==="change_my_passcode"){
+    // Existing administrator proves knowledge of the current passcode before changing identity.
+    // Both ID and passcode are optional individually, but at least one must change.
     const old=String(body.old_passcode||"").trim().toUpperCase();
+    const newId=action==="change_my_passcode"?a.staff_code:
+      String(body.new_staff_id||a.staff_code).trim().toUpperCase();
     const fresh=String(body.new_passcode||"").trim().toUpperCase();
-    if(!/^[A-Z0-9-]{10,32}$/.test(fresh)||!/[A-Z]/.test(fresh)||!/[0-9]/.test(fresh))
-      return error(req,"Passcode baharu mesti 10–32 aksara, dengan huruf dan nombor",400);
-    if(fresh===old)return error(req,"Passcode baharu mesti berbeza daripada yang lama",400);
-    const {data:mine,error:me}=await db.from("lead_hub_accounts").select("pass_salt,pass_hash").eq("id",a.id).single();
-    if(me||!mine)throw me||new Error("Account not found");
+    if(!/^[A-Z][A-Z0-9-]{3,19}$/.test(newId))
+      return error(req,"ID Admin mesti 4 hingga 20 aksara, bermula dengan huruf, hanya huruf/nombor/sengkang",400);
+    if(fresh&&(!/^[A-Z0-9-]{10,32}$/.test(fresh)||!/[A-Z]/.test(fresh)||!/[0-9]/.test(fresh)))
+      return error(req,"Passcode baharu mesti 10–32 aksara, termasuk huruf dan nombor",400);
+    if(newId===a.staff_code&&!fresh)
+      return error(req,"Ubah ID atau isi passcode baharu untuk menyimpan",400);
+    if(fresh===old)
+      return error(req,"Passcode baharu mesti berbeza daripada passcode lama",400);
+    if(!old)return error(req,"Masukkan passcode semasa untuk pengesahan",400);
+    const {data:mine,error:me}=await db.from("lead_hub_accounts")
+      .select("staff_code,pass_salt,pass_hash").eq("id",a.id).eq("role","admin").single();
+    if(me||!mine)throw me||new Error("Akaun admin tidak ditemukan");
     if(!eqConstant(await derive(old,mine.pass_salt),mine.pass_hash))
-      return error(req,"Passcode lama tidak tepat",403);
-    const salt=randomHex(16);
-    const {error:pe}=await db.from("lead_hub_accounts").update({
-      pass_salt:salt,pass_hash:await derive(fresh,salt),failed_attempts:0,locked_until:null
-    }).eq("id",a.id);
+      return error(req,"Passcode semasa tidak tepat",403);
+    const changes:Record<string,any>={failed_attempts:0,locked_until:null};
+    if(newId!==mine.staff_code)changes.staff_code=newId;
+    if(fresh){
+      const salt=randomHex(16);
+      changes.pass_salt=salt;
+      changes.pass_hash=await derive(fresh,salt);
+    }
+    const {data:updated,error:pe}=await db.from("lead_hub_accounts")
+      .update(changes).eq("id",a.id).eq("pass_hash",mine.pass_hash)
+      .select("staff_code").maybeSingle();
+    if(pe?.code==="23505")return error(req,"ID Admin ini sudah digunakan. Pilih ID lain.",409);
     if(pe)throw pe;
+    if(!updated)return error(req,"Butiran akaun telah berubah. Refresh dan cuba lagi.",409);
+    // Revoke sessions on other devices but preserve the active verified session.
     const currentToken=String(req.headers.get("Authorization")||"").replace(/^Bearer\s+/i,"").trim();
-    await db.from("lead_hub_sessions").delete().eq("account_id",a.id).neq("token_hash",await sha256(currentToken));
-    return response(req,{ok:true});
+    const {error:se}=await db.from("lead_hub_sessions")
+      .delete().eq("account_id",a.id).neq("token_hash",await sha256(currentToken));
+    if(se)console.error("Other session revocation:",se.message);
+    return response(req,{ok:true,staff_code:updated.staff_code,
+      id_changed:updated.staff_code!==mine.staff_code,passcode_changed:Boolean(fresh)});
   }
   if(action==="create_staff"){
     const name=String(body.name||"").trim().slice(0,100);
