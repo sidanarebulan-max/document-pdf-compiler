@@ -52,6 +52,17 @@ export function parseNatural(raw,context={}){
     /^(?:jangan\s+(?:padam|buang)(?:\s+(?:dulu|lagi))?|tak\s+payah\s+(?:padam|buang))$/i.test(t))
   return {kind:"cancel_delete"};
  if(/^(?:padam|buang)\s+(?:kes|folder|semua\s+fail|semua\s+dokumen)\s*(?:ini|sekarang)?$/.test(t))return {kind:"delete_case"};
+ // Starting a customer's document case is a conversation, not an obscure / command.
+ // These phrases only open a name prompt; they never overwrite/delete an existing case.
+ if(/^(?:(?:new|next|start|star|mula|mulakan|buka|buat|create|add|tambah|nak|saya nak|aku nak)\s+)*(?:customer|cust|pelanggan|client|kes|case|folder)(?:\s+(?:new|baru|baharu))?$/.test(t)||
+   /^(?:new|next|start|star|customer baru|pelanggan baru|kes baru|buka kes baru|mula pelanggan baru|start customer baru|star customer baru|buat customer baru|next customer)$/i.test(t))
+  return {kind:"new_customer"};
+ const nextName=t.match(/^(?:sambung|buka semula|resume|switch|tukar ke|kembali ke)\s+(?:kes|folder|customer|pelanggan)\s+(.+)$/i);
+ if(nextName){
+  const name=original.slice(original.length-nextName[1].length).trim();
+  if(name.length>=2&&name.length<=120&&!/[\n|\\/]/.test(name)&&!/\d{5,}/.test(name))
+   return {kind:"switch_customer",name};
+ }
  if(/^(?:hi|hello|hai|helo|assalamualaikum|salam|selamat pagi|selamat petang|selamat malam|terima kasih|thanks|tq)$/i.test(t))return {kind:"greeting"};
  if(/^(?:menu|help|bantuan|tolong|cara guna|apa fungsi bot|macam mana guna|apa yang bot boleh buat)$/i.test(t))return {kind:"route",command:"/menu"};
  if(/^(?:batal vso|cancel vso|stop vso)$/i.test(t))return {kind:"route",command:"/batal"};
