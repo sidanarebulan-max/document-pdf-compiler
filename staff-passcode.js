@@ -23,6 +23,7 @@ function notice(id,text,error=false){
 function viewAuth(){
  $("authSection").classList.remove("hide");$("appSection").classList.add("hide");$("signoutBtn").classList.add("hide");
  $("messageSettingsBtn").classList.add("hide");$("messageSettingsPanel").classList.add("hide");
+ $("adminCredentialsShortcut").classList.add("hide");
 }
 function credentials(id,passcode){
  $("createdStaffId").textContent=id;
@@ -65,6 +66,8 @@ async function showApp(){
  $("authSection").classList.add("hide");$("appSection").classList.remove("hide");
  $("signoutBtn").classList.remove("hide");
  $("messageSettingsBtn").classList.remove("hide");
+ $("adminCredentialsShortcut").classList.toggle("hide",user.role!=="admin");
+ if(user.role==="admin")$("newAdminId").value=user.staff_code;
  $("adminMessageScope").classList.toggle("hide",user.role!=="admin");
  $("messageScope").value=user.role==="admin"?"team":"personal";
  $("currentName").textContent=user.display_name;
@@ -341,15 +344,36 @@ async function toggleStaff(id,active){
 }
 async function changeAdminPass(e){
  e.preventDefault();const button=$("changeAdminBtn");button.disabled=true;
+ const status=$("adminCredentialStatus");
+ status.textContent="";
  try{
-  await call("change_my_passcode",{
-   old_passcode:$("oldAdminPass").value.trim(),
-   new_passcode:$("newAdminPass").value.trim()
+  const newId=$("newAdminId").value.trim().toUpperCase();
+  const oldPass=$("oldAdminPass").value.trim();
+  const newPass=$("newAdminPass").value.trim();
+  if(!/^[A-Z][A-Z0-9-]{3,19}$/.test(newId)){
+   status.textContent="ID admin mesti 4 hingga 20 aksara dan bermula dengan huruf.";return;
+  }
+  if(newId===user.staff_code&&!newPass){
+   status.textContent="Tukar ID atau isi passcode baharu dahulu.";return;
+  }
+  if(newPass&&(!/^[A-Za-z0-9-]{10,32}$/.test(newPass)||!/[A-Za-z]/.test(newPass)||!/[0-9]/.test(newPass))){
+   status.textContent="Passcode baharu mesti 10–32 aksara, termasuk huruf dan nombor.";return;
+  }
+  const r=await call("change_my_credentials",{
+   new_staff_id:newId,old_passcode:oldPass,new_passcode:newPass
   });
+  user.staff_code=r.staff_code;
+  $("currentCode").textContent=user.staff_code;
   $("adminPassForm").reset();
-  notice("appNotice","Passcode admin berjaya ditukar. Gunakan passcode baharu pada masa hadapan.");
- }catch(err){notice("appNotice","Gagal tukar passcode: "+err.message,true)}
- finally{button.disabled=false}
+  $("newAdminId").value=user.staff_code;
+  status.textContent=(r.id_changed?"ID Admin berjaya ditukar. ":"")+
+    (r.passcode_changed?"Passcode baharu berjaya disimpan. ":"")+
+    "Gunakan maklumat terkini semasa login seterusnya.";
+  notice("appNotice","Maklumat akaun admin berjaya dikemas kini.");
+ }catch(err){
+  status.textContent="Tidak berjaya: "+err.message;
+  notice("appNotice","Gagal ubah ID / passcode admin: "+err.message,true);
+ }finally{button.disabled=false}
 }
 async function addLead(e){
  e.preventDefault();const p=normalizePhone($("addPhone").value);
@@ -425,6 +449,11 @@ function wireEvents(){
  $("loginForm").addEventListener("submit",login);
  $("signoutBtn").addEventListener("click",logout);
  $("messageSettingsBtn").addEventListener("click",()=>toggleMessageSettings());
+ $("adminCredentialsShortcut").addEventListener("click",()=>{
+   if(!user||user.role!=="admin")return;
+   $("adminPassForm").scrollIntoView({behavior:"smooth",block:"center"});
+   $("newAdminId").focus({preventScroll:true});
+ });
  $("closeMessageSettingsBtn").addEventListener("click",()=>toggleMessageSettings(false));
  $("messageScope").addEventListener("change",syncMessageEditor);
  $("settingsTemplateKind").addEventListener("change",syncMessageEditor);
