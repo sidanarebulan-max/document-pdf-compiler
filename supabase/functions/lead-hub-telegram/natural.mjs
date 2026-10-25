@@ -14,6 +14,8 @@ export function parseNatural(raw){
   return fixed!==original?{kind:"route",command:fixed}:{kind:"legacy"};
  }
  const t=original.toLowerCase().replace(/[?!.,]+$/g,"").replace(/\s+/g," ").trim();
+ // Questions about *how* to delete should not start a destructive flow.
+ if(/^(?:macam mana|bagaimana|how to|boleh ke|bolehkah|cara)\b/i.test(t) && /\b(buang|padam|delete)\b/i.test(t))return {kind:"chat"};
  const m=t.match(/(?:^|\s)(?:no|nombor|fail|file|dokumen)\s*(?:ke[-\s]*)?(\d{1,2}|satu|dua|tiga|empat|lima|enam|tujuh|lapan|sembilan|sepuluh)\s*(?:hingga|sampai|ke|dan|-)\s*(\d{1,2}|satu|dua|tiga|empat|lima|enam|tujuh|lapan|sembilan|sepuluh)/);
  const deleteAction=/\b(buang|padam|delete|remove)\b/.test(t);
  if(deleteAction&&m){
