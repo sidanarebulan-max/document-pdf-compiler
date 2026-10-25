@@ -190,3 +190,17 @@ Modul awal `staff.js` dan jadual `sales_*` menggunakan Supabase Auth e-mel. Modu
 - Versi Edge Function `lead-hub-codex` v4 dan `lead-hub-telegram` v14 diterbitkan.
 - Contoh khusus dari gambar: "siapkan baki nya jadi satu file" → `/siap`; teks menyenaraikan 1,2,3,4 untuk dibuang → senarai fail khusus + permintaan pengesahan; "fail 1 IC" → `/kategori 1 IC`.
 - Semakan sebenar Codex Chat V4 pada komputer pengguna masih belum dilaksanakan sehingga pemasang V4 dipasang. Uji dengan kes dummy dahulu.
+
+## Telegram V17 — Bahasa biasa, konteks tindakan, pembelajaran selamat (26 Oktober 2026)
+
+**Masalah sebenar:** pengguna menaip `senarai document yang ada sekarang` selepas memadam dokumen; penghala lama menganggapnya perbualan bebas lalu memberikan jawapan umum dan bukan menyemak database.
+
+**Perubahan yang diterbitkan:**
+- `natural.mjs`: padanan makna baca-sahaja (senarai dan status) yang lebih fleksibel, termasuk `document(s)`, `dokumen`, `files`, `fail`, `pdf`, `baki`, `masih ada` dan `sekarang`. Kata kerja senarai/list/tunjuk/papar serta soalan inventori dikendalikan sebelum AI bebas. Arahan padam tidak tersalah masuk laluan ini.
+- `lead_hub_telegram_action_context`: memori tindakan sebelumnya mengikut Telegram user, FARIS account, private chat dan tarikh (maksimum 24 jam), membolehkan pertanyaan ringkas seperti `apa yang tinggal?` selepas padam dokumen.
+- `lead_hub_telegram_intent_aliases`: hanya cache padanan `list`/`status`/`help` yang diberikan keyakinan AI tinggi (>=0.93). Disimpan sebagai fingerprint SHA-256 bersalut rahsia server, **bukan teks asal**; digunakan semula sebagai tindakan baca-sahaja sahaja, dan tidak pernah meluluskan pemadaman atau penghantaran mesej.
+- Setelah penghapusan dokumen disahkan, konteks diberi nilai `delete_files`. Jika `senarai` dipanggil dengan folder kosong, bot menjawab jumlah **0 fail** secara jelas, bukannya mesej bantuan umum. Pembukaan folder baharu mengosongkan konteks tindakan pelanggan lama.
+- Pertanyaan biasa terus ditangani oleh penghala deterministik tanpa melibatkan model (respons pantas dan kos rendah). Soalan umum yang tidak jelas masih menggunakan AI tersambung. Kod **tidak** melatih semula model AI secara autonomi; ia meningkatkan kefahaman melalui penambahan pola dan maklum balas terkawal.
+- Jadual baharu dilindungi RLS dan hanya service_role boleh baca/tulis. Jangan simpan perbualan mentah atau PII dalam jadual alias.
+- Unit tests: 17 variasi termasuk `senarai document yang ada sekarang`, `list semua file sekarang`, `yang tinggal apa` selepas padam, `berapa fail dah masuk`, `no 1 sampai 4 buang`, `ya padam terus`, `siapkan baki ni jadi satu file`: semua lulus.
+- Edge function `lead-hub-telegram` v17 diterbitkan dan ACTIVE. Ujian chat Telegram sebenar belum dilaksanakan melalui tool ini; guna kes dummy untuk pengesahan. Tiada dokumen pelanggan dipadam semasa ujian.
