@@ -185,6 +185,12 @@
    <input id="telegramBotToken" type="password" autocomplete="new-password" placeholder="123456789:AA..." required>
    <div class="tg-actions"><button id="telegramConnect" type="submit" class="primary">Sambung &amp; Aktifkan Bot</button><button class="secondary" id="telegramDisconnect" type="button">Putus Sambungan</button></div></form>
    <div class="divider-tg"></div>
+   <div id="telegramAIDiagnostics" class="innerpanel">
+    <h3>🧪 Pemeriksaan AI Telegram</h3>
+    <p class="muted small">Kunci API disimpan tidak semestinya bermakna AI boleh menjawab. Uji kredit DeepSeek, akses OpenAI dan sambungan Codex Chat V4. Ujian hanya menghantar perkataan ringkas kepada pembekal AI, tanpa data pelanggan; caj API minimum mungkin dikenakan jika sambungan berjaya.</p>
+    <button id="telegramTestAI" class="secondary" type="button">🧪 Uji AI Sekarang</button>
+    <pre id="telegramAIHealthResults" style="white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;font-size:0.86rem;line-height:1.6;margin-top:12px">Belum diuji. Klik Uji AI untuk lihat masalah sebenar.</pre>
+   </div>
    <h3>🤖 AI Scan — OpenAI + DeepSeek</h3>
    <p class="muted small">Dua sambungan AI berasingan. OpenAI menyokong PDF dan imej; DeepSeek Flash menyokong imej JPG/PNG. Kedua-duanya boleh digunakan sebagai pilihan utama atau sandaran.</p>
    <div class="tg-provider-grid">
@@ -373,5 +379,5 @@
 </div>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="/staff-passcode.js?v=telegram-20261026"></script>
-<script src="/telegram-hub.js?v=telegram-buttons-repair-20261026"></script>
+<script src="/telegram-hub.js?v=faris-ai-diagnostic-20261026"></script>
 </body></html>
