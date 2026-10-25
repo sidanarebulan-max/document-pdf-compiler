@@ -43,9 +43,41 @@ async function say(token:string,chat:number|string,text:string,more:Record<strin
  return telegramCall(token,"sendMessage",{chat_id:chat,text:text.slice(0,3900),link_preview_options:{is_disabled:true},...more});
 }
 function normalPhone(raw:any){let v=String(raw??"").replace(/[^\d+]/g,"").replace(/^\+/,"");if(v.startsWith("0"))v="6"+v;else if(v.startsWith("1"))v="60"+v;return /^601\d{8,9}$/.test(v)?v:null}
-const TYPES=["VSO","IC","LESEN","PAYSLIP","BANK","OTHER"];
-const REBATE_TYPES=["IC_FRONT","IC_BACK","LESEN","SURAT_KERJA","SIJIL_LAHIR","SIJIL_NIKAH","OTHER"];
-const RANK:{[k:string]:number}={VSO:1,IC:2,LESEN:3,PAYSLIP:4,BANK:5,OTHER:6,IC_FRONT:1,IC_BACK:2,SURAT_KERJA:4,SIJIL_LAHIR:5,SIJIL_NIKAH:6};
+const TYPES=["VSO","IC","IC_FRONT","IC_BACK","LESEN","PAYSLIP","BANK","SURAT_KERJA","SIJIL_LAHIR","SIJIL_NIKAH","SIJIL","OTHER"];
+const REBATE_TYPES=["VSO","IC","IC_FRONT","IC_BACK","LESEN","PAYSLIP","BANK","SURAT_KERJA","SIJIL_LAHIR","SIJIL_NIKAH","SIJIL","OTHER"];
+const RANK:{[k:string]:number}={VSO:1,IC:2,IC_FRONT:2,IC_BACK:2,LESEN:3,PAYSLIP:4,BANK:5,SURAT_KERJA:6,SIJIL_LAHIR:7,SIJIL_NIKAH:8,SIJIL:9,OTHER:10};
+const DOC_COMMANDS:Record<string,string>={
+ "/ic":"IC","/bank":"BANK","/gaji":"PAYSLIP","/lesen":"LESEN",
+ "/sijil":"SIJIL","/kerja":"SURAT_KERJA","/vso":"VSO","/lain":"OTHER"
+};
+const DOC_NAMES:Record<string,string>={
+ VSO:"VSO",IC:"Kad pengenalan (IC)",IC_FRONT:"IC depan",IC_BACK:"IC belakang",
+ BANK:"Penyata bank",PAYSLIP:"Slip gaji",LESEN:"Lesen memandu",
+ SIJIL:"Sijil",SIJIL_LAHIR:"Sijil lahir",SIJIL_NIKAH:"Sijil nikah",
+ SURAT_KERJA:"Surat kerja",OTHER:"Dokumen lain"
+};
+function chosenCategory(category:string,party:string,filename:string){
+ const normalized=filename.toLowerCase().replace(/[_-]/g," ");
+ if(category==="SIJIL"){
+  if(/(?:lahir|birth)/.test(normalized))return "SIJIL_LAHIR";
+  if(/(?:nikah|kahwin|marriage)/.test(normalized))return "SIJIL_NIKAH";
+ }
+ if(category==="IC"&&party==="REBATE"){
+  if(/(?:depan|front)/.test(normalized))return "IC_FRONT";
+  if(/(?:belakang|back)/.test(normalized))return "IC_BACK";
+ }
+ return category;
+}
+function caseSummary(c:any){
+ return "👤 "+c.customer_name+"\n🆔 Kes: "+String(c.id||"").slice(0,8).toUpperCase()+
+ "\n📁 Bahagian: "+c.active_party;
+}
+function docCategoryGuide(){
+ return "📂 PILIH JENIS DOKUMEN\n"+
+ "/ic — Kad pengenalan\n/bank — Penyata bank\n/gaji — Slip gaji\n/lesen — Lesen\n/sijil — Sijil nikah atau lahir\n/kerja — Surat kerja\n/vso — Fail VSO\n/lain — Dokumen lain\n\n"+
+ "Pilih sekali, kemudian hantar semua fail kategori itu satu demi satu.\n"+
+ "Untuk jana VSO baharu: /buatvso";
+}
 const PARTY:{[k:string]:number}={HIRER:0,GUARANTOR:1,REBATE:2};
 const VARIANTS:{[k:string]:{label:string;base:number;fees:number;year:string}}={
  EMAS5_PRIME_2026:{label:"e.MAS 5 Prime",base:62600,fees:3278,year:"2026"},
@@ -83,9 +115,12 @@ async function cover(doc:PDFDocument,heading:string,customer:string,sub:string){
 }
 async function makeMergedPdf(caseRow:any,files:any[]){
  const orderFor=(file:any)=>file.party==="REBATE"
-  ?({IC_FRONT:1,IC_BACK:2,LESEN:3,SURAT_KERJA:4,SIJIL_LAHIR:5,SIJIL_NIKAH:6,OTHER:7}[file.category as "OTHER"]||99)
+  ?({IC_FRONT:1,IC:1,IC_BACK:2,LESEN:3,SURAT_KERJA:4,SIJIL_LAHIR:5,SIJIL_NIKAH:6,SIJIL:7,BANK:8,PAYSLIP:9,VSO:10,OTHER:11}[file.category as "OTHER"]||99)
   :(RANK[file.category]||99);
- const sorted=[...files].sort((a,b)=>(PARTY[a.party]-PARTY[b.party])||(orderFor(a)-orderFor(b))||a.created_at.localeCompare(b.created_at));
+ const sorted=[...files].sort((a,b)=>(PARTY[a.party]-PARTY[b.party])||
+  (orderFor(a)-orderFor(b))||
+  ((a.telegram_message_id??0)-(b.telegram_message_id??0))||
+  a.created_at.localeCompare(b.created_at));
  const pdf=await PDFDocument.create();let lastParty="",pages=0;
  for(const item of sorted){
   if(item.party!==lastParty&&(item.party==="GUARANTOR"||item.party==="REBATE")){
@@ -300,7 +335,7 @@ async function handleWizard(token:string,chat:number,telegramId:number,account:a
      }
    }
    await db.from("lead_hub_telegram_wizards").delete().eq("telegram_user_id",telegramId);
-  }catch(e){await say(token,chat,"VSO tidak dapat dijana: "+String(e instanceof Error?e.message:e)+"\n/batal untuk berhenti, /vso untuk mula semula.");
+  }catch(e){await say(token,chat,"⚠️ VSO tidak dapat dijana: "+String(e instanceof Error?e.message:e)+"\nTaip /buatvso untuk mula semula.");
    await db.from("lead_hub_telegram_wizards").delete().eq("telegram_user_id",telegramId);
   }
  }return true;
@@ -322,7 +357,10 @@ async function handleDoc(token:string,conf:any,chat:number,account:any,message:a
  if(Number(info.file_size||0)>18*1024*1024){await say(token,chat,"Fail melebihi 18 MB. Gunakan Document Compiler web untuk fail besar.");return}
  const {count,error:countError}=await db.from("lead_hub_telegram_files").select("id",{head:true,count:"exact"}).eq("case_id",c.id);
  if(countError)throw countError;
- if((count||0)>=15){await say(token,chat,"Maksimum 15 fail satu kes Telegram. Taip /siap dahulu.");return}
+ if((count||0)>=50){await say(token,chat,"⚠️ Had satu kes ialah 50 fail. Taip /senarai untuk semak dan /siap untuk jana PDF (maksimum 100 halaman).");return}
+ const {data:alreadySeen}=await db.from("lead_hub_telegram_files").select("id")
+  .eq("case_id",c.id).eq("telegram_message_id",Number(message.message_id)).maybeSingle();
+ if(alreadySeen)return;
  const file=await telegramCall(token,"getFile",{file_id:fileId});
  if(!file.file_path||Number(file.file_size||0)>20*1024*1024)throw Error("Telegram tidak membenarkan fail ini dimuat turun");
  const res=await fetch("https://api.telegram.org/file/bot"+token+"/"+file.file_path);
@@ -338,19 +376,36 @@ async function handleDoc(token:string,conf:any,chat:number,account:any,message:a
  const key=account.id+"/"+c.id+"/"+id+"."+extension;
  const {error:upError}=await db.storage.from(BUCKET).upload(key,bytes,{contentType:realMime,upsert:false});
  if(upError)throw upError;
- let cls:any=await classifyWithAI(conf,bytes,realMime,filename,c.active_party);
- if(!cls){const category=categoryByName(filename+" "+String(message.caption||""),c.active_party);cls={category,confidence:category==="OTHER"?0.15:0.7,method:"filename"}}
+ let cls:any=null;
+ if(c.active_category){
+  // Explicit staff command applies to every attachment until a new command.
+  cls={category:chosenCategory(c.active_category,c.active_party,filename+" "+String(message.caption||"")),
+    confidence:1,method:"staff_command"};
+ }else{
+  cls=await classifyWithAI(conf,bytes,realMime,filename,c.active_party);
+  if(!cls){const category=categoryByName(filename+" "+String(message.caption||""),c.active_party);
+   cls={category,confidence:category==="OTHER"?0.15:0.7,method:"filename"}}
+ }
  if(c.active_party==="REBATE"&&!REBATE_TYPES.includes(cls.category))cls={category:"OTHER",confidence:.1,method:"fallback"};
  if(c.active_party!=="REBATE"&&!TYPES.includes(cls.category))cls={category:"OTHER",confidence:.1,method:"fallback"};
- const review=cls.confidence<.85||cls.category==="OTHER";
+ const review=cls.method==="staff_command"?false:(cls.confidence<.85||cls.category==="OTHER");
  const {error:ie}=await db.from("lead_hub_telegram_files").insert({
   id,case_id:c.id,storage_path:key,original_name:filename,mime_type:realMime,source_file_id:fileId,
-  party:c.active_party,category:cls.category,confidence:cls.confidence,needs_review:review,classification_method:cls.method
+  party:c.active_party,category:cls.category,confidence:cls.confidence,needs_review:review,
+  classification_method:cls.method,telegram_message_id:Number(message.message_id)
  });
- if(ie){await db.storage.from(BUCKET).remove([key]);throw ie}
+ if(ie){await db.storage.from(BUCKET).remove([key]);
+  if(ie.code==="23505")return;
+  throw ie}
  const {count:total}=await db.from("lead_hub_telegram_files").select("id",{head:true,count:"exact"}).eq("case_id",c.id);
- await say(token,chat,"📎 Fail diterima #"+total+"\nPelanggan: "+c.customer_name+"\nBahagian: "+c.active_party+"\nKategori: "+cls.category+(review?" ⚠️ Perlu semak (/kategori "+total+" KATEGORI)":" ✅ Disahkan oleh pengelasan")+
- "\nHantar lagi fail, kemudian taip /senarai atau /siap.");
+ const inGroup=(await db.from("lead_hub_telegram_files").select("id",{count:"exact",head:true})
+  .eq("case_id",c.id).eq("party",c.active_party).eq("category",cls.category)).count||0;
+ await say(token,chat,"✅ DOKUMEN DITERIMA\n"+
+ "👤 "+c.customer_name+"\n"+
+ "📁 "+c.active_party+"  •  "+(DOC_NAMES[cls.category]||cls.category)+"\n"+
+ "📎 Kategori ini: "+inGroup+" fail  |  Kes ini: "+total+" fail"+
+ (review?"\n⚠️ Kategori kurang pasti. Semak /senarai dan betulkan melalui /kategori.":"\n✔️ Kategori telah ditetapkan.")+
+ "\n\nHantar lagi fail, pilih kategori lain, atau /siap.");
 }
 async function linkedTelegramAccount(id:number){
  const {data:link}=await db.from("lead_hub_telegram_links").select("*").eq("telegram_user_id",id).maybeSingle();
