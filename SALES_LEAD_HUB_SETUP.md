@@ -79,3 +79,39 @@ Modul awal `staff.js` dan jadual `sales_*` menggunakan Supabase Auth e-mel. Modu
 - Semasa login seterusnya gunakan ID/passcode baharu. Jangan kongsi passcode admin dengan staf.
 - Akaun staf **sudah** boleh diberikan ID dan passcode tersuai oleh admin dalam kotak `Cipta ID & passcode staf`, dan tidak memerlukan e-mel.
 - Endpoint `change_my_credentials` hanya boleh dipanggil oleh admin yang memiliki sesi sah dan membuktikan passcode semasa; perubahan disimpan di `lead_hub_accounts`. Ralat konflik ID akan memulangkan kod 409.
+
+## Integrasi Telegram Bot — 26 Oktober 2026
+
+### Sambung bot kali pertama
+1. Buka `https://document-pdf-compiler.vercel.app/staff.html` dan login **Admin**.
+2. Klik **✈ Telegram Bot** pada menu atas.
+3. Buka `@BotFather` dalam Telegram, taip `/newbot`, tetapkan nama dan username bot.
+4. Salin token sekali ke ruang **Bot API Token**, klik **Sambung & Aktifkan Bot**. Token disulitkan di server dan disimpan dalam jadual berkawalan RLS, bukan GitHub.
+5. Admin/staf masing-masing klik **Jana Kod Pautan**, kemudian buka pautan `t.me/BotName?start=...`. Kod hanya sekali guna dan tamat selepas 10 minit.
+6. Untuk pengelasan AI, admin boleh memasukkan **OpenAI API Key** di panel pilihan. Ini memproses kandungan dokumen pelanggan melalui OpenAI, jadi wajib ada kebenaran/pematuhan privasi. Jika tiada API key, bot tetap mengelaskan mengikut nama fail tetapi menandakan dokumen untuk semakan manual.
+
+### Arahan Telegram
+- `/menu` : Bantuan.
+- `/pelanggan NAMA PENUH` : Buka kes dokumen bagi nama pelanggan; kini bahagian HIRER.
+- `/peminjam`, `/penjamin`, `/rebate` : Pilih bahagian untuk fail seterusnya.
+- Kongsi PDF/JPG/PNG daripada WhatsApp ke bot Telegram secara **manual**. Bot tidak membaca WhatsApp pelanggan secara automatik.
+- `/senarai` : Lihat klasifikasi semua fail dan nombornya.
+- `/kategori 2 IC` : Set kategori fail kedua; kategori mesti antara yang dibenarkan dalam PDF Compiler. Fail berkategori tidak pasti wajib diperiksa supaya susunan tidak salah.
+- `/siap` : Gabungkan mengikut HIRER VSO→IC→LESEN→PAYSLIP→BANK→OTHER, kemudian GUARANTOR, kemudian REBATE IC_FRONT→IC_BACK→LESEN→SURAT_KERJA→SIJIL_LAHIR→SIJIL_NIKAH→OTHER, dan hantar PDF akhir ke chat Telegram.
+- `/padam` : Padam kes belum siap atau kes terakhir yang lengkap bersama fail storan yang berkaitan.
+- `/vso` : Mulakan wizard 9 butiran (nama, IC, telefon, varian, tahun, warna, pinjaman, alamat, markup). Draf PDF VSO dihantar ke Telegram, dan turut dimasukkan ke kes aktif jika nama pelanggan sepadan. Data rujukan VSO sesuai untuk semakan, bukan harga pengedar yang disahkan.
+- `/daftar Nama | 0123456789 | Proton e.MAS 5 | YA` : Cipta lead menggunakan nombor Malaysia; `YA` ialah pengesahan kebenaran pelanggan untuk dihubungi. Lead staf dipaut kepada staf; admin dapat melihatnya selepas refresh.
+- `/baru` : Hantar 5 lead baharu yang ditugaskan, bersama butang pautan WhatsApp dan mesej siap taip berdasarkan template intro/follow/price sedia ada. Admin boleh melihat semua lead baharu.
+- `/ambil` : Staf mengambil satu lead belum diagih melalui RPC atomik sedia ada.
+- `/skrip intro`, `/skrip follow`, `/skrip price` : Pilih jenis skrip untuk pautan WhatsApp bot.
+- `/batal` : Batal wizard VSO semasa.
+
+### Batasan dan keselamatan
+- Token Telegram dan OpenAI disulitkan pada server menggunakan AES-GCM berdasarkan secret server; browser hanya menghantar melalui HTTPS. Jangan log atau dedahkan token sebenar.
+- Webhook Telegram menggunakan `secret_token` dengan hash, dan tiap update dideduplikasi melalui `update_id`.
+- Staf perlu dipautkan secara eksplisit dan akaun FARIS mesti aktif. Telegram hanya menerima private chat; group chat tidak mendapat akses.
+- Dokumen terhad PDF/PNG/JPG maksimum **18 MB/fail**, **15 fail/kes**, dan PDF output maksimum 45 MB / 100 halaman. Guna Document Compiler web untuk format lain atau fail besar.
+- Fail disimpan pada bucket Supabase Storage **private**. Padam dengan `/padam` apabila tidak lagi diperlukan. Tiada dasar pemadaman automatik dipasang dalam versi awal.
+- VSO dalam chat ialah **DRAF** yang dijana programatik, tidak sama persis dengan templat asal VSO di website. Jangan guna sebagai VSO rasmi sebelum semakan dan pengesahan pengedar.
+- Tiada penghantaran WhatsApp secara automatik atau semakan `sent=true`. Pautan WhatsApp hanya pra-isi teks, staf masih perlu tekan **Send**.
+- Integrasi belum boleh diuji sepenuhnya sehingga admin memasukkan token BotFather dan staf memautkan akaun. Selepas konfigurasi, jalankan ujian menggunakan fail dummy/tiada data peribadi terlebih dahulu.
