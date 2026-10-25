@@ -10,7 +10,7 @@ const normalizePhone=value=>{
  if(p.startsWith("0"))p="6"+p;else if(p.startsWith("1"))p="60"+p;
  return /^601\d{8,9}$/.test(p)?p:null;
 };
-let token=localStorage.getItem(SESSION_KEY)||"",user=null,leads=[],staff=[],busy=false;
+let token=localStorage.getItem(SESSION_KEY)||"",user=null,leads=[],staff=[],busy=false,availableCount=0,expandedLeadId=null;
 function notice(id,text,error=false){
  const el=$(id);el.textContent=text;el.classList.remove("hide");el.classList.toggle("error",error);
 }
@@ -73,8 +73,10 @@ async function reload(){
  $("listMessage").textContent="Memuatkan lead...";
  try{
   const r=await call("list");
-  leads=r.leads||[];staff=r.staff||[];
+  leads=r.leads||[];staff=r.staff||[];availableCount=Number(r.available_count)||0;
   metrics();renderLeads();renderRoster();
+  $("lastRefresh").textContent="Dikemas kini: "+new Date().toLocaleTimeString("ms-MY",{hour:"2-digit",minute:"2-digit"});
+  $("queueCount").textContent=user.role==="staff"?(availableCount?availableCount+" nombor tambahan belum diagih. Tekan 'Ambil nombor belum diagih' untuk dapatkan satu.":"Nombor baharu yang diagihkan oleh admin akan muncul selepas Refresh."):"";
  }catch(e){$("listMessage").textContent="Gagal memuatkan senarai: "+e.message;notice("appNotice",e.message,true)}
  finally{busy=false;$("refreshBtn").disabled=false}
 }
@@ -105,7 +107,7 @@ function openWorkspace(tool,leadId=null){
  if(leadId){
   const lead=leads.find(x=>x.id===leadId);
   if(!lead){notice("appNotice","Lead ini tidak lagi tersedia dalam senarai anda.",true);return}
-  if(!/^601\\d{8,9}$/.test(String(lead.phone_e164||""))){
+  if(!/^601\d{8,9}$/.test(String(lead.phone_e164||""))){
    notice("appNotice","Nombor pelanggan tidak sah. Semak dengan admin dahulu.",true);return;
   }
   sessionStorage.setItem(HANDOFF_KEY,JSON.stringify({
@@ -123,32 +125,60 @@ function renderLeads(){
   [l.customer_name,l.phone_e164,l.model,l.notes].some(x=>String(x||"").toLowerCase().includes(search))));
  $("listMessage").textContent=`Memaparkan ${filtered.length} daripada ${leads.length} lead yang dibenarkan.`;
  if(!filtered.length){
-  $("leadList").innerHTML='<div class="empty">'+(user.role==="staff"?'Belum ada pelanggan ditugaskan. Tekan “Ambil nombor” untuk mula.':'Belum ada pelanggan. Masukkan nombor melalui kawasan Admin dahulu.')+'</div>';
+  $("leadList").innerHTML='<div class="empty">'+(user.role==="staff"?'Belum ada nombor ditugaskan. Tekan Refresh atau Ambil nombor belum diagih.':'Belum ada pelanggan. Masukkan nombor melalui kawasan Admin dahulu.')+'</div>';
   return;
  }
  $("leadList").innerHTML=filtered.map(l=>{
+  const open=expandedLeadId===l.id;
   const options=Object.entries(STATUSES).map(([k,v])=>`<option value="${k}" ${k===l.stage?"selected":""}>${esc(v)}</option>`).join("");
   const assigned=staff.find(s=>s.id===l.assigned_id);
-  const assigns=user.role==="admin"?`<div class="adminassign"><label>Agihkan kepada staf<select data-assignee="${l.id}">
-   <option value="">Belum diagih</option>
-   ${staff.filter(s=>s.active&&s.role==="staff").map(s=>`<option value="${esc(s.id)}" ${s.id===l.assigned_id?"selected":""}>${esc(s.display_name)} (${esc(s.staff_code)})</option>`).join("")}
-   </select></label></div>`:"";
+  const assigns=user.role==="admin"?`<div class="adminassign"><label>Agihkan kepada staf<select data-assignee="${esc(l.id)}">
+    <option value="">Belum diagih</option>
+    ${staff.filter(s=>s.active&&s.role==="staff").map(s=>`<option value="${esc(s.id)}" ${s.id===l.assigned_id?"selected":""}>${esc(s.display_name)} (${esc(s.staff_code)})</option>`).join("")}
+    </select></label></div>`:"";
+  const whatsApp=l.consent_confirmed
+   ?`<a class="wa lead-quick-wa" data-open="${esc(l.id)}" href="${esc(waUrl(l))}" target="_blank" rel="noopener noreferrer">✆ WhatsApp ↗</a>`
+   :'<span class="small attention">Tiada izin</span>';
   return `<article class="lead" data-id="${esc(l.id)}">
-   <div class="leadtop"><div><h3>${esc(l.customer_name)}</h3><div class="number">+${esc(l.phone_e164)}</div></div><span class="status">${esc(STATUSES[l.stage]||l.stage)}</span></div>
-   <div class="leadmodel">🚘 ${esc(l.model||"Belum pasti")} · ${esc(l.source||"Manual")}</div>
-   <div class="subtle">${assigned?"Staf: "+esc(assigned.display_name):user.role==="admin"?"Belum diagih":"Diberikan kepada anda"} · ${esc(new Date(l.created_at).toLocaleDateString("ms-MY"))}</div>
-   <div class="leadcontrols"><label>Status<select data-stage>${options}</select></label><label>Tarikh susulan<input data-follow type="date" value="${esc(l.follow_up_at||"")}"></label></div>
-   <textarea data-notes class="notes" placeholder="Catatan selepas hubungi pelanggan...">${esc(l.notes||"")}</textarea>
-   <div class="leadbottom">${l.consent_confirmed?`<a class="wa" data-open="${esc(l.id)}" href="${esc(waUrl(l))}" target="_blank" rel="noopener noreferrer">✆ Buka WhatsApp ↗</a>`:'<span class="small attention">Belum disahkan boleh dihubungi</span>'}
-    <button class="secondary" data-save="${esc(l.id)}" type="button">Simpan status</button></div>
-   <div class="leadwork">
-     <button class="secondary" type="button" data-workspace-doc="${esc(l.id)}">📑 Urus Dokumen</button>
-     <button class="secondary" type="button" data-workspace-vso="${esc(l.id)}">🚘 Buat VSO</button>
-   </div>
-   <p class="handoff-note">Nama &amp; nombor pelanggan dibawa terus ke borang dokumen dan VSO.</p>
-   ${assigns}
+    <div class="lead-compact">
+      <button class="lead-identity" type="button" data-expand="${esc(l.id)}" aria-controls="lead-details-${esc(l.id)}" aria-expanded="${open}">
+        <span class="lead-primary"><span class="lead-customer">${esc(l.customer_name)}</span>
+          <span class="lead-phone">+${esc(l.phone_e164)}</span>
+          <span class="lead-secondary">${esc(l.model||"Belum pasti")}</span></span>
+        <span class="lead-chevron" aria-hidden="true">⌄</span>
+      </button>
+      ${whatsApp}
+    </div>
+    <div class="lead-expanded" id="lead-details-${esc(l.id)}" ${open?"":"hidden"}>
+      <div class="lead-expanded-meta">
+        <b class="status">${esc(STATUSES[l.stage]||l.stage)}</b>
+        <span class="subtle">${assigned?"Staf: "+esc(assigned.display_name):user.role==="admin"?"Belum diagih":"Tugasan anda"} · ${esc(new Date(l.created_at).toLocaleDateString("ms-MY"))}</span>
+      </div>
+      <div class="leadcontrols">
+        <label>Status<select data-stage>${options}</select></label>
+        <label>Tarikh susulan<input data-follow type="date" value="${esc(l.follow_up_at||"")}"></label>
+      </div>
+      <label>Catatan pelanggan</label>
+      <textarea data-notes class="notes" placeholder="Catatan selepas hubungi pelanggan...">${esc(l.notes||"")}</textarea>
+      <button class="secondary save-details" data-save="${esc(l.id)}" type="button">Simpan status & catatan</button>
+      <div class="leadwork">
+        <button class="secondary" type="button" data-workspace-doc="${esc(l.id)}">📑 Urus Dokumen</button>
+        <button class="secondary" type="button" data-workspace-vso="${esc(l.id)}">🚘 Buat VSO</button>
+      </div>
+      ${assigns}
+    </div>
   </article>`;
  }).join("");
+}
+function toggleLeadDetails(id){
+ const card=Array.from($("leadList").querySelectorAll("[data-id]")).find(x=>x.dataset.id===id);
+ if(!card)return;
+ const details=card.querySelector(".lead-expanded"),button=card.querySelector("[data-expand]");
+ const opening=details.hidden;
+ $("leadList").querySelectorAll(".lead-expanded").forEach(el=>el.hidden=true);
+ $("leadList").querySelectorAll("[data-expand]").forEach(btn=>btn.setAttribute("aria-expanded","false"));
+ details.hidden=!opening;button.setAttribute("aria-expanded",String(opening));
+ expandedLeadId=opening?id:null;
 }
 function renderRoster(){
  if(!user||user.role!=="admin")return;
@@ -228,9 +258,9 @@ async function addLead(e){
  if(!p){notice("appNotice","Nombor tidak sah. Contoh: 0123456789",true);return}
  const button=$("addLeadBtn");button.disabled=true;
  try{
-  const r=await call("import",{consent_confirmed:$("addConsent").checked,leads:[{
+  const r=await call("import",{consent_confirmed:$("addConsent").checked,auto_assign:$("addAutoAssign").checked,leads:[{
    customer_name:$("addName").value.trim(),phone_e164:p,model:$("addModel").value,source:"Manual Admin"}]});
-  notice("appNotice",r.inserted?"Nombor pelanggan berjaya dimasukkan.":"Nombor sudah wujud dalam sistem.");
+  notice("appNotice",r.inserted?(r.auto_assigned?"Nombor berjaya dimasukkan dan diagih automatik kepada staf. Mereka boleh tekan Refresh.":"Nombor berjaya dimasukkan ke barisan belum diagih."):"Nombor sudah wujud dalam sistem.");
   $("addLeadForm").reset();await reload();
  }catch(e){notice("appNotice",e.message,true)}
  finally{button.disabled=false}
@@ -275,14 +305,14 @@ async function importLeads(){
   });
   const clean=[...unique.values()];
   if(!clean.length)throw new Error("Tiada nombor WhatsApp Malaysia yang sah.");
-  let inserted=0,duplicates=0;
+  let inserted=0,duplicates=0,autoAssigned=0;
   for(let i=0;i<clean.length;i+=100){
    const batch=clean.slice(i,i+100);
    $("importResult").textContent=`Sedang import ${Math.min(i+100,clean.length)}/${clean.length}...`;
-   const r=await call("import",{consent_confirmed:true,leads:batch});
-   inserted+=r.inserted;duplicates+=r.duplicates;
+   const r=await call("import",{consent_confirmed:true,auto_assign:$("importAutoAssign").checked,leads:batch});
+   inserted+=r.inserted;duplicates+=r.duplicates;autoAssigned+=Number(r.auto_assigned)||0;
   }
-  $("importResult").textContent=`Selesai: ${inserted} baharu · ${duplicates} pendua · ${bad} tidak sah.`;
+  $("importResult").textContent=`Selesai: ${inserted} baharu · ${autoAssigned} diagih ke staf · ${inserted-autoAssigned} belum diagih · ${duplicates} pendua · ${bad} tidak sah.`;
   notice("appNotice","Import selesai. "+$("importResult").textContent);
   $("importFile").value="";$("importText").value="";$("importConsent").checked=false;
   await reload();
@@ -313,6 +343,8 @@ function wireEvents(){
   const toggle=e.target.closest("[data-toggle]");if(toggle)toggleStaff(toggle.dataset.toggle,toggle.dataset.active==="1");
  });
  $("leadList").addEventListener("click",e=>{
+  const exp=e.target.closest("[data-expand]");
+  if(exp){toggleLeadDetails(exp.dataset.expand);return}
   const saveBtn=e.target.closest("[data-save]");
   if(saveBtn){save(saveBtn.closest("[data-id]"),saveBtn.dataset.save);return}
   const docs=e.target.closest("[data-workspace-doc]");
