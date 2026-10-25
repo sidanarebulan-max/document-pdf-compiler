@@ -128,3 +128,16 @@ Modul awal `staff.js` dan jadual `sales_*` menggunakan Supabase Auth e-mel. Modu
 - Kategori `OTHER` atau keyakinan kurang daripada 85% memerlukan semakan staf dengan `/kategori` sebelum `/siap`.
 - AI memproses kandungan dokumen pelanggan melalui provider pihak ketiga; dapatkan kebenaran dan pastikan pematuhan privasi. Setiap provider boleh melibatkan kos API yang berasingan.
 - Pengujian endpoint dan paparan telah dibuat secara statik; belum ada key AI disimpan setakat penerbitan ini dan imbasan sebenar memerlukan key daripada admin.
+
+## Telegram: arahan ringkas & pengumpulan banyak fail (26 Oktober 2026)
+- Satu kes pelanggan dimulakan dengan `/pelanggan NAMA` dan diberikan ID kes kekal dalam `lead_hub_telegram_cases`.
+- Pilih peminjam `/peminjam`, penjamin `/penjamin`, atau rebate `/rebate`. Menukar bahagian mengosongkan kategori supaya staf perlu memilih kategori seterusnya.
+- Pilih kategori sekali melalui `/ic`, `/bank`, `/gaji`, `/lesen`, `/sijil`, `/kerja`, `/vso`, `/lain`. Kategori pilihan akan kekal sehingga pengguna memilih kategori lain; semua PDF/JPG/PNG yang dihantar berturut-turut akan dikaitkan dengan ID kes sama.
+- **Penting:** `/vso` kini bermaksud *kumpul fail VSO*; `/buatvso` bermaksud *jana VSO DRAF melalui 9 soalan*. `/vso buat` juga diterima untuk jana DRAF.
+- `/sijil` secara automatik menandakan subjenis `SIJIL_LAHIR` atau `SIJIL_NIKAH` jika nama fail/caption mengandungi jenis sijil, selebihnya `SIJIL` umum. `/ic` dalam bahagian REBATE menggunakan `IC_FRONT` / `IC_BACK` jika nama fail jelas, selainnya `IC`. Ini tidak bermakna kandungan fail disahkan betul; staf perlu semak sebelum menyerah dokumen.
+- Jika kategori dipilih secara jelas, sistem menggunakan pilihan staf tanpa panggilan AI; ini mengurangkan kos/risiko dan membolehkan banyak fail dikumpul dengan cepat. Jika kategori **tidak** dipilih, fallback AI/filename masih digunakan dan fail yang tidak pasti wajib disahkan menggunakan `/kategori NO KATEGORI` sebelum `/siap`.
+- Susunan akhir HIRER→GUARANTOR→REBATE, dalam setiap bahagian ikut urutan kategori. Dalam kategori sama, fail disusun berdasarkan ID mesej Telegram. Sistem menyekat mesej Telegram pendua bagi kes yang sama.
+- Had dikemas kini kepada maksimum 50 fail/kes (setiap fail maksimum 18 MB, PDF gabungan maksimum 100 halaman dan 45 MB). Had ini mengelakkan beban berlebihan; fail yang lebih besar perlu guna PDF Compiler di website.
+- Bot memberi notis ringkas dan kemas (✅ diterima, 📌 kategori aktif, 📎 jumlah fail kategori/kes, ⚠️ perlu semak, 📋 senarai, ✅ PDF selesai).
+- Menu slash command Telegram boleh disegerakkan oleh admin dalam web melalui `✈ Telegram Bot > ↻ Kemaskini Menu Bot`. Arahan Telegram yang didaftarkan termasuk /pelanggan, /ic, /bank, /gaji, /lesen, /sijil, /kerja, /vso, /lain, /senarai, /siap, /buatvso dan lain-lain.
+- Ujian live masih perlu dilakukan menggunakan Telegram yang telah dipaut, dengan dokumen contoh/tanpa PII.
