@@ -524,8 +524,10 @@ async function processUpdate(update:any,conf:any,token:string){
     c=previous;
   }
   if(!c){await say(token,chat,"Tiada kes aktif. Taip /pelanggan NAMA.");return}
-  const {data:files,error}=await db.from("lead_hub_telegram_files").select("*").eq("case_id",c.id).order("created_at");
+  const {data:received,error}=await db.from("lead_hub_telegram_files").select("*").eq("case_id",c.id).order("created_at");
   if(error)throw error;
+  const files=(received||[]).sort((x:any,y:any)=>((x.telegram_message_id??0)-(y.telegram_message_id??0))||
+    x.created_at.localeCompare(y.created_at));
   if(command==="/padam"){
    const paths=(files||[]).map((x:any)=>x.storage_path);
    if(paths.length)await db.storage.from(BUCKET).remove(paths);
@@ -539,21 +541,37 @@ async function processUpdate(update:any,conf:any,token:string){
    const allowed=file.party==="REBATE"?REBATE_TYPES:TYPES;
    if(!allowed.includes(cat)){await say(token,chat,"Kategori tidak sah untuk "+file.party+". Pilihan: "+allowed.join(", "));return}
    await db.from("lead_hub_telegram_files").update({category:cat,confidence:1,needs_review:false,classification_method:"manual"}).eq("id",file.id);
-   await say(token,chat,"✅ Fail #"+n+" telah ditetapkan: "+cat);return;
+   await say(token,chat,"✅ KATEGORI DIKEMAS KINI\nFail #"+n+" → "+(DOC_NAMES[cat]||cat)+
+   "\nPelanggan: "+c.customer_name+"\nSemak: /senarai");return;
   }
   if(command==="/senarai"){
    if(!files?.length){await say(token,chat,"Belum ada dokumen. Hantar PDF, PNG atau JPG.");return}
-   await say(token,chat,"📁 "+c.customer_name+"\n"+files.map((x:any,i:number)=>(i+1)+". ["+x.party+"] "+x.category+(x.needs_review?" ⚠️ SEMAK":" ✅")+" — "+x.original_name).join("\n")+
-   "\nSusunan PDF akhir: HIRER VSO→IC→LESEN→PAYSLIP→BANK→OTHER, kemudian GUARANTOR, kemudian REBATE.\nJika tidak pasti, /kategori NO KATEGORI; selepas semua lengkap /siap.");return;
+   const list=files.map((x:any,i:number)=>(i+1)+". "+(x.needs_review?"⚠️":"✅")+
+    " ["+x.party+"] "+(DOC_NAMES[x.category]||x.category)+" — "+
+    String(x.original_name).slice(0,55)).join("\n");
+   const uncertain=files.filter((x:any)=>x.needs_review).length;
+   await say(token,chat,"📋 SENARAI DOKUMEN\n"+caseSummary(c)+
+    "\nJumlah: "+files.length+" fail"+(uncertain?" | Perlu semak: "+uncertain:"")+
+    "\n\n"+list+"\n\n"+
+    (uncertain?"⚠️ Betulkan melalui /kategori NO KATEGORI.":"✅ Semua kategori telah ditetapkan.")+
+    "\nUntuk jana PDF: /siap");return;
   }
   if(command==="/siap"){
    if(!files?.length){await say(token,chat,"Tiada dokumen dalam kes ini.");return}
    const uncertain=files.map((x:any,i:number)=>x.needs_review?i+1:0).filter(Boolean);
-   if(uncertain.length){await say(token,chat,"⚠️ Belum boleh jana PDF kerana kategori belum disahkan untuk fail #"+uncertain.join(", ")+".\nSemak /senarai kemudian guna /kategori NO KATEGORI supaya tidak tersalah susun dokumen pelanggan.");return}
-   await say(token,chat,"⏳ Menjana PDF akhir untuk "+c.customer_name+"...");
+   if(uncertain.length){await say(token,chat,"⚠️ SEMAK DOKUMEN DAHULU\n"+
+  "Kategori belum jelas untuk fail #"+uncertain.join(", ")+".\n"+
+  "Taip /senarai dan /kategori 2 IC (contoh) untuk betulkan, kemudian /siap.");return}
+   await say(token,chat,"⏳ MENYUSUN DOKUMEN\n"+caseSummary(c)+
+   "\n📎 Jumlah: "+files.length+" fail\nBot sedang menjana PDF mengikut urutan kategori.");
    const result=await makeMergedPdf(c,files);
    const clean=safePdfText(c.customer_name).replace(/\s+/g,"_").slice(0,50)||"CUSTOMER";
-   await telegramSendDocument(token,chat,result,clean+"_DOKUMEN_LENGKAP.pdf","✅ PDF selesai disusun mengikut kategori. Pastikan butiran pelanggan betul sebelum diserahkan kepada pihak lain.");
+   await telegramSendDocument(token,chat,result,clean+"_DOKUMEN_LENGKAP.pdf",
+   "✅ DOKUMEN SIAP | "+c.customer_name+" | "+files.length+" fail. Sila semak sebelum serah.");
+   await say(token,chat,"✅ PDF BERJAYA DIHANTAR\n"+
+   "👤 "+c.customer_name+"\n📎 "+files.length+" fail selesai disusun.\n"+
+   "📌 Untuk pelanggan baharu: /pelanggan NAMA\n"+
+   "Untuk padam fail kes terakhir daripada storan: /padam.");
    await db.from("lead_hub_telegram_cases").update({state:"completed",completed_at:new Date().toISOString()}).eq("id",c.id);
    return;
   }
