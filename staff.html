@@ -60,7 +60,16 @@
   .msg-bubble{white-space:pre-wrap;overflow-wrap:anywhere;background:#165743;color:#eafff4;border-radius:13px 13px 4px 13px;padding:13px;max-width:95%;font-size:13px;line-height:1.65;align-self:flex-start}
   @media(max-width:800px){.msg-settings-grid{grid-template-columns:1fr}.msg-settings-preview{padding:11px}
     .msg-settings-actions>*{flex:1}.header nav{width:100%}.header nav>*{flex:1}}
-.tg-head{align-items:center;flex-wrap:wrap}.tg-status{display:flex;align-items:center;flex-wrap:wrap;gap:12px;background:#0c1d38;border:1px solid #284773;padding:14px;border-radius:12px}.tg-status>div{flex:1}.tg-status p{margin:4px 0}.tg-dot{width:12px;height:12px;background:#738096;border-radius:50%;box-shadow:0 0 0 4px #7380962c}.tg-dot.connected{background:#24be91;box-shadow:0 0 0 4px #24be912c}.tg-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}.tg-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.tg-actions>*{flex:1;min-width:140px}.divider-tg{border-top:1px solid #3a4e71;margin:19px 0}.tg-secret{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px;border-radius:10px;background:#163456;margin-top:12px}.tg-secret b{letter-spacing:1px;color:#b5e4ff}.tg-open{display:block;text-align:center;padding:13px;background:#14689b;border-radius:10px;color:#fff!important;text-decoration:none;font-weight:800}.tg-guide{margin-top:12px}.tg-commands{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.tg-commands>div{display:flex;flex-direction:column;align-items:flex-start;gap:7px}.tg-commands code{white-space:normal;overflow-wrap:anywhere;font-size:12px;color:#a3d2fb;background:#1b2d4b;padding:7px;border-radius:6px}@media(max-width:800px){.tg-grid,.tg-commands{grid-template-columns:1fr}.tg-status button{width:100%}}  .workflow-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.tg-head{align-items:center;flex-wrap:wrap}.tg-status{display:flex;align-items:center;flex-wrap:wrap;gap:12px;background:#0c1d38;border:1px solid #284773;padding:14px;border-radius:12px}.tg-status>div{flex:1}.tg-status p{margin:4px 0}.tg-dot{width:12px;height:12px;background:#738096;border-radius:50%;box-shadow:0 0 0 4px #7380962c}.tg-dot.connected{background:#24be91;box-shadow:0 0 0 4px #24be912c}.tg-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}.tg-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.tg-actions>*{flex:1;min-width:140px}.divider-tg{border-top:1px solid #3a4e71;margin:19px 0}.tg-secret{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px;border-radius:10px;background:#163456;margin-top:12px}.tg-secret b{letter-spacing:1px;color:#b5e4ff}.tg-open{display:block;text-align:center;padding:13px;background:#14689b;border-radius:10px;color:#fff!important;text-decoration:none;font-weight:800}.tg-guide{margin-top:12px}.tg-commands{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.tg-commands>div{display:flex;flex-direction:column;align-items:flex-start;gap:7px}.tg-commands code{white-space:normal;overflow-wrap:anywhere;font-size:12px;color:#a3d2fb;background:#1b2d4b;padding:7px;border-radius:6px}@media(max-width:800px){.tg-grid,.tg-commands{grid-template-columns:1fr}.tg-status button{width:100%}}  .tg-provider-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .tg-provider{border:1px solid #2d4974;background:#0b1830;border-radius:12px;padding:12px;min-width:0}
+  .tg-provider-title{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-size:12px}
+  .tg-provider-badge{color:#9db3ce;background:#1a2d4a;border:1px solid #304765;border-radius:30px;padding:3px 8px;font-size:10px}
+  .tg-provider-badge.on{color:#96e6c9;border-color:#267f6a;background:#103c33}
+  .tg-routing{padding:12px;margin-top:12px;border:1px solid #385078;border-radius:12px;background:#111f37}
+  .tg-routing h3{margin:0 0 10px}
+  .tg-routing select{width:100%}
+  @media(max-width:850px){.tg-provider-grid{grid-template-columns:1fr}}
+  .workflow-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .workflow-action{display:flex;justify-content:space-between;align-items:center;text-align:left;gap:12px;padding:15px!important;border:1px solid #36517c!important;min-height:72px}
   .workflow-action span:nth-child(2){flex:1}.workflow-action b{display:block;font-size:13px}.workflow-action small{display:block;color:#94b0d6;font-size:11px;margin-top:5px}
   .workflow-icon{font-size:23px}.leadwork{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:9px}
@@ -169,12 +178,38 @@
    <form id="telegramConnectForm"><label for="telegramBotToken">Bot API Token</label>
    <input id="telegramBotToken" type="password" autocomplete="new-password" placeholder="123456789:AA..." required>
    <div class="tg-actions"><button id="telegramConnect" type="submit" class="primary">Sambung &amp; Aktifkan Bot</button><button class="secondary" id="telegramDisconnect" type="button">Putus Sambungan</button></div></form>
-   <div class="divider-tg"></div><h3>Imbasan Dokumen AI (Pilihan)</h3>
-   <p class="muted small">Jika dihidupkan, kandungan dokumen pelanggan dihantar ke OpenAI API untuk pengelasan. Pastikan kebenaran dan dasar privasi dipatuhi. Tanpa AI, bot masih mengelas ikut nama fail dan memerlukan semakan.</p>
-   <form id="telegramAIForm"><label for="telegramAPIKey">OpenAI API Key</label>
-   <input id="telegramAPIKey" type="password" autocomplete="new-password" placeholder="sk-..." required>
-   <div class="tg-actions"><button class="secondary" id="telegramSaveAI" type="submit">Aktifkan AI Scan</button><button class="secondary" id="telegramDisableAI" type="button">Matikan AI Scan</button></div></form>
-   <p id="telegramAIStatus" class="muted small">AI belum diaktifkan.</p>
+   <div class="divider-tg"></div>
+   <h3>🤖 AI Scan — OpenAI + DeepSeek</h3>
+   <p class="muted small">Dua sambungan AI berasingan. OpenAI menyokong PDF dan imej; DeepSeek Flash menyokong imej JPG/PNG. Kedua-duanya boleh digunakan sebagai pilihan utama atau sandaran.</p>
+   <div class="tg-provider-grid">
+    <form id="telegramAIForm" class="tg-provider">
+     <div class="tg-provider-title"><b>OpenAI API / CLI Key</b><span id="tgOpenAIStatus" class="tg-provider-badge">Belum disambung</span></div>
+     <p class="muted small">Untuk imbasan PDF dan gambar. Key OpenAI yang kau gunakan untuk API/CLI juga boleh dimasukkan di sini. CLI yang berjalan pada komputer tidak dipanggil terus oleh website.</p>
+     <label for="telegramAPIKey">OpenAI API Key</label>
+     <input id="telegramAPIKey" type="password" autocomplete="new-password" placeholder="sk-... (tidak akan dipaparkan semula)" required>
+     <div class="tg-actions"><button class="secondary" id="telegramSaveAI" type="submit">Simpan OpenAI</button><button class="secondary" id="telegramDisableAI" type="button">Padam Key</button></div>
+    </form>
+    <form id="telegramDeepSeekForm" class="tg-provider">
+     <div class="tg-provider-title"><b>DeepSeek Flash</b><span id="tgDeepSeekStatus" class="tg-provider-badge">Belum disambung</span></div>
+     <p class="muted small">Untuk pembacaan gambar IC, lesen, slip gaji dan dokumen bergambar. PDF akan menggunakan OpenAI jika tersedia.</p>
+     <label for="telegramDeepSeekKey">DeepSeek API Key</label>
+     <input id="telegramDeepSeekKey" type="password" autocomplete="new-password" placeholder="Masukkan key daripada platform DeepSeek" required>
+     <div class="tg-actions"><button class="secondary" id="telegramSaveDeepSeek" type="submit">Simpan DeepSeek</button><button class="secondary" id="telegramDisableDeepSeek" type="button">Padam Key</button></div>
+    </form>
+   </div>
+   <div class="tg-routing">
+    <h3>Penggunaan AI</h3>
+    <label for="telegramAIRouting">Pilihan AI utama</label>
+    <select id="telegramAIRouting">
+      <option value="auto">Auto — DeepSeek untuk gambar, OpenAI untuk PDF</option>
+      <option value="openai">OpenAI dahulu (DeepSeek sebagai sandaran)</option>
+      <option value="deepseek">DeepSeek dahulu (OpenAI untuk PDF atau sandaran)</option>
+    </select>
+    <label class="checkline"><input type="checkbox" id="telegramFallback" checked> <span>Guna AI kedua sebagai sandaran jika AI utama gagal.</span></label>
+    <button class="primary full" type="button" id="telegramSaveRouting">Simpan Pilihan AI</button>
+    <p class="muted small" id="telegramAIStatus">Kunci API disimpan dalam server; staf tidak boleh melihat atau mengubahnya.</p>
+    <p class="muted small">Nota privasi: Dokumen pelanggan yang diproses melalui AI dihantar kepada penyedia yang dipilih. Pastikan kebenaran pelanggan sebelum mengaktifkannya.</p>
+   </div>
   </section>
   <section class="innerpanel"><h3>2. Pautkan ID Staf / Admin ke Telegram</h3>
    <p class="muted small">Tekan Jana Kod. Buka bot dan hantar kod sambungan. Kod hanya aktif selama 10 minit dan sekali guna.</p>
@@ -294,5 +329,5 @@
 </div>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="/staff-passcode.js?v=telegram-20261026"></script>
-<script src="/telegram-hub.js?v=1"></script>
+<script src="/telegram-hub.js?v=dual-ai-20261026"></script>
 </body></html>
