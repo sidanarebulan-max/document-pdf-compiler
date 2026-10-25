@@ -592,6 +592,28 @@ async function interpretChat(conf:any,account:any,telegramId:number,chat:number,
   "'ada nombor baru', 'buat VSO', 'buang fail no 1 sampai 3'. "+
   "Jangan guna data pelanggan lain atau andaikan akses pentadbir.";
  const userText=redactChat(text);
+ // Prefer only a V4 capable local ChatGPT Codex worker. Old V2/V3 workers still
+ // scan documents but cannot claim chat jobs, and therefore must not receive them.
+ if(conf.codex_worker_enabled!==false){
+  const {data:worker}=await db.from("lead_hub_codex_devices").select("id")
+    .eq("is_active",true).eq("supports_chat",true)
+    .gt("last_seen_at",new Date(Date.now()-90000).toISOString()).limit(1);
+  if(worker?.length){
+   const {count:outstanding}=await db.from("lead_hub_codex_chat_jobs")
+    .select("id",{head:true,count:"exact"})
+    .eq("telegram_user_id",telegramId).in("status",["queued","working"]);
+   if(!outstanding){
+    const context={current_customer:c?.customer_name?"(folder aktif)":null,
+      party:c?.active_party||"tiada",category:c?.active_category||"AUTO",
+      total_documents:count||0,role:account.role,recent_turns:recent};
+    const {error:queueError}=await db.from("lead_hub_codex_chat_jobs").insert({
+      telegram_user_id:telegramId,account_id:account.id,chat_id:chat,
+      user_text:userText,context,status:"queued"
+    });
+    if(!queueError)return {kind:"pending",reply:"🤖 Aku sedang semak soalan kau melalui ChatGPT. Jawapan akan muncul dalam chat."};
+   }
+  }
+ }
  const messages=[{role:"system",content:system},...recent,{role:"user",content:userText}];
  let obj:any=null;
  const candidates=(conf?.deepseek_api_key_cipher&&conf?.deepseek_api_key_iv?
@@ -678,6 +700,7 @@ async function processUpdate(update:any,conf:any,token:string){
  let routed=parsed.kind==="route"?parsed.command:txt;
  if(parsed.kind==="chat"){
   const ai=await interpretChat(conf,account,id,chat,txt);
+  if(ai.kind==="pending"){await say(token,chat,ai.reply);return}
   if(ai.kind==="help")routed="/menu";
   else if(ai.kind==="status"){await caseStatus(token,chat,account);return}
   else if(ai.kind==="list")routed="/senarai";
