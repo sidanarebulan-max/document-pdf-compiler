@@ -1,4 +1,5 @@
 import {parseNatural} from "./natural.mjs";
+import {touchCaseCard} from "./case-card.mjs";
 import {policyModelIntent} from "./intent-policy.mjs";
 import {createClient} from "npm:@supabase/supabase-js@2.57.4";
 import {PDFDocument,StandardFonts,rgb} from "npm:pdf-lib@1.17.1";
@@ -476,17 +477,9 @@ async function handleDoc(token:string,conf:any,chat:number,account:any,message:a
    codexQueued=false;
   }
  }
- const {count:total}=await db.from("lead_hub_telegram_files").select("id",{head:true,count:"exact"}).eq("case_id",c.id);
- const inGroup=(await db.from("lead_hub_telegram_files").select("id",{count:"exact",head:true})
-  .eq("case_id",c.id).eq("party",c.active_party).eq("category",cls.category)).count||0;
- await say(token,chat,"✅ DOKUMEN DITERIMA\n"+
- "👤 "+c.customer_name+"\n"+
- "📁 "+c.active_party+"  •  "+(DOC_NAMES[cls.category]||cls.category)+"\n"+
- "📎 Kategori ini: "+inGroup+" fail  |  Kes ini: "+total+" fail"+
- (codexQueued?"\n🤖 Menunggu ChatGPT Worker di komputer untuk membaca fail.":
-  review?"\n⚠️ Kategori kurang pasti. Semak /senarai dan betulkan melalui /kategori.":
-  "\n✔️ Kategori telah ditetapkan.")+
- "\n\nHantar lagi fail, pilih kategori lain, atau /siap.");
+ // One live Telegram card per case. Subsequent uploads update this message;
+ // they do not produce one confirmation per attachment.
+ await touchCaseCard(db,token,c.id);
 }
 async function linkedTelegramAccount(id:number){
  const {data:link}=await db.from("lead_hub_telegram_links").select("*").eq("telegram_user_id",id).maybeSingle();
@@ -610,6 +603,7 @@ async function decideDelete(token:string,chat:number,id:number,account:any,confi
   if(de)throw de;
  }
  await db.from("lead_hub_telegram_pending_actions").delete().eq("telegram_user_id",id);
+ if(p.action!=="delete_case")await touchCaseCard(db,token,c.id);
  await rememberAction(id,account.id,chat,"delete_files",p.action==="delete_case"?null:c.id);
  await say(token,chat,"✅ Berjaya! "+(p.action==="delete_case"?"Folder pelanggan dan failnya":
   files.length+" dokumen")+" telah dipadam daripada sistem.\nMinta 'senarai' untuk semak baki fail.");
@@ -1020,6 +1014,7 @@ async function processUpdate(update:any,conf:any,token:string){
      confirmed_category:cat,source_method:file.classification_method
     });
    }
+   await touchCaseCard(db,token,c.id);
    await say(token,chat,"✅ KATEGORI DIKEMAS KINI\nFail #"+n+" → "+(DOC_NAMES[cat]||cat)+
    "\nPelanggan: "+c.customer_name+"\nSemak: /senarai");return;
   }
