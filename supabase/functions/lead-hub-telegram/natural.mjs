@@ -5,7 +5,7 @@ function numberValue(v){
  const k=String(v||"").toLowerCase().trim();
  return /^\d+$/.test(k)?Number(k):WORD_NUMBERS[k]||0;
 }
-export function parseNatural(raw){
+export function parseNatural(raw,context={}){
  const original=String(raw||"").trim();
  if(!original||original.length>1200)return {kind:"chat"};
  // Preserve explicit slash commands, apart from common misspellings.
@@ -77,6 +77,24 @@ export function parseNatural(raw){
   ["/lain",/^(?:lain|lain lain|dokumen lain|other|miscellaneous)$/]
  ];
  for(const [cmd,rx] of cats)if(rx.test(catText))return {kind:"route",command:cmd};
+ // Context-aware read-only requests: allow natural word order and Malay/English document synonyms.
+ const hasDoc=/\b(?:dokumen|document|documents|doc|docs|fail|file|files|pdf|lampiran|attachment|attachments)\b/i.test(t);
+ const hasListing=/\b(?:senarai(?:kan)?|list|tunjuk(?:kan)?|papar(?:kan)?|lihat|show|display)\b/i.test(t);
+ const hasInventory=/\b(?:ada|baki|tinggal|remaining|selebihnya|belum|masuk|diterima|sekarang|terkini|masih)\b/i.test(t);
+ const hasQuestion=/\b(?:apa|mana|yang|berapa|semak|check|tengok|bagi|beritahu|bagitahu)\b/i.test(t);
+ const countQuestion=/^(?:berapa|jumlah|total|tinggal berapa)\b/i.test(t);
+ const negated=/\b(?:jangan|tak payah|tidak perlu|stop|batal|delete|buang|padam|remove)\b/i.test(t);
+ if(!negated&&countQuestion&&hasDoc)return {kind:"status"};
+ if(!negated&&hasListing&&(hasDoc||hasInventory||/^(?:senarai|list)$/.test(t)))
+  return {kind:"route",command:"/senarai"};
+ if(!negated&&hasDoc&&hasInventory&&hasQuestion)
+  return {kind:"route",command:"/senarai"};
+ if(context?.last_action==="delete_files" &&
+    /^(?:apa\s+(?:lagi|yang\s+tinggal)|yang\s+tinggal(?:\s+apa)?|baki(?:\s+(?:yang\s+tinggal|dokumen|file|fail))?(?:\s+(?:apa|mana|sekarang))?|baki\s+sekarang\s+apa|tinggal\s+apa|selebihnya(?:\s+apa)?|what(?:'s| is)\s+left)$/i.test(t))
+  return {kind:"route",command:"/senarai"};
+ if(context?.last_action==="delete_files" &&
+    /^(?:berapa|tinggal\s+berapa|baki\s+berapa)(?:\s+(?:fail|dokumen|document|file|lagi|yang\s+tinggal))?$/.test(t))
+  return {kind:"status"};
  if(/^(?:senarai|list|tunjuk senarai|bagi senarai|semak dokumen|check dokumen|list dokumen|apa dokumen yang ada|dokumen apa dah masuk|apa fail dah masuk|senarai fail)$/i.test(t))
   return {kind:"route",command:"/senarai"};
  if(/^(?:apa|mana|tengok|semak|check|beritahu|bagitahu)\s+(?:saja\s+)?(?:dokumen|document|fail|file)\s+(?:yang\s+)?(?:belum\s+(?:lengkap|siap|disahkan)|perlu\s+semak|kurang|tak\s+lengkap)(?:\s+apa)?$/.test(t))
