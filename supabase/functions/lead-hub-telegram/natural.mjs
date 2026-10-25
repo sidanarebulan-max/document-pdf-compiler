@@ -45,7 +45,7 @@ export function parseNatural(raw){
   "/rebate":/^(?:rebate|cop rebate|bahagian rebate|pilih rebate|untuk rebate|dokumen rebate)$/
  };
  for(const [cmd,rx] of Object.entries(parts))if(rx.test(t))return {kind:"route",command:cmd};
- const prefixes=/^(?:ini|saya nak|aku nak|nak|pilih|kategori|set|tukar kategori ke|tukar ke|masuk|masukkan|hantar|saya hantar|semua|dokumen|fail|untuk|letak dalam|tolong set(?: ke)?)\s+/;
+ const prefixes=/^(?:ini|saya nak(?: masuk| masukkan| hantar)?|aku nak(?: masuk| masukkan| hantar)?|nak(?: masuk| masukkan| hantar)?|pilih|kategori|set|tukar kategori ke|tukar ke|masuk|masukkan|hantar|saya hantar|semua|dokumen|fail|untuk|letak dalam|tolong set(?: ke)?)\s+/;
  const catText=t.replace(prefixes,"").replace(/^(?:dokumen|fail|kategori|untuk)\s+/,"").replace(/\s+(?:semua|ini|ni|ye|ya|sahaja|saja|dulu)$/,"").trim();
  const cats=[
   ["/ic",/^(?:ic|mykad|kad pengenalan|identity card|kad ic)$/],
