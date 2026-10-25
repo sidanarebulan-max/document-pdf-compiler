@@ -16,7 +16,7 @@ export function parseNatural(raw,context={}){
  const t=original.toLowerCase().replace(/[?!.,]+$/g,"").replace(/\s+/g," ").trim();
  // Questions about *how* to delete should not start a destructive flow.
  if(/^(?:macam mana|bagaimana|how to|boleh ke|bolehkah|cara)\b/i.test(t) && /\b(buang|padam|delete)\b/i.test(t))return {kind:"chat"};
- const m=t.match(/(?:^|\s)(?:no|nombor|fail|file|dokumen)\s*(?:ke[-\s]*)?(\d{1,2}|satu|dua|tiga|empat|lima|enam|tujuh|lapan|sembilan|sepuluh)\s*(?:hingga|sampai|ke|dan|-)\s*(\d{1,2}|satu|dua|tiga|empat|lima|enam|tujuh|lapan|sembilan|sepuluh)/);
+ const m=t.match(/(?:^|\s)(?:no|nombor|fail|file|dokumen)\s*(?:ke[-\s]*)?(\d{1,2}|satu|dua|tiga|empat|lima|enam|tujuh|lapan|sembilan|sepuluh)\s*(?:hingga|sampai|sampi|smpi|smpai|sampay|samp|to|ke|dan|-)\s*(\d{1,2}|satu|dua|tiga|empat|lima|enam|tujuh|lapan|sembilan|sepuluh)/);
  const deleteAction=/\b(buang|padam|delete|remove)\b/.test(t);
  if(deleteAction&&m){
   const a=numberValue(m[1]),b=numberValue(m[2]);
@@ -34,6 +34,10 @@ export function parseNatural(raw,context={}){
    return {kind:"ask",reply:"Aku boleh buang fail yang dipilih. Beritahu nombornya, contoh 'buang fail 1 sampai 4', atau hantar senarai bernombor."};
  }
  const one=t.match(/(?:^|\s)(?:no|nombor|fail|file|dokumen)\s*(?:ke[-\s]*)?(\d{1,2}|satu|dua|tiga|empat|lima|enam|tujuh|lapan|sembilan|sepuluh)\b/);
+ // Never interpret a malformed range as a request to delete only its first file.
+ // If the message contains a likely connector but the range did not parse, ask for clarity.
+ if(deleteAction && /\b(?:no|nombor|fail|file|dokumen)\s*(?:ke[-\s]*)?\d{1,2}\s+(?:s\w{2,6}|hingga|to)\s+(?:\d{1,2}|satu|dua|tiga|empat|lima)\b/.test(t) && !m)
+  return {kind:"ask",reply:"Aku tak pasti julat fail yang dimaksudkan. Taip contoh 'buang fail 1 sampai 3' supaya tak tersalah padam."};
  if(deleteAction&&one){
   const n=numberValue(one[1]);
   if(n>=1&&n<=50)return {kind:"remove_files",numbers:[n]};
@@ -102,6 +106,10 @@ export function parseNatural(raw,context={}){
  if(/^(?:status|status kes|status dokumen|berapa (?:fail|dokumen|file)(?: (?:dah|sudah|telah) (?:masuk|diterima))?|jumlah fail|jumlah dokumen|berapa dah masuk|dah dapat berapa dokumen|dah dapat berapa fail|apa kategori aktif|sekarang bahagian apa)$/i.test(t))
   return {kind:"status"};
  if(/^(?:buat|bina|jana|generate|sediakan)\s+(?:satu|1)\s+(?:pdf|fail|file)\s+(?:dari|daripada|untuk)\s+(?:semua|baki|selebihnya)\s+(?:fail|file|dokumen|document)(?:\s+ini|\s+ni)?$/.test(t))
+   return {kind:"route",command:"/siap"};
+ if(/\b(?:siapkn|siapknn|cantum|cantumkn|gabungkn)\b/.test(t)&&
+   /\b(?:baki|selebihnya|pdf|dokumen|document|fail|file)\b/.test(t)&&
+   !/^(?:macam mana|bagaimana|boleh ke|jangan|tak payah|tidak perlu)/.test(t))
    return {kind:"route",command:"/siap"};
  if(/\b(?:siapkan|satukan|gabungkan|gabung|jadikan|merge|compile|combine)\b/.test(t)&&
    /\b(?:baki|selebihnya|yang tinggal|pdf|dokumen|document|fail|file|satu (?:file|fail|pdf)|1 (?:file|fail|pdf))\b/.test(t)&&
