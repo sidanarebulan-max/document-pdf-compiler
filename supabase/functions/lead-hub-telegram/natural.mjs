@@ -74,6 +74,8 @@ export function parseNatural(raw){
   return {kind:"route",command:"/senarai"};
  if(/^(?:status|status kes|status dokumen|berapa (?:fail|dokumen|file)(?: (?:dah|sudah|telah) (?:masuk|diterima))?|jumlah fail|jumlah dokumen|berapa dah masuk|dah dapat berapa dokumen|dah dapat berapa fail|apa kategori aktif|sekarang bahagian apa)$/i.test(t))
   return {kind:"status"};
+ if(/^(?:buat|bina|jana|generate|sediakan)\s+(?:satu|1)\s+(?:pdf|fail|file)\s+(?:dari|daripada|untuk)\s+(?:semua|baki|selebihnya)\s+(?:fail|file|dokumen|document)(?:\s+ini|\s+ni)?$/.test(t))
+   return {kind:"route",command:"/siap"};
  if(/\b(?:siapkan|satukan|gabungkan|gabung|jadikan|merge|compile|combine)\b/.test(t)&&
    /\b(?:baki|selebihnya|yang tinggal|pdf|dokumen|document|fail|file|satu (?:file|fail|pdf)|1 (?:file|fail|pdf))\b/.test(t)&&
    !/^(?:macam mana|bagaimana|cara|boleh ke|bolehkah|jangan|tak payah|tidak perlu)\b/.test(t))
