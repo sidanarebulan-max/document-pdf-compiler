@@ -1,4 +1,5 @@
 import {createClient} from "npm:@supabase/supabase-js@2.57.4";
+import {touchCaseCard} from "./case-card.mjs";
 const PROJECT_URL=Deno.env.get("SUPABASE_URL")!;
 const SECRET=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||
  JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS")||"{}").default;
@@ -31,18 +32,25 @@ async function device(req:Request){
  if(d)await db.from("lead_hub_codex_devices").update({last_seen_at:new Date().toISOString()}).eq("id",d.id);
  return d||null;
 }
-async function notify(chat:number,message:string){
- // Only the server can decrypt the bot secret; no key or token is returned to a worker.
- const {data:c}=await db.from("lead_hub_telegram_settings").select("bot_token_cipher,bot_token_iv,enabled").eq("id",1).maybeSingle();
- if(!c?.enabled||!c.bot_token_cipher||!c.bot_token_iv)return;
- const key=await crypto.subtle.importKey("raw",await crypto.subtle.digest("SHA-256",te.encode("FARIS_TELEGRAM_V1:"+SECRET)),{name:"AES-GCM"},false,["decrypt"]);
+async function telegramToken(){
+ const {data:c}=await db.from("lead_hub_telegram_settings")
+  .select("bot_token_cipher,bot_token_iv,enabled").eq("id",1).maybeSingle();
+ if(!c?.enabled||!c.bot_token_cipher||!c.bot_token_iv)return null;
+ const key=await crypto.subtle.importKey("raw",await crypto.subtle.digest(
+  "SHA-256",te.encode("FARIS_TELEGRAM_V1:"+SECRET)),{name:"AES-GCM"},false,["decrypt"]);
  const fromB64=(x:string)=>Uint8Array.from(atob(x),ch=>ch.charCodeAt(0));
- const token=new TextDecoder().decode(await crypto.subtle.decrypt({name:"AES-GCM",iv:fromB64(c.bot_token_iv)},key,fromB64(c.bot_token_cipher)));
+ return new TextDecoder().decode(await crypto.subtle.decrypt({
+  name:"AES-GCM",iv:fromB64(c.bot_token_iv)
+ },key,fromB64(c.bot_token_cipher)));
+}
+async function notify(chat:number,message:string){
+ const token=await telegramToken();if(!token)return;
  const r=await fetch("https://api.telegram.org/bot"+token+"/sendMessage",{
   method:"POST",headers:{"Content-Type":"application/json"},
   body:JSON.stringify({chat_id:chat,text:message.slice(0,3300)})});
  if(!r.ok)throw Error("Telegram notification failed");
 }
+
 async function handler(req:Request){
  const origin=req.headers.get("origin");
  if(origin&&origin!==ORIGIN)return err(req,"Origin forbidden",403);
@@ -238,13 +246,11 @@ async function handler(req:Request){
      {needs_review:true,classification_method:"codex_failed"};
    await db.from("lead_hub_telegram_files").update(update).eq("id",file.id).eq("classification_method","codex_pending");
   }
-  const {data:c}=await db.from("lead_hub_telegram_cases").select("chat_id,customer_name").eq("id",file.case_id).maybeSingle();
-  if(c){
-   const msg=success?"🤖 CHATGPT CODEX — SEMAKAN SIAP\n📄 "+file.original_name.slice(0,60)+
-    "\n📁 "+category+"\n"+(conf>=.85&&category!=="OTHER"?"✅ Kategori dikenal pasti.":"⚠️ Kategori perlu disahkan; guna /senarai dan /kategori.")+
-    "\n\n/senarai untuk semak dokumen.":"⚠️ Imbasan Codex gagal. Sila guna /senarai dan /kategori untuk semakan manual.";
-   try{await notify(Number(c.chat_id),msg)}catch(e){console.warn("Telegram notification:",String(e).slice(0,80))}
-  }
+  // Update the same Telegram case card, without a new message per AI scan.
+  try{
+   const token=await telegramToken();
+   if(token)await touchCaseCard(db,token,file.case_id);
+  }catch(e){console.warn("Case summary refresh:",String(e).slice(0,90))}
   return response(req,{ok:true,completed:true,success});
  }
  return err(req,"Unknown action",404);
