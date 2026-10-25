@@ -173,37 +173,76 @@ async function cover(doc:PDFDocument,heading:string,customer:string,sub:string){
  page.drawText(sub,{x:72,y:590,size:11,font:normal});
  page.drawText("FARIS R+PROTON - DOKUMEN DALAMAN",{x:72,y:115,size:10,font:normal});
 }
+type MergeIssue={number:number;filename:string;problem:"locked"|"invalid"|"missing"|"image"};
+function reportPdfIssue(error:unknown):"locked"|"invalid"{
+ const message=String(error||"").toLowerCase();
+ return /encrypted|password|encryption|encryptedpdferror/.test(message)?"locked":"invalid";
+}
+function mergeIssueText(issues:MergeIssue[]){
+ const lines=issues.slice(0,12).map(x=>"#"+x.number+" "+x.filename.slice(0,73)+"\n"+
+   (x.problem==="locked"?"🔒 PDF mempunyai sekatan/kata laluan":
+    x.problem==="missing"?"📁 Fail tidak dapat dimuat turun dari storan":
+    x.problem==="image"?"🖼 Imej tidak dapat dibuka":
+    "⚠️ Struktur PDF tidak dapat dibaca atau tidak serasi"));
+ return lines.join("\n\n")+(issues.length>12?"\n… dan "+(issues.length-12)+" fail lain.":"");
+}
 async function makeMergedPdf(caseRow:any,files:any[]){
  const orderFor=(file:any)=>file.party==="REBATE"
   ?({IC_FRONT:1,IC:1,IC_BACK:2,LESEN:3,SURAT_KERJA:4,SIJIL_LAHIR:5,SIJIL_NIKAH:6,SIJIL:7,BANK:8,PAYSLIP:9,VSO:10,OTHER:11}[file.category as "OTHER"]||99)
   :(RANK[file.category]||99);
- const sorted=[...files].sort((a,b)=>(PARTY[a.party]-PARTY[b.party])||
+ const base=[...files].sort((a,b)=>(Number(a.telegram_message_id??0)-Number(b.telegram_message_id??0))||
+  String(a.created_at).localeCompare(String(b.created_at)));
+ const numbers=new Map(base.map((file,i)=>[file.id,i+1]));
+ const sorted=[...base].sort((a,b)=>(PARTY[a.party]-PARTY[b.party])||
   (orderFor(a)-orderFor(b))||
   ((a.telegram_message_id??0)-(b.telegram_message_id??0))||
   a.created_at.localeCompare(b.created_at));
  const pdf=await PDFDocument.create();let lastParty="",pages=0;
+ const issues:MergeIssue[]=[];
  for(const item of sorted){
+  const number=Number(numbers.get(item.id)||0);
+  const filename=String(item.original_name||"Dokumen tidak bernama");
+  // A single unreadable payslip must not cause all other files to be discarded.
+  // Collect errors but NEVER deliver an incomplete PDF without user consent.
+  let bytes:Uint8Array;
+  try{
+   const {data,error}=await db.storage.from(BUCKET).download(item.storage_path);
+   if(error||!data)throw Error("Storage read failed");
+   bytes=new Uint8Array(await data.arrayBuffer());
+  }catch(e){
+   console.warn("PDF merge storage read failed",String(item.id).slice(0,40));
+   issues.push({number,filename,problem:"missing"});
+   continue;
+  }
   if(item.party!==lastParty&&(item.party==="GUARANTOR"||item.party==="REBATE")){
-    await cover(pdf,item.party==="GUARANTOR"?"GUARANTOR / PENJAMIN":"COP REBATE",caseRow.customer_name,
-      item.party==="GUARANTOR"?"Dokumen Penjamin":"Dokumen Rebate");pages++;
+   await cover(pdf,item.party==="GUARANTOR"?"GUARANTOR / PENJAMIN":"COP REBATE",caseRow.customer_name,
+    item.party==="GUARANTOR"?"Dokumen Penjamin":"Dokumen Rebate");pages++;
   }
   lastParty=item.party;
-  const {data,error}=await db.storage.from(BUCKET).download(item.storage_path);
-  if(error||!data)throw Error("Dokumen tidak dapat dibaca: "+item.original_name);
-  const bytes=new Uint8Array(await data.arrayBuffer());
   if(item.mime_type==="application/pdf"){
-    try{const source=await PDFDocument.load(bytes,{updateMetadata:false});
-      const copied=await pdf.copyPages(source,source.getPageIndices());for(const page of copied){pdf.addPage(page);pages++}
-    }catch(e){throw Error("PDF terkunci/rosak: "+item.original_name+" - sila ganti fail tersebut")}
+   try{
+    const source=await PDFDocument.load(bytes,{updateMetadata:false});
+    const copied=await pdf.copyPages(source,source.getPageIndices());
+    for(const page of copied){pdf.addPage(page);pages++}
+   }catch(e){
+    issues.push({number,filename,problem:reportPdfIssue(e)});
+    console.warn("PDF merge unsupported document number",number,"cause",String(e).slice(0,95));
+   }
   }else{
-    const isPng=item.mime_type==="image/png";
-    const image=isPng?await pdf.embedPng(bytes):await pdf.embedJpg(bytes);
+   try{
+    const image=item.mime_type==="image/png"?await pdf.embedPng(bytes):await pdf.embedJpg(bytes);
     const page=pdf.addPage([595,842]),ratio=Math.min(555/image.width,802/image.height);
-    page.drawImage(image,{x:(595-image.width*ratio)/2,y:(842-image.height*ratio)/2,width:image.width*ratio,height:image.height*ratio});pages++;
+    page.drawImage(image,{x:(595-image.width*ratio)/2,y:(842-image.height*ratio)/2,width:image.width*ratio,height:image.height*ratio});
+    pages++;
+   }catch(e){issues.push({number,filename,problem:"image"});}
   }
   if(pages>100)throw Error("Maksimum 100 muka surat setiap gabungan Telegram.");
  }
- if(!pages)throw Error("Tiada dokumen untuk dijana");
+ if(issues.length){
+  const e=new Error("Ada "+issues.length+" fail yang tidak boleh digabung.") as Error&{mergeIssues?:MergeIssue[]};
+  e.mergeIssues=issues;throw e;
+ }
+ if(!pages)throw Error("Tiada dokumen untuk dijana.");
  return new Uint8Array(await pdf.save({useObjectStreams:true}));
 }
 async function telegramSendDocument(token:string,chat:number,bytes:Uint8Array,name:string,caption:string){
@@ -1039,21 +1078,49 @@ async function processUpdate(update:any,conf:any,token:string){
   if(command==="/siap"){
    if(!files?.length){await say(token,chat,"Tiada dokumen dalam kes ini.");return}
    const uncertain=files.map((x:any,i:number)=>x.needs_review?i+1:0).filter(Boolean);
-   if(uncertain.length){await say(token,chat,"⚠️ SEMAK DOKUMEN DAHULU\n"+
-  "Kategori belum jelas untuk fail #"+uncertain.join(", ")+".\n"+
-  "Taip /senarai dan /kategori 2 IC (contoh) untuk betulkan, kemudian /siap.");return}
-   await say(token,chat,"⏳ MENYUSUN DOKUMEN\n"+caseSummary(c)+
-   "\n📎 Jumlah: "+files.length+" fail\nBot sedang menjana PDF mengikut urutan kategori.");
-   const result=await makeMergedPdf(c,files);
-   const clean=safePdfText(c.customer_name).replace(/\s+/g,"_").slice(0,50)||"CUSTOMER";
-   await telegramSendDocument(token,chat,result,clean+"_DOKUMEN_LENGKAP.pdf",
-   "✅ DOKUMEN SIAP | "+c.customer_name+" | "+files.length+" fail. Sila semak sebelum serah.");
-   await say(token,chat,"✅ PDF BERJAYA DIHANTAR\n"+
-   "👤 "+c.customer_name+"\n📎 "+files.length+" fail selesai disusun.\n"+
-   "📌 Untuk pelanggan baharu: /pelanggan NAMA\n"+
-   "Untuk padam fail kes terakhir daripada storan: /padam.");
-   await db.from("lead_hub_telegram_cases").update({state:"completed",completed_at:new Date().toISOString()}).eq("id",c.id);
-   await rememberAction(id,account.id,chat,"merge",c.id);
+   if(uncertain.length){
+    await say(token,chat,"⚠️ SEMAK DOKUMEN DAHULU\n"+
+     "Kategori belum jelas untuk fail #"+uncertain.join(", ")+".\n"+
+     "Taip 'senarai' dan 'fail 2 IC' (contoh) untuk betulkan, kemudian 'siapkan PDF'.");
+    return;
+   }
+   const progress=await say(token,chat,"⏳ MENYUSUN DOKUMEN\n"+caseSummary(c)+
+    "\n📎 Jumlah: "+files.length+" fail\nBot sedang menyemak dan menyusun PDF.");
+   async function updateProgress(message:string){
+    try{await telegramCall(token,"editMessageText",{
+     chat_id:chat,message_id:progress.message_id,text:message.slice(0,3850),
+     link_preview_options:{is_disabled:true}
+    });}catch(e){await say(token,chat,message.slice(0,3850))}
+   }
+   try{
+    const result=await makeMergedPdf(c,files);
+    const clean=safePdfText(c.customer_name).replace(/\s+/g,"_").slice(0,50)||"CUSTOMER";
+    await telegramSendDocument(token,chat,result,clean+"_DOKUMEN_LENGKAP.pdf",
+      "✅ DOKUMEN SIAP | "+c.customer_name+" | "+files.length+" fail. Sila semak sebelum serah.");
+    await db.from("lead_hub_telegram_cases").update({
+     state:"completed",completed_at:new Date().toISOString()
+    }).eq("id",c.id).eq("account_id",account.id);
+    await rememberAction(id,account.id,chat,"merge",c.id);
+    await updateProgress("✅ PDF BERJAYA DIHANTAR\n"+caseSummary(c)+
+      "\n📎 "+files.length+" fail berjaya disusun. Semak fail PDF yang muncul dalam chat.");
+   }catch(error){
+    const e=error as Error&{mergeIssues?:MergeIssue[]};
+    const problems=Array.isArray(e.mergeIssues)?e.mergeIssues:[];
+    console.warn("FARIS merge failure",problems.length?"invalid_documents="+problems.length:String(e).slice(0,160));
+    const msg=problems.length?
+     "⚠️ PDF BELUM DAPAT DISIAPKAN\n"+caseSummary(c)+
+     "\n📎 "+files.length+" fail diterima, "+problems.length+" perlu dibetulkan:\n\n"+
+     mergeIssueText(problems)+"\n\n"+
+     "✅ Semua dokumen asal kekal dalam sistem.\n"+
+     "Buka fail bermasalah. Jika boleh dibaca, cuba Print → Save as PDF untuk menghasilkan salinan baharu. "+
+     "Hantar salinan baharu, semak menggunakan 'senarai', kemudian minta padam fail lama dengan pengesahan. "+
+     "Selepas itu taip 'siapkan PDF' semula.":
+     "⚠️ PDF BELUM DAPAT DISIAPKAN\n"+caseSummary(c)+
+     "\nSebab: "+(/45MB|100 muka surat/i.test(String(e))?String(e):
+      "Proses gabungan atau penghantaran Telegram tidak dapat disahkan. Semak chat dahulu sebelum mencuba semula.")+
+     "\n\nSemua fail asal kekal. Jika masalah berulang, cuba PDF Compiler di website FARIS.";
+    await updateProgress(msg);
+   }
    return;
   }
  }
