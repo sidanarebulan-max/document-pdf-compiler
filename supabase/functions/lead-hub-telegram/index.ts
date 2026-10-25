@@ -82,7 +82,10 @@ async function cover(doc:PDFDocument,heading:string,customer:string,sub:string){
  page.drawText("FARIS R+PROTON - DOKUMEN DALAMAN",{x:72,y:115,size:10,font:normal});
 }
 async function makeMergedPdf(caseRow:any,files:any[]){
- const sorted=[...files].sort((a,b)=>(PARTY[a.party]-PARTY[b.party])||((RANK[a.category]||99)-(RANK[b.category]||99))||a.created_at.localeCompare(b.created_at));
+ const orderFor=(file:any)=>file.party==="REBATE"
+  ?({IC_FRONT:1,IC_BACK:2,LESEN:3,SURAT_KERJA:4,SIJIL_LAHIR:5,SIJIL_NIKAH:6,OTHER:7}[file.category as "OTHER"]||99)
+  :(RANK[file.category]||99);
+ const sorted=[...files].sort((a,b)=>(PARTY[a.party]-PARTY[b.party])||(orderFor(a)-orderFor(b))||a.created_at.localeCompare(b.created_at));
  const pdf=await PDFDocument.create();let lastParty="",pages=0;
  for(const item of sorted){
   if(item.party!==lastParty&&(item.party==="GUARANTOR"||item.party==="REBATE")){
@@ -214,6 +217,22 @@ async function handleWizard(token:string,chat:number,telegramId:number,account:a
    const bytes=await makeVSO(payload,account.display_name);
    const name=safePdfText(payload.name).replace(/\s+/g,"_").slice(0,38)||"PELANGGAN";
    await telegramSendDocument(token,chat,bytes,name+"_VSO_DRAF.pdf","✅ VSO DRAF siap. Sila semak butiran, harga dan pengesahan pengedar.");
+   // Attach VSO draft to the active collection so /siap can include it first.
+   const activeCase=await currentCase(account.id,chat);
+   if(activeCase){
+     const fileId=uuid(),path=account.id+"/"+activeCase.id+"/"+fileId+".pdf";
+     const {error:storageError}=await db.storage.from(BUCKET)
+       .upload(path,bytes,{contentType:"application/pdf",upsert:false});
+     if(!storageError){
+       const {error:insertError}=await db.from("lead_hub_telegram_files").insert({
+         id:fileId,case_id:activeCase.id,storage_path:path,original_name:name+"_VSO_DRAF.pdf",
+         mime_type:"application/pdf",party:"HIRER",category:"VSO",confidence:1,
+         needs_review:false,classification_method:"VSO_GENERATOR"
+       });
+       if(insertError){await db.storage.from(BUCKET).remove([path]);}
+       else await say(token,chat,"📁 VSO DRAF juga ditambah kepada kes "+activeCase.customer_name+" pada kategori VSO.");
+     }
+   }
    await db.from("lead_hub_telegram_wizards").delete().eq("telegram_user_id",telegramId);
   }catch(e){await say(token,chat,"VSO tidak dapat dijana: "+String(e instanceof Error?e.message:e)+"\n/batal untuk berhenti, /vso untuk mula semula.");
    await db.from("lead_hub_telegram_wizards").delete().eq("telegram_user_id",telegramId);
