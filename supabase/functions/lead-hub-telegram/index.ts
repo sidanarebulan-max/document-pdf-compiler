@@ -681,19 +681,36 @@ async function processUpdate(update:any,conf:any,token:string){
  if(update.callback_query){
   const callback=update.callback_query;
   const action=String(callback.data||"");
-  if(action!=="faris_delete_yes"&&action!=="faris_delete_no")return;
+  const parsedCallback=action.match(/^faris_delete_(yes|no):([a-f0-9]{10})$/);
+  if(!parsedCallback)return;
+  const deleteApproved=parsedCallback[1]==="yes",requestTag=parsedCallback[2];
   const chat=Number(callback.message?.chat?.id),id=Number(callback.from?.id);
   if(!Number.isSafeInteger(chat)||!Number.isSafeInteger(id)||callback.message?.chat?.type!=="private")return;
+  // Acknowledge the Telegram tap immediately, before Supabase reads.
+  try{await telegramCall(token,"answerCallbackQuery",{
+   callback_query_id:callback.id,text:"⏳ Mengesahkan pilihan..."
+  });}catch(err){console.warn("Telegram quick acknowledgement",String(err).slice(0,60))}
   const linked=await linkedTelegramAccount(id);
   if(!linked){
    await telegramCall(token,"answerCallbackQuery",{
     callback_query_id:callback.id,text:"Akaun FARIS belum dipautkan",show_alert:true
    });return;
   }
-  await telegramCall(token,"answerCallbackQuery",{
-   callback_query_id:callback.id,text:"Permintaan diterima"
-  });
-  await decideDelete(token,chat,id,linked.account,action==="faris_delete_yes");
+  const {data:request}=await db.from("lead_hub_telegram_pending_actions")
+   .select("data,expires_at").eq("telegram_user_id",id)
+   .eq("account_id",linked.account.id).eq("chat_id",chat).maybeSingle();
+  if(!request||request.data?.request_tag!==requestTag||
+   Date.parse(request.expires_at)<=Date.now()){
+   await say(token,chat,"⚠️ Butang ini sudah tamat atau digantikan dengan permintaan baharu. Hantar arahan padam semula.");
+   return;
+  }
+  try{
+   await telegramCall(token,"editMessageReplyMarkup",{
+    chat_id:chat,message_id:callback.message.message_id,
+    reply_markup:{inline_keyboard:[[{text:"⏳ Sedang diproses...",callback_data:"faris_delete_processing"}]]}
+   });
+  }catch(err){console.warn("Telegram status display",String(err).slice(0,60))}
+  await decideDelete(token,chat,id,linked.account,deleteApproved);
   try{
    await telegramCall(token,"editMessageReplyMarkup",{
     chat_id:chat,message_id:callback.message.message_id,
