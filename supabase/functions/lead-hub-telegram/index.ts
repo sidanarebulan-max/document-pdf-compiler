@@ -94,9 +94,9 @@ function caseSummary(c:any){
 }
 function docCategoryGuide(){
  return "📂 PILIH JENIS DOKUMEN\n"+
- "/ic — Kad pengenalan\n/bank — Penyata bank\n/gaji — Slip gaji\n/lesen — Lesen\n/sijil — Sijil nikah atau lahir\n/kerja — Surat kerja\n/vso — Fail VSO\n/lain — Dokumen lain\n\n"+
- "Pilih sekali, kemudian hantar semua fail kategori itu satu demi satu.\n"+
- "Untuk jana VSO baharu: /buatvso";
+  "Tulis: IC • bank • gaji • lesen • sijil • kerja • VSO • lain\n"+
+  "Bot ingat kategori yang kau pilih. Hantar beberapa fail terus.\n"+
+  "Untuk jana VSO DRAF, tulis 'buat VSO'.";
 }
 const PARTY:{[k:string]:number}={HIRER:0,GUARANTOR:1,REBATE:2};
 const VARIANTS:{[k:string]:{label:string;base:number;fees:number;year:string}}={
@@ -366,7 +366,7 @@ async function currentCase(accountId:string,chat:number){
 }
 async function handleDoc(token:string,conf:any,chat:number,account:any,message:any){
  const c=await currentCase(account.id,chat);
- if(!c){await say(token,chat,"Taip /pelanggan NAMA terlebih dahulu, kemudian hantar dokumen PDF/JPG/PNG.");return}
+ if(!c){await say(token,chat,"📁 Belum ada folder pelanggan. Cakap 'buka folder nama Ahmad' dahulu, kemudian hantar PDF/JPG/PNG. Aku akan susun ikut pelanggan yang dipilih.");return}
  const doc=message.document,photo=message.photo?.at(-1);
  const info=doc||photo;
  const fileId=info?.file_id;
@@ -464,7 +464,7 @@ async function handleLink(token:string,chat:number,id:number,code:string){
  const {error}=await db.from("lead_hub_telegram_links").upsert({telegram_user_id:id,chat_id:chat,account_id:link.account_id,updated_at:new Date().toISOString()},{onConflict:"telegram_user_id"});
  if(error){await say(token,chat,"Gagal pautkan. Akaun FARIS mungkin telah disambung kepada Telegram lain. Admin boleh putuskan pautan lama.");return}
  await db.from("lead_hub_telegram_link_codes").update({used_at:new Date().toISOString()}).eq("code_hash",link.code_hash);
- await say(token,chat,"✅ Telegram berjaya disambung ke FARIS LEAD HUB. Taip /menu untuk semua fungsi.");
+ await say(token,chat,"✅ Telegram berjaya disambung ke FARIS LEAD HUB.\nCakap saja apa yang kau nak buat, contohnya: buka folder nama Ahmad, ini IC, atau ada nombor baru?");
 }
 // Conversational Telegram layer: authenticated account scope, bounded commands and private AI memory.
 function redactChat(v:string){
@@ -690,17 +690,21 @@ async function processUpdate(update:any,conf:any,token:string){
  const [cmd,...rest]=routed.split(/\s+/),arg=routed.slice(cmd.length).trim(),command=cmd.split("@")[0].toLowerCase();
  if(command==="/menu"||command==="/help"){
   const c=await currentCase(account.id,chat);
-  await say(token,chat,"🤖 FARIS LEAD HUB\n"+
-   (c?"\n"+caseSummary(c)+"\n📌 Kategori aktif: "+(c.active_category?DOC_NAMES[c.active_category]||c.active_category:"Belum dipilih")+"\n":"")+
-   "\n1️⃣ /pelanggan NAMA — mula satu kes\n"+
-   "2️⃣ /peminjam, /penjamin atau /rebate — pilih bahagian\n"+
-   "3️⃣ Pilih kategori dan hantar banyak fail\n"+
-   "4️⃣ /senarai — semak fail\n"+
-   "5️⃣ /siap — terima PDF gabungan\n\n"+
+  await say(token,chat,"👋 HAI! AKU PEMBANTU FARIS\n"+
+   "Cakap dengan aku macam biasa, tak perlu letak / di depan. 😊\n"+
+   (c?"\n"+caseSummary(c)+"\nKategori aktif: "+(DOC_NAMES[c.active_category]||"Auto")+"\n":"")+
+   "\nCONTOH AYAT:\n"+
+   "📁 'buka folder nama Ahmad'\n"+
+   "📎 'ini IC' → hantar banyak fail\n"+
+   "🧾 'aku nak masuk slip gaji'\n"+
+   "📋 'berapa fail dah masuk?'\n"+
+   "🗂 'tunjuk senarai'\n"+
+   "🗑 'no 1 sampai tiga buang' (aku minta sahkan dulu)\n"+
+   "✅ 'siapkan PDF'\n"+
+   "🚘 'buat VSO'\n"+
+   "📲 'ada nombor baru?'\n\n"+
    docCategoryGuide()+"\n\n"+
-   "🚘 /buatvso — jana VSO DRAF\n"+
-   "📲 /daftar, /baru, /ambil, /skrip — lead WhatsApp\n"+
-   "🗑 /padam — padam kes");return;
+   "Kalau ada soalan lain, tanya saja!");return;
  }
  if(command==="/batal"){
   await db.from("lead_hub_telegram_wizards").delete().eq("telegram_user_id",id);
