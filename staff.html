@@ -60,7 +60,13 @@
   .msg-bubble{white-space:pre-wrap;overflow-wrap:anywhere;background:#165743;color:#eafff4;border-radius:13px 13px 4px 13px;padding:13px;max-width:95%;font-size:13px;line-height:1.65;align-self:flex-start}
   @media(max-width:800px){.msg-settings-grid{grid-template-columns:1fr}.msg-settings-preview{padding:11px}
     .msg-settings-actions>*{flex:1}.header nav{width:100%}.header nav>*{flex:1}}
-.tg-head{align-items:center;flex-wrap:wrap}.tg-status{display:flex;align-items:center;flex-wrap:wrap;gap:12px;background:#0c1d38;border:1px solid #284773;padding:14px;border-radius:12px}.tg-status>div{flex:1}.tg-status p{margin:4px 0}.tg-dot{width:12px;height:12px;background:#738096;border-radius:50%;box-shadow:0 0 0 4px #7380962c}.tg-dot.connected{background:#24be91;box-shadow:0 0 0 4px #24be912c}.tg-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}.tg-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.tg-actions>*{flex:1;min-width:140px}.divider-tg{border-top:1px solid #3a4e71;margin:19px 0}.tg-secret{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px;border-radius:10px;background:#163456;margin-top:12px}.tg-secret b{letter-spacing:1px;color:#b5e4ff}.tg-open{display:block;text-align:center;padding:13px;background:#14689b;border-radius:10px;color:#fff!important;text-decoration:none;font-weight:800}.tg-guide{margin-top:12px}.tg-commands{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.tg-commands>div{display:flex;flex-direction:column;align-items:flex-start;gap:7px}.tg-commands code{white-space:normal;overflow-wrap:anywhere;font-size:12px;color:#a3d2fb;background:#1b2d4b;padding:7px;border-radius:6px}@media(max-width:800px){.tg-grid,.tg-commands{grid-template-columns:1fr}.tg-status button{width:100%}}  .tg-provider-grid{display:grid;grid-template-columns:1fr;gap:9px}
+.tg-head{align-items:center;flex-wrap:wrap}.tg-status{display:flex;align-items:center;flex-wrap:wrap;gap:12px;background:#0c1d38;border:1px solid #284773;padding:14px;border-radius:12px}.tg-status>div{flex:1}.tg-status p{margin:4px 0}.tg-dot{width:12px;height:12px;background:#738096;border-radius:50%;box-shadow:0 0 0 4px #7380962c}.tg-dot.connected{background:#24be91;box-shadow:0 0 0 4px #24be912c}.tg-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}.tg-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.tg-actions>*{flex:1;min-width:140px}.divider-tg{border-top:1px solid #3a4e71;margin:19px 0}.tg-secret{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px;border-radius:10px;background:#163456;margin-top:12px}.tg-secret b{letter-spacing:1px;color:#b5e4ff}.tg-open{display:block;text-align:center;padding:13px;background:#14689b;border-radius:10px;color:#fff!important;text-decoration:none;font-weight:800}.tg-guide{margin-top:12px}.tg-commands{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.tg-commands>div{display:flex;flex-direction:column;align-items:flex-start;gap:7px}.tg-commands code{white-space:normal;overflow-wrap:anywhere;font-size:12px;color:#a3d2fb;background:#1b2d4b;padding:7px;border-radius:6px}@media(max-width:800px){.tg-grid,.tg-commands{grid-template-columns:1fr}.tg-status button{width:100%}}  .tg-cli-guide{margin:12px 0 0;border:1px solid #38547d;background:#0e213a;padding:13px;border-radius:12px}
+  .tg-cli-guide .tg-provider-title{margin-bottom:10px}
+  .tg-cli-guide a{color:#93c5fd}
+  .tg-cli-command{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#09182d;border:1px solid #2a476a;border-radius:9px;padding:8px 10px;margin-top:8px}
+  .tg-cli-command code{font:12px/1.5 ui-monospace,Consolas,monospace;color:#b6d6fa;overflow-wrap:anywhere}
+  .tg-cli-command button{flex:none;font-size:11px;padding:7px 12px}
+  .tg-provider-grid{display:grid;grid-template-columns:1fr;gap:9px}
   .tg-provider{border:1px solid #2d4974;background:#0b1830;border-radius:12px;padding:12px;min-width:0}
   .tg-provider-title{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-size:12px}
   .tg-provider-badge{color:#9db3ce;background:#1a2d4a;border:1px solid #304765;border-radius:30px;padding:3px 8px;font-size:10px}
@@ -183,9 +189,10 @@
    <p class="muted small">Dua sambungan AI berasingan. OpenAI menyokong PDF dan imej; DeepSeek Flash menyokong imej JPG/PNG. Kedua-duanya boleh digunakan sebagai pilihan utama atau sandaran.</p>
    <div class="tg-provider-grid">
     <form id="telegramAIForm" class="tg-provider">
-     <div class="tg-provider-title"><b>OpenAI API / CLI Key</b><span id="tgOpenAIStatus" class="tg-provider-badge">Belum disambung</span></div>
-     <p class="muted small">Untuk imbasan PDF dan gambar. Key OpenAI yang kau gunakan untuk API/CLI juga boleh dimasukkan di sini. CLI yang berjalan pada komputer tidak dipanggil terus oleh website.</p>
-     <label for="telegramAPIKey">OpenAI API Key</label>
+     <div class="tg-provider-title"><b>OpenAI API · Kredit Prabayar Telegram</b><span id="tgOpenAIStatus" class="tg-provider-badge">Belum disambung</span></div>
+     <p class="muted small">Untuk bot Telegram yang berjalan 24 jam di Supabase. Key ini menggunakan baki prabayar OpenAI API milik akaun/projek kau — tidak menggunakan kuota langganan ChatGPT atau sesi CLI.</p>
+     <p class="muted small"><a href="https://platform.openai.com/settings/organization/billing/overview" target="_blank" rel="noopener noreferrer">Semak baki &amp; tetapan auto-recharge API</a>. Jika hanya mahu guna kredit yang sudah ditambah nilai, semak dan matikan auto-recharge di akaun API. Penggunaan tertunda masih boleh menyebabkan baki negatif kecil.</p>
+     <label for="telegramAPIKey">OpenAI API Key (baki prabayar sedia ada)</label>
      <input id="telegramAPIKey" type="password" autocomplete="new-password" placeholder="sk-... (tidak akan dipaparkan semula)" required>
      <div class="tg-actions"><button class="secondary" id="telegramSaveAI" type="submit">Simpan OpenAI</button><button class="secondary" id="telegramDisableAI" type="button">Padam Key</button></div>
     </form>
@@ -197,6 +204,15 @@
      <div class="tg-actions"><button class="secondary" id="telegramSaveDeepSeek" type="submit">Simpan DeepSeek</button><button class="secondary" id="telegramDisableDeepSeek" type="button">Padam Key</button></div>
     </form>
    </div>
+   <div class="tg-cli-guide">
+      <div class="tg-provider-title"><b>🔐 Login ChatGPT melalui Codex CLI (komputer)</b><span class="tg-provider-badge">Akses setempat</span></div>
+      <p class="muted small">Kalau kau mahu guna langganan ChatGPT untuk Codex CLI di komputer, ia menggunakan login akaun ChatGPT — bukan API key. Cara ini <strong>tidak</strong> menjadikan bot Telegram pada server menggunakan kuota ChatGPT secara automatik.</p>
+      <p class="muted small">Buka PowerShell pada komputer Windows, kemudian jalankan:</p>
+      <div class="tg-cli-command"><code>npm install -g @openai/codex</code><button type="button" class="secondary" data-cli-copy="install">Salin</button></div>
+      <div class="tg-cli-command"><code>codex</code><button type="button" class="secondary" data-cli-copy="login">Salin</button></div>
+      <p class="muted small">Pilih <strong>Sign in with ChatGPT</strong> semasa diminta. Panduan rasmi: <a href="https://help.openai.com/en/articles/11369540-using-codex-with-your-chatgpt-plan" target="_blank" rel="noopener noreferrer">Codex dengan pelan ChatGPT</a>.</p>
+      <p class="muted small"><strong>Untuk login ChatGPT terus dalam website FARIS:</strong> OpenAI menyediakan Sign in with ChatGPT untuk integrasi yang layak. Website persendirian berhos seperti ini belum semestinya mempunyai akses. <a href="https://developers.openai.com/siwc/request-client-id" target="_blank" rel="noopener noreferrer">Semak permohonan akses OAuth</a> sebelum kita boleh sambung secara rasmi.</p>
+    </div>
    <div class="tg-routing">
     <h3>Penggunaan AI</h3>
     <label for="telegramAIRouting">Pilihan AI utama</label>
@@ -340,5 +356,5 @@
 </div>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="/staff-passcode.js?v=telegram-20261026"></script>
-<script src="/telegram-hub.js?v=simple-commands-20261026"></script>
+<script src="/telegram-hub.js?v=cli-login-guide-20261026"></script>
 </body></html>
