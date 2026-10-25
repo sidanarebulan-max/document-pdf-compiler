@@ -84,15 +84,15 @@ async function refresh(){
   $("telegramState").textContent=!r.connected?"Bot belum disambungkan":r.callback_ready?"Bot Telegram Aktif • Butang Sedia":"Bot aktif • Butang belum disegerakkan";
   $("telegramUser").textContent=r.bot_username?"@"+r.bot_username+(r.callback_ready?" · Mesej & butang disambung":" · Tekan Semak Status untuk baiki webhook"):"Admin perlu sambungkan token bot daripada BotFather.";
   $("telegramDot").classList.toggle("connected",!!r.connected);
-  $("tgOpenAIStatus").textContent=r.openai_enabled?"Aktif":"Belum disambung";
+  $("tgOpenAIStatus").textContent=r.openai_enabled?"Key disimpan":"Belum disambung";
   $("tgOpenAIStatus").classList.toggle("on",!!r.openai_enabled);
-  $("tgDeepSeekStatus").textContent=r.deepseek_enabled?"Aktif":"Belum disambung";
+  $("tgDeepSeekStatus").textContent=r.deepseek_enabled?"Key disimpan":"Belum disambung";
   $("tgDeepSeekStatus").classList.toggle("on",!!r.deepseek_enabled);
   $("telegramAIRouting").value=r.ai_primary_provider||"auto";
   $("telegramFallback").checked=r.ai_fallback_enabled!==false;
   $("telegramAIStatus").textContent=r.ai_enabled
-   ?"AI aktif: "+[r.openai_enabled?"OpenAI":"",r.deepseek_enabled?"DeepSeek Flash":""].filter(Boolean).join(" + ") +"."
-   :"Tiada key AI. Dokumen dikelaskan melalui nama fail dan wajib disemak.";
+   ?"Kunci disimpan: "+[r.openai_enabled?"OpenAI":"",r.deepseek_enabled?"DeepSeek":""].filter(Boolean).join(" + ")+". Tekan 'Uji AI' untuk semak sama ada ia benar-benar boleh menjawab."
+   :"Tiada kunci API. AI Chat memerlukan Codex Worker V4 online atau sambungan API yang mempunyai kredit.";
   $("telegramDisableDeepSeek").disabled=!r.deepseek_enabled;
   $("telegramLinkStatus").textContent=r.telegram_linked?"✅ Akaun Telegram anda sudah dipautkan.":"Belum dipautkan dengan Telegram.";
   $("telegramGenerateLink").disabled=!r.connected;
@@ -102,6 +102,33 @@ async function refresh(){
   loaded=true;
  }catch(e){notify("Gagal semak sambungan: "+e.message,true)}
  finally{busy=false;setBusy($("telegramRefresh"),false)}
+}
+async function diagnoseAI(){
+ if(currentUser?.role!=="admin")return;
+ const btn=$("telegramTestAI");if(!btn)return;
+ btn.disabled=true;btn.textContent="⏳ Menguji AI...";
+ const target=$("telegramAIHealthResults");
+ target.textContent="Menguji sambungan menggunakan mesej ringkas tanpa data pelanggan...";
+ try{
+  const d=await api("telegram_ai_diagnose");
+  const describe=(label,x)=>{
+   const badge=x.state==="healthy"?"✅":x.state==="insufficient_balance"?"🔴":
+    x.state==="not_configured"?"⚪":"⚠️";
+   return badge+" "+label+" — "+x.detail;
+  };
+  target.textContent=[
+   describe("ChatGPT Codex PC",d.codex),
+   describe("DeepSeek API",d.deepseek),
+   describe("OpenAI API",d.openai),
+   "",
+   d.chat_ready?"✅ Sekurang-kurangnya satu sambungan AI boleh menjawab.":
+    "❌ AI perbualan belum tersedia. Pulihkan satu sambungan di atas supaya bot boleh memahami ayat bebas."
+  ].join("\n");
+  notify(d.chat_ready?
+   "✅ Pemeriksaan AI siap. Lihat keputusan terperinci.":
+   "⚠️ AI belum boleh digunakan sepenuhnya. Lihat sebab dan langkah pembaikan.",!d.chat_ready);
+ }catch(e){target.textContent="Gagal semak: "+e.message;notify("Gagal menguji AI: "+e.message,true)}
+ finally{btn.disabled=false;btn.textContent="🧪 Uji AI Sekarang"}
 }
 async function connect(event){
  event.preventDefault();
@@ -203,6 +230,7 @@ function register(){
  $("telegramSettingsBtn").addEventListener("click",()=>toggle($("telegramPanel").classList.contains("hide")));
  $("telegramClose").addEventListener("click",()=>toggle(false));
  $("telegramRefresh").addEventListener("click",refresh);
+ $("telegramTestAI").addEventListener("click",diagnoseAI);
  $("telegramConnectForm").addEventListener("submit",connect);
  $("telegramDisconnect").addEventListener("click",disconnect);
  $("telegramAIForm").addEventListener("submit",setAI);
@@ -250,6 +278,7 @@ window.FARIS_TG={
   $("telegramSettingsBtn").classList.remove("hide");
   $("telegramAdminSettings").classList.toggle("hide",user.role!=="admin");
   $("farisCodexPairing").classList.toggle("hide",user.role!=="admin");
+  $("telegramAIDiagnostics").classList.toggle("hide",user.role!=="admin");
   if(user.role==="admin")codexStatus();
   $("telegramSyncCommands").classList.toggle("hide",user.role!=="admin");
   loaded=false;
