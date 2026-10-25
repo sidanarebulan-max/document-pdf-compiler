@@ -536,8 +536,9 @@ async function decideDelete(token:string,chat:number,id:number,account:any,confi
  }
  const ids=Array.isArray(p.data?.file_ids)?p.data.file_ids:[];
  const caseId=p.data?.case_id;
- if(!/^[a-f0-9-]{36}$/i.test(String(caseId||""))||!ids.length||
-  ids.length>50||ids.some((v:any)=>!/^[a-f0-9-]{36}$/i.test(String(v)))){
+ if(!/^[a-f0-9-]{36}$/i.test(String(caseId||""))||
+  (p.action!=="delete_case"&&!ids.length)||ids.length>50||
+  ids.some((v:any)=>!/^[a-f0-9-]{36}$/i.test(String(v)))){
   await say(token,chat,"Senarai padam tidak sah. Minta padam semula.");return;
  }
  const {data:c}=await db.from("lead_hub_telegram_cases").select("id,customer_name")
@@ -552,8 +553,10 @@ async function decideDelete(token:string,chat:number,id:number,account:any,confi
   const {count}=await db.from("lead_hub_telegram_files").select("id",{head:true,count:"exact"}).eq("case_id",c.id);
   if(count!==files.length){await say(token,chat,"Ada fail baharu selepas permintaan padam. Ulang pengesahan.");return}
  }
- const {error:removeError}=await db.storage.from(BUCKET).remove(files.map((x:any)=>x.storage_path));
- if(removeError)throw removeError;
+ if(files.length){
+  const {error:removeError}=await db.storage.from(BUCKET).remove(files.map((x:any)=>x.storage_path));
+  if(removeError)throw removeError;
+ }
  if(p.action==="delete_case"){
   const {error:de}=await db.from("lead_hub_telegram_cases").delete().eq("id",c.id).eq("account_id",account.id);
   if(de)throw de;
@@ -706,6 +709,7 @@ async function processUpdate(update:any,conf:any,token:string){
    docCategoryGuide()+"\n\n"+
    "Kalau ada soalan lain, tanya saja!");return;
  }
+ if(command==="/status"){await caseStatus(token,chat,account);return}
  if(command==="/batal"){
   await db.from("lead_hub_telegram_wizards").delete().eq("telegram_user_id",id);
   await say(token,chat,"✅ Proses VSO dibatalkan. Taip /menu untuk mula semula.");return;
