@@ -779,10 +779,11 @@ async function interpretChat(conf:any,account:any,telegramId:number,chat:number,
  const system="Kau pembantu FARIS R+PROTON di Telegram. Fahami Bahasa Melayu santai, English, "+
   "loghat, ejaan salah/typo, singkatan WhatsApp dan ayat campur. Jawab mesra, ringkas, dan tepat. "+
   "Jawab JSON SAHAJA dengan medan intent,category,party,confidence,reply. "+
-  "intent boleh: answer,help,list,status,lead_new,lead_claim,category,party,vso_start,"+
+  "intent boleh: answer,help,list,status,new_case,lead_new,lead_claim,category,party,vso_start,"+
   "merge_request,delete_request,send_message,register_lead. "+
   "Bezakan pertanyaan CARA dengan permintaan BUAT. "+
   "Contoh typo: 'senarai doc yg ade skrg' -> list; 'brp file dah msk' -> status; "+
+  "Contoh: 'new', 'star customer baru', 'start new client' -> new_case, tanya nama selepas itu. "+
   "'bank stetmen ni' -> category BANK; 'pilh penjmin' -> party GUARANTOR; "+
   "'plis cantum smua pdf' -> merge_request; 'buang fail' -> delete_request. "+
   "Jika pengguna bercakap hal luar kerja, intent answer dan jawablah persoalan itu secara wajar, "+
@@ -794,6 +795,7 @@ async function interpretChat(conf:any,account:any,telegramId:number,chat:number,
   "Keadaan benar pengguna: "+JSON.stringify(meta)+". "+
   "Nombor IC/telefon tidak perlu diminta kecuali urusan yang memang membenarkannya.";
  const messages=[{role:"system",content:system},...recent,{role:"user",content:userText}];
+ let providerBillingUnavailable=false;
  const providers=(conf?.deepseek_api_key_cipher&&conf?.deepseek_api_key_iv?["deepseek"]:[])
   .concat(conf?.ai_api_key_cipher&&conf?.ai_api_key_iv?["openai"]:[]);
  let proposed:any=null;
@@ -808,7 +810,10 @@ async function interpretChat(conf:any,account:any,telegramId:number,chat:number,
      body:JSON.stringify({model:"deepseek-flash",thinking:{type:"disabled"},
       response_format:{type:"json_object"},max_tokens:520,messages,stream:false})
     });
-    if(!resp.ok)throw Error("DeepSeek status "+resp.status);
+    if(!resp.ok){
+     if(resp.status===402)providerBillingUnavailable=true;
+     throw Error("DeepSeek status "+resp.status);
+    }
     content=String((await resp.json()).choices?.[0]?.message?.content||"");
    }else{
     const key=await decrypt(conf.ai_api_key_cipher,conf.ai_api_key_iv);
@@ -854,7 +859,9 @@ async function interpretChat(conf:any,account:any,telegramId:number,chat:number,
    }
   }
  }
- const reply=proposed?.reply||"Aku belum cukup pasti tentang maksud ayat itu. Boleh jelaskan sedikit lagi? Aku boleh bantu juga dengan soalan umum, bukan sekadar dokumen.";
+ const reply=proposed?.reply||(providerBillingUnavailable?
+  "⚠️ AI perbualan buat masa ini tak dapat digunakan kerana baki/kredit DeepSeek tidak mencukupi dan Codex Chat V4 belum online. Admin perlu semak kredit DeepSeek atau hidupkan Codex V4. Urusan dokumen, buka pelanggan baru dan semak senarai masih berfungsi tanpa AI.":
+  "⚠️ AI perbualan belum tersedia sekarang. Untuk buka pelanggan baharu, tulis 'new'. Untuk dokumen, boleh taip 'senarai' atau 'siapkan PDF'. Soalan umum akan disokong apabila AI disambung semula.");
  const updated=[...recent,{role:"user",content:userText},{role:"assistant",content:reply.slice(0,400)}].slice(-6);
  await db.from("lead_hub_telegram_chat_memory").upsert({
   telegram_user_id:telegramId,account_id:account.id,recent_turns:updated,updated_at:new Date().toISOString()
@@ -1021,6 +1028,7 @@ async function processUpdate(update:any,conf:any,token:string){
  if(parsed.kind==="chat"){
   const ai=await interpretChat(conf,account,id,chat,txt);
   if(ai.kind==="pending"||ai.kind==="ask"){await say(token,chat,ai.reply);return}
+  if(ai.kind==="new_customer"){await beginNewCustomer(token,chat,id,account);return}
   if(ai.kind==="help")routed="/menu";
   else if(ai.kind==="status"){await caseStatus(token,chat,account);return}
   else if(ai.kind==="list")routed="/senarai";
