@@ -204,3 +204,17 @@ Modul awal `staff.js` dan jadual `sales_*` menggunakan Supabase Auth e-mel. Modu
 - Jadual baharu dilindungi RLS dan hanya service_role boleh baca/tulis. Jangan simpan perbualan mentah atau PII dalam jadual alias.
 - Unit tests: 17 variasi termasuk `senarai document yang ada sekarang`, `list semua file sekarang`, `yang tinggal apa` selepas padam, `berapa fail dah masuk`, `no 1 sampai 4 buang`, `ya padam terus`, `siapkan baki ni jadi satu file`: semua lulus.
 - Edge function `lead-hub-telegram` v17 diterbitkan dan ACTIVE. Ujian chat Telegram sebenar belum dilaksanakan melalui tool ini; guna kes dummy untuk pengesahan. Tiada dokumen pelanggan dipadam semasa ujian.
+
+## Telegram AI Understanding V18 (kod GitHub — penerbitan belum disahkan)
+
+Tujuan: sentiasa cuba memahami arahan dalam bahasa Melayu santai, bahasa campur, ejaan pelik, soalan umum, sambil mengelakkan salah pelaksanaan.
+
+- `natural.mjs`: laluan deterministik paling cepat dan tanpa kos model. Tambahan membaiki `no 1 smpi tiga buang` supaya tidak disalah baca sebagai hanya fail #1. Kes ambigu meminta penjelasan.
+- `intent-policy.mjs`: penapis hasil AI. Hanya `help`, `list`, `status`, `lead_new` dibenarkan pada keyakinan >=0.75. Perubahan kategori, bahagian, VSO dan ambil lead memerlukan keyakinan >=0.94 + senarai nilai yang sah. `merge_request`, `delete_request`, `send_message`, `register_lead` **tidak** dilaksanakan berdasarkan arahan model; bot minta arahan jelas/pengesahan daripada pengguna.
+- `index.ts`: bila parser tidak kenal ayat, AI kecil DeepSeek Flash (atau OpenAI API, jika disambung) mentafsir niat dengan respons JSON; hanya selepas penapis keselamatan, ia mencetuskan fungsi FARIS yang sudah mempunyai semakan akses. Jika ia hanya soalan bebas, Codex V4 yang online menjawab; kalau offline/sibuk, jawapan DeepSeek digunakan. Bererti sedikit kredit DeepSeek mungkin digunakan walaupun Codex online kerana ia merupakan laluan pentafsiran awal.
+- Model tidak belajar semula secara automatik. `lead_hub_telegram_intent_aliases` menyimpan cap jari pola baca-sahaja yang difahami AI pada confidence >=0.93. Admin boleh memberi pola yang telah disahkan melalui `ajar bot: ayat susah = senarai`, atau `= status` / `= bantuan`. Tiada teks asal disimpan dalam jadual alias. Permintaan padam, akses lead dan status pelanggan tidak boleh dilatih menerusi arahan ini.
+- Memori perbualan per pengguna mengikut keizinan akaun; data pangkalan data tetap sumber kebenaran untuk senarai dokumen, dan tidak diganti dengan jawapan imaginasi model.
+- DeepSeek Flash model ID `deepseek-flash` merujuk kepada API model rasmi (semak dokumentasi DeepSeek).
+- Unit tests `intent-policy.mjs`: 13/13 lulus; regresi variasi `smpi` / `siapkn`: 8/8 lulus.
+
+**Status:** fail di GitHub sudah dikemas kini, tetapi percubaan menerbitkan Edge Function ke Supabase terhalang oleh pemeriksaan keselamatan alat. Semakan `get_edge_function` masih memaparkan versi **v17** tanpa `intent-policy.mjs`. Oleh itu ciri V18 belum tersedia pada Telegram live sehingga deploy yang dibenarkan diselesaikan. Jangan wakilkan ia sudah live.
