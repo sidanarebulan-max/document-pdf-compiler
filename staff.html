@@ -254,22 +254,21 @@
  </div>
  <section class="innerpanel tg-guide">
   <div class="panelhead">
-    <div><h3>3. Arahan Bot Telegram — Versi Mudah</h3>
-     <p class="muted small">Buka kes sekali sahaja. Pilih kategori sekali dan terus hantarkan semua fail kategori itu. Bot ingat ID kes dan kategori sehingga ditukar.</p></div>
-    <button class="secondary" type="button" id="telegramSyncCommands">↻ Kemaskini Menu Bot</button>
+    <div><h3>3. Berbual dengan Bot FARIS AI</h3>
+      <p class="muted small">Bot kini faham Bahasa Melayu biasa. <strong>Tak perlu taip /</strong> untuk urus dokumen, buat VSO, ambil lead atau tanya soalan. Arahan / lama masih boleh digunakan.</p></div>
+    <button class="secondary" type="button" id="telegramSyncCommands">↻ Kemas Kini Menu Bot</button>
   </div>
   <div class="tg-commands">
-   <div><b>1 · Buka pelanggan & bahagian</b>
-     <code>/pelanggan Nama Penuh</code><code>/peminjam</code><code>/penjamin</code><code>/rebate</code></div>
-   <div><b>2 · Pilih jenis dokumen</b>
-     <code>/ic</code><code>/bank</code><code>/gaji</code><code>/lesen</code>
-     <code>/sijil</code><code>/kerja</code><code>/vso</code><code>/lain</code></div>
-   <div><b>3 · Semak dan siapkan</b>
-     <code>/senarai</code><code>/siap</code><code>/kategori 2 IC</code><code>/padam</code>
-     <p class="muted small">Untuk hasilkan VSO DRAF baharu, guna <code>/buatvso</code>. Untuk nombor pelanggan, guna <code>/baru</code>, <code>/ambil</code> atau <code>/daftar</code>.</p></div>
+    <div><b>📁 Folder &amp; dokumen</b>
+      <code>buka folder nama Haris</code><code>ini IC</code><code>aku nak masuk slip gaji</code><code>ini bank statement</code><code>tukar ke penjamin</code></div>
+    <div><b>🧠 Tanya macam AI</b>
+      <code>berapa fail dah masuk?</code><code>tunjuk senarai</code><code>dokumen yang belum lengkap apa?</code><code>no 1 sampai tiga buang</code><code>siapkan PDF</code></div>
+    <div><b>🚘 VSO &amp; WhatsApp</b>
+      <code>buat VSO</code><code>ada nombor baru?</code><code>ambil nombor baru</code><code>guna mesej harga</code>
+      <p class="muted small">Bot minta pengesahan sebelum memadam fail. Arahan lama seperti <code>/ic</code> dan <code>/senarai</code> masih berfungsi.</p></div>
   </div>
-  <p class="muted small">Contoh: /pelanggan Ahmad → /bank → hantar 5 penyata bank → /gaji → hantar 3 slip gaji → /lesen → hantar gambar lesen → /senarai → /siap. Semua fail bawah satu ID kes.</p>
-  <p class="muted small">Susunan PDF dikekalkan mengikut bahagian dan kategori PDF Compiler. Bot menerima PDF/JPG/PNG sehingga 18 MB satu fail, maksimum 50 fail setiap kes dan 100 halaman PDF gabungan. Dokumen yang tidak dikelaskan secara manual dan masih diragui perlu disemak dahulu.</p>
+  <p class="muted small">Contoh: “buka folder nama Haris” → “ini bank” → hantar tiga PDF → “ini gaji” → hantar slip gaji → “berapa fail dah masuk?” → “siapkan PDF”. Semua fail kekal dalam satu ID kes.</p>
+  <p class="muted small">Ayat yang jelas diproses terus tanpa caj AI; soalan bebas dijawab menggunakan DeepSeek jika API diaktifkan. ChatGPT Worker Codex masih digunakan untuk pengelasan dokumen. Data akaun pelanggan terhad mengikut ID staf/admin.</p>
  </section></section>
  <div class="metrics">
   <div class="metric"><span>Jumlah lead</span><strong id="metricTotal">0</strong></div>
