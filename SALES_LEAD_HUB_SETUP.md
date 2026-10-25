@@ -141,3 +141,11 @@ Modul awal `staff.js` dan jadual `sales_*` menggunakan Supabase Auth e-mel. Modu
 - Bot memberi notis ringkas dan kemas (✅ diterima, 📌 kategori aktif, 📎 jumlah fail kategori/kes, ⚠️ perlu semak, 📋 senarai, ✅ PDF selesai).
 - Menu slash command Telegram boleh disegerakkan oleh admin dalam web melalui `✈ Telegram Bot > ↻ Kemaskini Menu Bot`. Arahan Telegram yang didaftarkan termasuk /pelanggan, /ic, /bank, /gaji, /lesen, /sijil, /kerja, /vso, /lain, /senarai, /siap, /buatvso dan lain-lain.
 - Ujian live masih perlu dilakukan menggunakan Telegram yang telah dipaut, dengan dokumen contoh/tanpa PII.
+
+## Pengesahan ChatGPT CLI berbanding OpenAI API Telegram (26 Oktober 2026)
+
+- `Codex CLI` pada komputer boleh log masuk menggunakan akaun ChatGPT. Cara Windows: `npm install -g @openai/codex`, kemudian `codex`, pilih `Sign in with ChatGPT`. Ini guna kelayakan penggunaan Codex/ChatGPT yang disokong. Ia **tidak** memberikan API key/kuota ChatGPT secara automatik kepada bot Telegram yang dihoskan pada Supabase.
+- FARIS Telegram menggunakan `OpenAI API Key` tersulit dalam panel admin. Penggunaan ini ditolak daripada baki prabayar OpenAI API untuk organisasi/projek pemilik key, **berasingan daripada langganan ChatGPT dan kredit Codex**. Admin boleh melihat baki di `https://platform.openai.com/settings/organization/billing/overview` dan menyemak tetapan auto-recharge. Baki mungkin lewat dikemas kini; jangan anggap ia had kos keras masa nyata.
+- `Sign in with ChatGPT` untuk membawa kuota pelan ke aplikasi lain memang wujud bagi integrasi yang layak. Untuk aplikasi FARIS yang dihoskan secara dalam talian, akses komersial/peribadi memerlukan kelayakan atau kelulusan integrasi OpenAI. Rujukan: `https://developers.openai.com/siwc/quickstart`, `https://developers.openai.com/siwc/request-client-id`.
+- Jangan cuba menyalin token sesi CLI, cookies ChatGPT, fail auth Codex, atau refresh token dari komputer ke browser/Supabase. Jangan tambahkan butang 'Connected ChatGPT' sebelum OAuth rasmi diluluskan dan diuji.
+- Panel `Telegram Bot > AI Scan` telah dikemas kini untuk membezakan laluan **OpenAI API Prabayar Telegram** dan **Codex CLI ChatGPT (lokal sahaja)**, dengan pautan rasmi dan arahan ringkas.
