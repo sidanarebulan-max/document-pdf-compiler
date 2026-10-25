@@ -94,7 +94,7 @@ async function handler(req:Request){
    if(error)throw error;return response(req,{ok:true});
   }
   const [{data:devices,error:de},{count:pending,error:qe},{data:settings}]=await Promise.all([
-    db.from("lead_hub_codex_devices").select("id,device_name,is_active,last_seen_at,created_at")
+    db.from("lead_hub_codex_devices").select("id,device_name,is_active,supports_chat,last_seen_at,created_at")
      .eq("account_id",a.id).order("created_at",{ascending:false}),
     db.from("lead_hub_codex_jobs").select("id",{count:"exact",head:true}).in("status",["queued","working"]),
     db.from("lead_hub_telegram_settings").select("codex_worker_enabled").eq("id",1).maybeSingle()
