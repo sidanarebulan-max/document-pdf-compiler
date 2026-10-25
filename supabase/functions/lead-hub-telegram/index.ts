@@ -522,7 +522,12 @@ async function askDelete(token:string,chat:number,id:number,account:any,intent:a
  await say(token,chat,"⚠️ PENGESAHAN PADAM\n👤 "+c.customer_name+"\n"+
   (intent.kind==="delete_case"?"🗑 Padam folder beserta fail:\n":"🗑 Padam dokumen ini:\n")+label+
   "\n\nFail yang dipadam tidak boleh dipulihkan melalui bot."+
-  "\n\nBalas *ya buang* untuk sahkan atau *batal buang* untuk batalkan. Sah 3 minit.");
+  "\n\nTekan salah satu butang di bawah, atau balas 'ya padam terus' / 'batal buang'. Sah 3 minit.",{
+   reply_markup:{inline_keyboard:[[
+    {text:"✅ Ya, padam",callback_data:"faris_delete_yes"},
+    {text:"❌ Batal",callback_data:"faris_delete_no"}
+   ]]}
+  });
 }
 async function decideDelete(token:string,chat:number,id:number,account:any,confirm:boolean){
  const {data:p,error}=await db.from("lead_hub_telegram_pending_actions").select("*")
@@ -670,6 +675,32 @@ async function interpretChat(conf:any,account:any,telegramId:number,chat:number,
 }
 
 async function processUpdate(update:any,conf:any,token:string){
+ // Telegram inline confirmation callbacks are handled before regular messages.
+ // They are tied to the authenticated sender and the originating private chat.
+ if(update.callback_query){
+  const callback=update.callback_query;
+  const action=String(callback.data||"");
+  if(action!=="faris_delete_yes"&&action!=="faris_delete_no")return;
+  const chat=Number(callback.message?.chat?.id),id=Number(callback.from?.id);
+  if(!Number.isSafeInteger(chat)||!Number.isSafeInteger(id)||callback.message?.chat?.type!=="private")return;
+  const linked=await linkedTelegramAccount(id);
+  if(!linked){
+   await telegramCall(token,"answerCallbackQuery",{
+    callback_query_id:callback.id,text:"Akaun FARIS belum dipautkan",show_alert:true
+   });return;
+  }
+  await telegramCall(token,"answerCallbackQuery",{
+   callback_query_id:callback.id,text:"Permintaan diterima"
+  });
+  await decideDelete(token,chat,id,linked.account,action==="faris_delete_yes");
+  try{
+   await telegramCall(token,"editMessageReplyMarkup",{
+    chat_id:chat,message_id:callback.message.message_id,
+    reply_markup:{inline_keyboard:[]}
+   });
+  }catch(e){console.warn("Delete button update failed",String(e).slice(0,60))}
+  return;
+ }
  const msg=update.message;
  if(!msg||msg.chat?.type!=="private"||!msg.from?.id)return;
  const chat=Number(msg.chat.id),id=Number(msg.from.id),txt=String(msg.text||"").trim();
@@ -685,15 +716,31 @@ async function processUpdate(update:any,conf:any,token:string){
  const {account,link}=linked;
  if(msg.document||msg.photo){await handleDoc(token,conf,chat,account,msg);return}
  if(!txt)return;
+ const initialIntent=parseNatural(txt);
+ if(initialIntent.kind==="confirm_delete"){
+  await decideDelete(token,chat,id,account,true);return;
+ }
+ if(initialIntent.kind==="cancel_delete"){
+  await decideDelete(token,chat,id,account,false);return;
+ }
+ // An unqualified 'ya', 'ok' or 'tak jadi' only applies to an explicit
+ // outstanding deletion confirmation, never as a free-standing instruction.
+ if(/^(?:ya|yes|ok|okay|setuju|betul|teruskan|tak jadi|xjadi|tidak|no)$/i.test(txt)){
+  const {data:waiting}=await db.from("lead_hub_telegram_pending_actions")
+   .select("action,expires_at").eq("telegram_user_id",id).eq("account_id",account.id)
+   .eq("chat_id",chat).gt("expires_at",new Date().toISOString()).maybeSingle();
+  if(waiting){
+   const no=/^(?:tak jadi|xjadi|tidak|no)$/i.test(txt);
+   await decideDelete(token,chat,id,account,!no);return;
+  }
+ }
  // VSO wizard receives its text answers before the conversational router.
  if(!txt.startsWith("/")&&!/^(?:batal(?:\s+vso)?|cancel\s+vso)$/i.test(txt)){
   const {data:activeWizard}=await db.from("lead_hub_telegram_wizards")
    .select("step").eq("telegram_user_id",id).maybeSingle();
   if(activeWizard){await handleWizard(token,chat,id,account,txt);return}
  }
- const parsed=parseNatural(txt);
- if(parsed.kind==="confirm_delete"){await decideDelete(token,chat,id,account,true);return}
- if(parsed.kind==="cancel_delete"){await decideDelete(token,chat,id,account,false);return}
+ const parsed=initialIntent;
  if(parsed.kind==="remove_files"||parsed.kind==="delete_case"){
   await askDelete(token,chat,id,account,parsed);return;
  }
