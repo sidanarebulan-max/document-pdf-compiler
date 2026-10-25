@@ -73,7 +73,7 @@
 <div class="wrap">
 <header class="header">
  <div><div class="eyebrow">FARIS R+PROTON · SALES OPERATIONS</div><h1>FARIS <span>LEAD HUB</span></h1><p>Nombor pelanggan → WhatsApp telefon → status susulan</p></div>
- <nav><a class="secondary" href="/">← PDF Compiler</a><button class="secondary hide" id="messageSettingsBtn" type="button" aria-expanded="false" aria-controls="messageSettingsPanel">⚙ Tetapan Mesej</button><button class="secondary hide" id="signoutBtn" type="button">Keluar</button></nav>
+ <nav><a class="secondary" href="/">← PDF Compiler</a><button class="secondary hide" id="messageSettingsBtn" type="button" aria-expanded="false" aria-controls="messageSettingsPanel">⚙ Tetapan Mesej</button><button class="secondary hide" id="adminCredentialsShortcut" type="button">🔐 ID Admin</button><button class="secondary hide" id="signoutBtn" type="button">Keluar</button></nav>
 </header>
 
 <section id="authSection" class="authcard">
@@ -222,12 +222,19 @@
     <div id="staffRoster" class="staffcards"><p class="muted small">Memuatkan senarai staf...</p></div>
    </section>
    <section class="innerpanel">
-    <h3>5. Tukar passcode admin</h3>
-    <p class="muted small">Untuk keselamatan, tukar passcode admin asal selepas berjaya masuk. Sesi telefon ini kekal aktif.</p>
+    <h3>5. ID &amp; Passcode Admin Saya</h3>
+    <p class="muted small">Tetapkan ID login admin pilihan sendiri dan passcode baharu tanpa membuka Supabase. Boleh ubah ID sahaja, passcode sahaja, atau kedua-duanya sekali.</p>
     <form id="adminPassForm">
-     <label for="oldAdminPass">Passcode admin sekarang</label><input id="oldAdminPass" type="password" autocomplete="off" required>
-     <label for="newAdminPass">Passcode admin baharu</label><input id="newAdminPass" type="password" autocomplete="off" minlength="10" maxlength="32" placeholder="Min. 10 aksara huruf dan nombor" required>
-     <button class="secondary full" id="changeAdminBtn" type="submit">Tukar Passcode Admin</button>
+      <label for="newAdminId">ID Admin pilihan sendiri</label>
+      <input id="newAdminId" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="20" minlength="4" pattern="[A-Za-z][A-Za-z0-9-]{3,19}" placeholder="Contoh: FARISBOSS" required>
+      <p class="muted small">4–20 aksara, bermula dengan huruf; hanya huruf, nombor dan sengkang.</p>
+      <label for="oldAdminPass">Passcode admin semasa (pengesahan wajib)</label>
+      <input id="oldAdminPass" type="password" autocomplete="current-password" required placeholder="Masukkan passcode semasa">
+      <label for="newAdminPass">Passcode baharu <span class="muted">(kosongkan jika hanya tukar ID)</span></label>
+      <input id="newAdminPass" type="password" autocomplete="new-password" minlength="10" maxlength="32" placeholder="Min. 10 aksara huruf dan nombor">
+      <p class="muted small">Untuk keselamatan, passcode baharu mesti mengandungi gabungan huruf dan nombor. Akaun staf dan data pelanggan tidak terjejas.</p>
+      <button class="primary full" id="changeAdminBtn" type="submit">Simpan ID / Passcode Admin</button>
+      <p class="muted small" id="adminCredentialStatus" role="status"></p>
     </form>
    </section>
   </div>
@@ -249,5 +256,5 @@
 <footer>FARIS R+PROTON · Staff Lead Operations · Sambungan selamat melalui HTTPS</footer>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="/staff-passcode.js?v=message-settings-20261026"></script>
+<script src="/staff-passcode.js?v=admin-credentials-20261026"></script>
 </body></html>
