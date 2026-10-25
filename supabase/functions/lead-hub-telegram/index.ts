@@ -824,11 +824,14 @@ async function processUpdate(update:any,conf:any,token:string){
  const {account,link}=linked;
  if(msg.document||msg.photo){await handleDoc(token,conf,chat,account,msg);return}
  if(!txt)return;
- const ctx=await loadActionContext(id,account.id,chat);
+ // Most commands need no extra database read; retrieve action history only
+ // for short follow-ups like "baki sekarang apa" after deleting files.
+ const needsHistory=/\b(?:baki|tinggal|selebihnya|lagi|remaining)\b/i.test(txt);
+ const ctx=needsHistory?await loadActionContext(id,account.id,chat):{};
  const initialIntent=parseNatural(txt,ctx);
  // Read-only intent patterns previously inferred confidently by the AI.
  const cached=initialIntent.kind==="chat"?await learnedIntent(txt):null;
- if(cached==="list"){await rememberAction(id,account.id,chat,"list",ctx.last_case_id||null);}
+
  if(cached==="list"||cached==="status"||cached==="help"){
   const routedCommand=cached==="list"?"/senarai":cached==="status"?"/status":"/menu";
   // Keep original non-command workflows intact below.
