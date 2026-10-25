@@ -510,11 +510,12 @@ async function askDelete(token:string,chat:number,id:number,account:any,intent:a
  }
  const selected=intent.kind==="delete_case"?files:numbers.map(n=>files[n-1]);
  const ids=selected.map((x:any)=>x.id);
+ const requestTag=crypto.randomUUID().replaceAll("-","").slice(0,10);
  const expiry=new Date(Date.now()+3*60*1000).toISOString();
  const {error:pendingError}=await db.from("lead_hub_telegram_pending_actions").upsert({
   telegram_user_id:id,account_id:account.id,chat_id:chat,
   action:intent.kind==="delete_case"?"delete_case":"remove_files",
-  data:{case_id:c.id,file_ids:ids},expires_at:expiry,created_at:new Date().toISOString()
+  data:{case_id:c.id,file_ids:ids,request_tag:requestTag},expires_at:expiry,created_at:new Date().toISOString()
  },{onConflict:"telegram_user_id"});
  if(pendingError)throw pendingError;
  const label=intent.kind==="delete_case"?"SEMUA "+selected.length+" fail dan folder pelanggan":
@@ -524,8 +525,8 @@ async function askDelete(token:string,chat:number,id:number,account:any,intent:a
   "\n\nFail yang dipadam tidak boleh dipulihkan melalui bot."+
   "\n\nTekan salah satu butang di bawah, atau balas 'ya padam terus' / 'batal buang'. Sah 3 minit.",{
    reply_markup:{inline_keyboard:[[
-    {text:"✅ Ya, padam",callback_data:"faris_delete_yes"},
-    {text:"❌ Batal",callback_data:"faris_delete_no"}
+    {text:"✅ Ya, padam",callback_data:"faris_delete_yes:"+requestTag},
+    {text:"❌ Batal",callback_data:"faris_delete_no:"+requestTag}
    ]]}
   });
 }
