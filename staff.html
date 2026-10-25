@@ -215,7 +215,7 @@
     </div>
    <div class="tg-cli-guide" id="farisCodexPairing">
     <div class="tg-provider-title"><b>🖥 ChatGPT Worker — Sambung PC dengan FARIS</b><span class="tg-provider-badge" id="codexWorkerStatusBadge">Belum disambung</span></div>
-    <p class="muted small">Cara ini menggunakan <strong>Codex CLI login ChatGPT pada komputer Windows</strong> untuk mengimbas dokumen Telegram. Ia tidak memerlukan kunci OpenAI API tetapi hanya berjalan semasa komputer dan worker hidup. Dokumen diproses oleh Codex menggunakan akaun yang log masuk pada PC.</p>
+    <p class="muted small">Cara ini menggunakan <strong>Codex CLI dengan login ChatGPT pada komputer Windows</strong> untuk AI Chat dan mengimbas dokumen Telegram. <strong>Worker V4</strong> menjawab soalan bebas; arahan jelas diproses terus oleh sistem tanpa model. Jika Codex tidak tersedia, DeepSeek API yang dikonfigurasi menjadi sandaran. PC mesti hidup untuk menggunakan Codex.</p>
     <div class="tg-actions">
       <button class="primary" id="codexCreatePair" type="button">🔗 Jana Kod Pairing (15 minit)</button>
       <button class="secondary" id="codexCheck" type="button">↻ Semak Worker</button>
@@ -225,13 +225,14 @@
       <b id="codexPairCode"></b>
       <button type="button" class="secondary" id="codexCopyPair">Salin Kod</button>
     </div>
-    <p class="muted small" id="codexWorkerInfo">Pasang pakej FARIS Codex Worker pada PC, log masuk ChatGPT dalam browser, kemudian masukkan kod pairing yang dijana di sini.</p>
-    <label class="checkline"><input type="checkbox" id="codexEnabled" checked><span>Gunakan ChatGPT Worker untuk imbasan automatik jika PC sedang online (kalau PC offline, guna API/semakan manual).</span></label>
+    <p class="muted small" id="codexWorkerInfo">Jika worker lama sudah berjaya dipair, hanya pasang pengemas kini V4 dan restart. Tidak perlu login atau pairing semula.</p>
+    <label class="checkline"><input type="checkbox" id="codexEnabled" checked><span>Gunakan ChatGPT Worker sebagai AI utama untuk chat dan imbasan apabila V4 online. DeepSeek menjadi sandaran semasa PC offline atau Codex gagal.</span></label>
     <button type="button" class="secondary" id="codexSaveEnabled">Simpan Pilihan ChatGPT Worker</button>
     <div id="codexDeviceList" class="small muted"></div>
   </div>
    <div class="tg-routing">
     <h3>Penggunaan AI</h3>
+    <p class="muted small"><strong>AI Chat:</strong> Codex V4 ialah pilihan utama bila PC online; DeepSeek akan digunakan jika offline/gagal. Pilihan di bawah mengawal <strong>AI Scan dokumen berasaskan API</strong>, bukan kuota Codex PC.</p>
     <label for="telegramAIRouting">Pilihan AI utama</label>
     <select id="telegramAIRouting">
       <option value="auto">Auto — DeepSeek untuk gambar, OpenAI untuk PDF</option>
@@ -372,5 +373,5 @@
 </div>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="/staff-passcode.js?v=telegram-20261026"></script>
-<script src="/telegram-hub.js?v=faris-local-worker-20261026"></script>
+<script src="/telegram-hub.js?v=faris-codex-chat-v4-20261026"></script>
 </body></html>
