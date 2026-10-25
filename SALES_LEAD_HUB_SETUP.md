@@ -115,3 +115,16 @@ Modul awal `staff.js` dan jadual `sales_*` menggunakan Supabase Auth e-mel. Modu
 - VSO dalam chat ialah **DRAF** yang dijana programatik, tidak sama persis dengan templat asal VSO di website. Jangan guna sebagai VSO rasmi sebelum semakan dan pengesahan pengedar.
 - Tiada penghantaran WhatsApp secara automatik atau semakan `sent=true`. Pautan WhatsApp hanya pra-isi teks, staf masih perlu tekan **Send**.
 - Integrasi belum boleh diuji sepenuhnya sehingga admin memasukkan token BotFather dan staf memautkan akaun. Selepas konfigurasi, jalankan ujian menggunakan fail dummy/tiada data peribadi terlebih dahulu.
+
+## Dwi-AI Telegram: OpenAI API + DeepSeek Flash (26 Oktober 2026)
+
+- Buka `FARIS LEAD HUB > ✈ Telegram Bot > AI Scan — OpenAI + DeepSeek`.
+- **OpenAI API / CLI Key:** masukkan API key OpenAI untuk penghantaran imej dan PDF melalui Responses API. OpenAI CLI setempat tidak boleh berjalan secara terus di Supabase Edge Function; sistem web menggunakan API key yang sah, bukan proses CLI.
+- **DeepSeek Flash:** masukkan DeepSeek API key yang berasingan. Model `deepseek-flash` melalui `https://api.deepseek.com/chat/completions` menyokong imej JPEG/PNG. Ia bukan pembaca input PDF terus dalam integrasi ini.
+- Pilihan routing: `Auto` = imej DeepSeek dahulu, PDF OpenAI; `OpenAI dahulu` = OpenAI untuk PDF dan imej, DeepSeek sandaran imej; `DeepSeek dahulu` = DeepSeek untuk imej, OpenAI untuk PDF.
+- `Guna AI kedua sebagai sandaran` boleh dihidupkan/dimatikan. Dalam mod sandaran, hanya imej boleh dihantar ke provider kedua selepas provider utama gagal mengelaskan; PDF terus guna OpenAI jika kuncinya disambungkan. Jika tiada key OpenAI dan dokumen PDF masuk, bot guna klasifikasi nama fail dan wajib semakan manual.
+- Key disulitkan server-side menggunakan AES-GCM dan disimpan dalam `lead_hub_telegram_settings`; tidak dipulangkan melalui API status, tidak ditulis dalam GitHub atau JavaScript client. Admin sahaja boleh menambah/memadam key dan menetapkan keutamaan.
+- `telegram_status` hanya memulangkan boolean `openai_enabled` / `deepseek_enabled`, model dan pilihan routing; tidak memulangkan credential.
+- Kategori `OTHER` atau keyakinan kurang daripada 85% memerlukan semakan staf dengan `/kategori` sebelum `/siap`.
+- AI memproses kandungan dokumen pelanggan melalui provider pihak ketiga; dapatkan kebenaran dan pastikan pematuhan privasi. Setiap provider boleh melibatkan kos API yang berasingan.
+- Pengujian endpoint dan paparan telah dibuat secara statik; belum ada key AI disimpan setakat penerbitan ini dan imbasan sebenar memerlukan key daripada admin.
