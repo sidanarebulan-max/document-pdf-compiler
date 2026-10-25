@@ -163,3 +163,30 @@ Modul awal `staff.js` dan jadual `sales_*` menggunakan Supabase Auth e-mel. Modu
 - Keselamatan: akaun Telegram mesti sudah dipaut kepada akaun FARIS yang masih aktif. Sesi lain tidak boleh mengakses kes/lead pekerja lain. Model AI hanya boleh meminta **senarai tindakan selamat yang disemak server**.
 - Web `/staff.html` bahagian Telegram mengandungi contoh ayat bebas. Untuk menguji: tulis `menu`, `status`, `no 1 sampai tiga buang` pada kes ujian, kemudian `batal buang`. Jangan uji padam menggunakan dokumen pelanggan sebenar.
 - Pengujian dilakukan pada penghala bahasa (unit tests) dan penerbitan Edge Function. Ujian mesej sebenar dalam Telegram dan capaian DeepSeek perlu dibuat selepas penerbitan menggunakan kes dummy; tidak ada mesej ujian dihantar secara automatik bagi mengelakkan gangguan kepada chat sebenar.
+
+## AI Router V4: Codex Utama + DeepSeek Fallback + Konteks Berkongsi (26 Oktober 2026)
+
+### Laluan fungsi
+1. **Arahan mudah** seperti "siapkan baki nya jadi satu file", "fail 1 IC", "no 1 sampai 3 buang", "senarai" dan "ambil nombor baru" diproses secara deterministik. Kos model sifar dan operasi sebenar tetap menggunakan akses akaun FARIS yang disahkan.
+2. **Soalan/perbualan bebas** apabila `lead_hub_codex_devices.supports_chat=true` dan heartbeat 90 saat terakhir diterima: masukkan satu tugasan ke `lead_hub_codex_chat_jobs`. Worker V4 PC menggunakan `codex exec --model gpt-6-luna -c model_reasoning_effort="low"`. Hasilnya dihantar melalui `lead-hub-codex` ke chat Telegram.
+3. Jika PC tiada/tidak menyokong V4: server mengguna **DeepSeek Flash** untuk perbualan, dengan OpenAI API sebagai sandaran jika key disediakan.
+4. Jika Codex CLI gagal / kuota ChatGPT habis, worker memanggil `complete_chat` dengan `failed=true`. Server menggunakan DeepSeek Flash sebagai fallback untuk menyiapkan jawapan. **DeepSeek menggunakan kredit API berasingan**. Kuota Codex akaun ChatGPT **bukan** baki OpenAI API prabayar.
+
+### Memori & kawalan data
+- `lead_hub_telegram_chat_memory` menyimpan sejarah perbualan terhad per ID pengguna, dikongsi kepada Codex dan DeepSeek untuk kesinambungan konteks.
+- Konteks kes sah dipulangkan daripada pangkalan data sebenar: folder pelanggan, bahagian, kategori aktif, kiraan kategori dokumen dan bilangan fail memerlukan semakan.
+- Memori perbualan dibersihkan apabila fail pelanggan baharu dibuka supaya konteks pelanggan A tidak bercampur dengan pelanggan B.
+- Pembetulan manual /kategori dicatat dalam `lead_hub_telegram_classification_feedback` sebagai pasangan kategori asal→sah, **tanpa nama dan nombor IC**. Data ini membantu penyemakan dan penambahbaikan terkawal; ia **bukan** latihan automatik model atau perubahan kod tanpa semakan admin.
+- Model tidak diberikan kuasa memadam tanpa pengesahan. Arahan buang daripada senarai bernombor meminta 'ya buang'; daftar lead/WhatsApp tertakluk peranan.
+- Worker menyekat akses fail luar, menjalankan Codex dalam sandbox read-only dan tidak berkongsi token ChatGPT dengan Supabase. Respons model dianggap teks, bukan perintah sistem.
+- Jika worker terhenti semasa mengambil tugasan, sesetengah jawapan mungkin perlu dihantar semula. `lease` chat selama 4 minit; fail lama tidak boleh meniru kemampuan V4 kerana heartbeat melaporkan `supports_chat`.
+
+### Kemas kini PC V3→V4
+- ZIP: `FARIS_CHATGPT_CODEX_DEEPSEEK_V4_UPDATE.zip` — Extract All → `AKTIFKAN_FARIS_CHAT_V4.cmd` → restart `04_START_WORKER.cmd` lama.
+- Login ChatGPT, pairing dan token Windows **dikekalkan**. Pemasang menyimpan backup `worker.mjs` dan menguji sintaks Node sebelum mengganti.
+- Website FARIS → Telegram Bot → Semak Worker akan membezakan `CHAT V4 + DOKUMEN` berbanding `DOKUMEN SAHAJA`.
+
+### Ujian
+- Versi Edge Function `lead-hub-codex` v4 dan `lead-hub-telegram` v14 diterbitkan.
+- Contoh khusus dari gambar: "siapkan baki nya jadi satu file" → `/siap`; teks menyenaraikan 1,2,3,4 untuk dibuang → senarai fail khusus + permintaan pengesahan; "fail 1 IC" → `/kategori 1 IC`.
+- Semakan sebenar Codex Chat V4 pada komputer pengguna masih belum dilaksanakan sehingga pemasang V4 dipasang. Uji dengan kes dummy dahulu.
