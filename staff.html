@@ -44,6 +44,22 @@
   .lead-expanded .secondary.save-details{padding:10px 18px;min-width:140px}
   @media(max-width:650px){.lead-compact{gap:7px}.lead-quick-wa{padding:10px 11px!important;font-size:12px!important}
     .lead-refresh{width:100%}.lead-identity{gap:6px}.lead{padding:10px!important}}
+  .msg-settings-head{align-items:flex-start;gap:14px;flex-wrap:wrap}
+  .msg-settings-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(250px,.9fr);gap:22px;margin-top:14px}
+  .msg-settings-editor label{margin-top:10px}
+  .msg-settings-editor textarea{min-height:200px;resize:vertical;line-height:1.6}
+  .msg-tokens{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0}
+  .msg-tokens button{padding:7px 11px;font-size:12px;background:#1b3154;color:#b9d3ff;border-radius:8px}
+  .msg-settings-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:15px}
+  .msg-settings-actions button{min-height:43px}
+  .msg-settings-preview{border-radius:14px;background:#0d1730;border:1px solid #2b4269;padding:16px}
+  .msg-preview-title{font-size:13px;font-weight:800;margin-bottom:12px}
+  .msg-phone-preview{border-radius:12px;overflow:hidden;border:1px solid #285766}
+  .msg-phone-header{display:flex;align-items:center;gap:9px;padding:13px;background:#0d403d;color:#dbfff0;font-size:12px;font-weight:750}
+  .msg-phone-chat{padding:18px 12px;min-height:190px;display:flex;justify-content:flex-end;background:linear-gradient(145deg,#102c32,#0c2429)}
+  .msg-bubble{white-space:pre-wrap;overflow-wrap:anywhere;background:#165743;color:#eafff4;border-radius:13px 13px 4px 13px;padding:13px;max-width:95%;font-size:13px;line-height:1.65;align-self:flex-start}
+  @media(max-width:800px){.msg-settings-grid{grid-template-columns:1fr}.msg-settings-preview{padding:11px}
+    .msg-settings-actions>*{flex:1}.header nav{width:100%}.header nav>*{flex:1}}
   .workflow-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .workflow-action{display:flex;justify-content:space-between;align-items:center;text-align:left;gap:12px;padding:15px!important;border:1px solid #36517c!important;min-height:72px}
   .workflow-action span:nth-child(2){flex:1}.workflow-action b{display:block;font-size:13px}.workflow-action small{display:block;color:#94b0d6;font-size:11px;margin-top:5px}
@@ -57,7 +73,7 @@
 <div class="wrap">
 <header class="header">
  <div><div class="eyebrow">FARIS R+PROTON · SALES OPERATIONS</div><h1>FARIS <span>LEAD HUB</span></h1><p>Nombor pelanggan → WhatsApp telefon → status susulan</p></div>
- <nav><a class="secondary" href="/">← PDF Compiler</a><button class="secondary hide" id="signoutBtn" type="button">Keluar</button></nav>
+ <nav><a class="secondary" href="/">← PDF Compiler</a><button class="secondary hide" id="messageSettingsBtn" type="button" aria-expanded="false" aria-controls="messageSettingsPanel">⚙ Tetapan Mesej</button><button class="secondary hide" id="signoutBtn" type="button">Keluar</button></nav>
 </header>
 
 <section id="authSection" class="authcard">
@@ -89,6 +105,56 @@
   </div>
   <div class="welcomeactions"><button class="primary" id="claimBtn" type="button">+ Ambil nombor belum diagih</button></div>
  </div>
+ <section class="panel hide" id="messageSettingsPanel" aria-labelledby="messageSettingsTitle">
+   <div class="panelhead msg-settings-head">
+     <div>
+       <h2 id="messageSettingsTitle">⚙ Tetapan Mesej WhatsApp</h2>
+       <p class="muted">Sediakan mesej yang akan terisi secara automatik apabila staf tekan butang WhatsApp. Mesej tidak dihantar sehingga staf menekan Send.</p>
+     </div>
+     <button id="closeMessageSettingsBtn" class="secondary" type="button">Tutup ✕</button>
+   </div>
+   <div class="msg-settings-grid">
+     <div class="msg-settings-editor">
+       <div id="adminMessageScope" class="hide">
+         <label for="messageScope">Tetapan untuk</label>
+         <select id="messageScope">
+           <option value="team">Semua staf (mesej rasmi admin)</option>
+           <option value="personal">Mesej akaun saya sahaja</option>
+         </select>
+       </div>
+       <p class="muted small" id="messageScopeHint">Mesej sendiri akan digunakan untuk akaun anda sahaja. Padam skrip sendiri untuk menggunakan mesej admin.</p>
+       <label for="settingsTemplateKind">Jenis mesej</label>
+       <select id="settingsTemplateKind">
+         <option value="intro">Mesej pengenalan pertama</option>
+         <option value="follow">Mesej susulan pelanggan lama</option>
+         <option value="price">Pertanyaan harga &amp; pinjaman</option>
+       </select>
+       <label for="settingsMessageBody">Isi mesej WhatsApp</label>
+       <textarea id="settingsMessageBody" rows="9" maxlength="2500" placeholder="Tulis mesej WhatsApp di sini..."></textarea>
+       <p class="muted small">Gunakan pemboleh ubah ini untuk isi maklumat secara automatik:</p>
+       <div class="msg-tokens">
+         <button class="secondary" type="button" data-token="{nama}">{nama}</button>
+         <button class="secondary" type="button" data-token="{staff}">{staff}</button>
+         <button class="secondary" type="button" data-token="{model}">{model}</button>
+         <button class="secondary" type="button" data-token="{telefon}">{telefon}</button>
+       </div>
+       <div class="msg-settings-actions">
+         <button class="primary" id="saveMessageBtn" type="button">Simpan Mesej</button>
+         <button class="secondary" id="resetMessageBtn" type="button">Guna Skrip Asal</button>
+       </div>
+       <p class="small muted" id="settingsSaveStatus" role="status"></p>
+     </div>
+     <div class="msg-settings-preview">
+       <div class="msg-preview-title">Pratonton WhatsApp</div>
+       <div class="msg-phone-preview">
+         <div class="msg-phone-header"><span>✆</span><span>Contoh Pelanggan</span></div>
+         <div class="msg-phone-chat"><div id="messagePreview" class="msg-bubble"></div></div>
+       </div>
+       <p class="muted small">Pratonton menggunakan pelanggan contoh. Semasa staf tekan WhatsApp, nama, model dan nombor pelanggan sebenar akan digunakan.</p>
+       <p class="muted small" id="settingsSourceInfo"></p>
+     </div>
+   </div>
+ </section>
  <div class="metrics">
   <div class="metric"><span>Jumlah lead</span><strong id="metricTotal">0</strong></div>
   <div class="metric"><span>Belum selesai</span><strong id="metricNew">0</strong></div>
@@ -183,5 +249,5 @@
 <footer>FARIS R+PROTON · Staff Lead Operations · Sambungan selamat melalui HTTPS</footer>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="/staff-passcode.js?v=compact-20261026"></script>
+<script src="/staff-passcode.js?v=message-settings-20261026"></script>
 </body></html>
