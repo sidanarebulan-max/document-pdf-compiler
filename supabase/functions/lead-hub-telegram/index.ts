@@ -1,3 +1,4 @@
+import {parseNatural} from "./natural.mjs";
 import {createClient} from "npm:@supabase/supabase-js@2.57.4";
 import {PDFDocument,StandardFonts,rgb} from "npm:pdf-lib@1.17.1";
 
@@ -465,6 +466,173 @@ async function handleLink(token:string,chat:number,id:number,code:string){
  await db.from("lead_hub_telegram_link_codes").update({used_at:new Date().toISOString()}).eq("code_hash",link.code_hash);
  await say(token,chat,"✅ Telegram berjaya disambung ke FARIS LEAD HUB. Taip /menu untuk semua fungsi.");
 }
+// Conversational Telegram layer: authenticated account scope, bounded commands and private AI memory.
+function redactChat(v:string){
+ return String(v||"")
+   .replace(/(?:\+?60|0)1[\d\s-]{8,14}\d/g,"[nombor telefon]")
+   .replace(/\b\d{6}[- ]?\d{2}[- ]?\d{4}\b/g,"[nombor IC]")
+   .slice(0,550);
+}
+async function caseStatus(token:string,chat:number,account:any){
+ const c=await currentCase(account.id,chat);
+ if(!c){await say(token,chat,"Hai! 👋 Belum ada folder pelanggan aktif.\nCakap saja 'buka folder nama Ahmad' untuk mula, kemudian hantar dokumen.");return}
+ const {data:files,error}=await db.from("lead_hub_telegram_files")
+   .select("party,category,needs_review,classification_method")
+   .eq("case_id",c.id);
+ if(error)throw error;
+ const pending=(files||[]).filter((x:any)=>x.needs_review).length;
+ const counts=new Map<string,number>();
+ for(const d of files||[])counts.set(d.category,(counts.get(d.category)||0)+1);
+ const groups=[...counts.entries()].map(([k,n])=>"• "+(DOC_NAMES[k]||k)+": "+n).join("\n");
+ await say(token,chat,"📋 STATUS FOLDER PELANGGAN\n"+caseSummary(c)+
+   "\n\n📎 Fail diterima: "+(files||[]).length+
+   "\n📌 Kategori aktif: "+(DOC_NAMES[c.active_category]||"Auto / belum dipilih")+
+   "\n⚠️ Perlu semak: "+pending+
+   (groups?"\n\n"+groups:"\n\nBelum ada dokumen.")+
+   "\n\nCakap 'senarai' untuk lihat nombor fail atau 'siapkan PDF' bila lengkap.");
+}
+async function askDelete(token:string,chat:number,id:number,account:any,intent:any){
+ let c=await currentCase(account.id,chat);
+ if(!c&&intent.kind==="delete_case"){
+  const {data:latest}=await db.from("lead_hub_telegram_cases").select("*")
+   .eq("account_id",account.id).eq("chat_id",chat).eq("state","completed")
+   .order("completed_at",{ascending:false}).limit(1).maybeSingle();
+  c=latest;
+ }
+ if(!c){await say(token,chat,"Tiada folder aktif untuk dipadam. Cakap 'status' untuk semak.");return}
+ const {data:files,error}=await db.from("lead_hub_telegram_files").select("id,original_name,telegram_message_id,created_at")
+   .eq("case_id",c.id).order("created_at");
+ if(error)throw error;
+ files.sort((a:any,b:any)=>((a.telegram_message_id??0)-(b.telegram_message_id??0))||a.created_at.localeCompare(b.created_at));
+ const numbers=Array.isArray(intent.numbers)?[...new Set(intent.numbers)]:[];
+ if(intent.kind==="remove_files"&&(!numbers.length||numbers.some(n=>!Number.isInteger(n)||n<1||n>files.length))){
+  await say(token,chat,"Aku tak jumpa semua nombor fail itu. Minta 'senarai' dahulu untuk lihat nombor yang terkini.");return;
+ }
+ const selected=intent.kind==="delete_case"?files:numbers.map(n=>files[n-1]);
+ const ids=selected.map((x:any)=>x.id);
+ const expiry=new Date(Date.now()+3*60*1000).toISOString();
+ const {error:pendingError}=await db.from("lead_hub_telegram_pending_actions").upsert({
+  telegram_user_id:id,account_id:account.id,chat_id:chat,
+  action:intent.kind==="delete_case"?"delete_case":"remove_files",
+  data:{case_id:c.id,file_ids:ids},expires_at:expiry,created_at:new Date().toISOString()
+ },{onConflict:"telegram_user_id"});
+ if(pendingError)throw pendingError;
+ const label=intent.kind==="delete_case"?"SEMUA "+selected.length+" fail dan folder pelanggan":
+   selected.map((x:any,i:number)=>"#"+numbers[i]+" "+String(x.original_name).slice(0,38)).join("\n");
+ await say(token,chat,"⚠️ PENGESAHAN PADAM\n👤 "+c.customer_name+"\n"+
+  (intent.kind==="delete_case"?"🗑 Padam folder beserta fail:\n":"🗑 Padam dokumen ini:\n")+label+
+  "\n\nFail yang dipadam tidak boleh dipulihkan melalui bot."+
+  "\n\nBalas *ya buang* untuk sahkan atau *batal buang* untuk batalkan. Sah 3 minit.");
+}
+async function decideDelete(token:string,chat:number,id:number,account:any,confirm:boolean){
+ const {data:p,error}=await db.from("lead_hub_telegram_pending_actions").select("*")
+  .eq("telegram_user_id",id).eq("account_id",account.id).eq("chat_id",chat).maybeSingle();
+ if(error)throw error;
+ if(!p){await say(token,chat,"Tiada permintaan padam yang menunggu pengesahan.");return}
+ if(!confirm){await db.from("lead_hub_telegram_pending_actions").delete().eq("telegram_user_id",id);await say(token,chat,"✅ Pembatalan diterima. Semua fail kekal.");return}
+ if(Date.parse(p.expires_at)<Date.now()){
+  await db.from("lead_hub_telegram_pending_actions").delete().eq("telegram_user_id",id);
+  await say(token,chat,"Kod pengesahan sudah tamat. Minta padam semula jika masih perlu.");return;
+ }
+ const ids=Array.isArray(p.data?.file_ids)?p.data.file_ids:[];
+ const caseId=p.data?.case_id;
+ if(!/^[a-f0-9-]{36}$/i.test(String(caseId||""))||!ids.length||
+  ids.length>50||ids.some((v:any)=>!/^[a-f0-9-]{36}$/i.test(String(v)))){
+  await say(token,chat,"Senarai padam tidak sah. Minta padam semula.");return;
+ }
+ const {data:c}=await db.from("lead_hub_telegram_cases").select("id,customer_name")
+  .eq("id",caseId).eq("account_id",account.id).eq("chat_id",chat).maybeSingle();
+ if(!c){await say(token,chat,"Folder tidak dapat disahkan. Tiada fail dipadam.");return}
+ const {data:files,error:fe}=await db.from("lead_hub_telegram_files").select("id,storage_path")
+  .eq("case_id",c.id).in("id",ids);
+ if(fe)throw fe;
+ if(files.length!==ids.length){await say(token,chat,"Senarai fail telah berubah. Semak senarai dan cuba semula.");return}
+ if(p.action==="delete_case"){
+  // Ensure no newly arrived file is accidentally removed without explicit confirmation.
+  const {count}=await db.from("lead_hub_telegram_files").select("id",{head:true,count:"exact"}).eq("case_id",c.id);
+  if(count!==files.length){await say(token,chat,"Ada fail baharu selepas permintaan padam. Ulang pengesahan.");return}
+ }
+ const {error:removeError}=await db.storage.from(BUCKET).remove(files.map((x:any)=>x.storage_path));
+ if(removeError)throw removeError;
+ if(p.action==="delete_case"){
+  const {error:de}=await db.from("lead_hub_telegram_cases").delete().eq("id",c.id).eq("account_id",account.id);
+  if(de)throw de;
+ }else{
+  const {error:de}=await db.from("lead_hub_telegram_files").delete().eq("case_id",c.id).in("id",ids);
+  if(de)throw de;
+ }
+ await db.from("lead_hub_telegram_pending_actions").delete().eq("telegram_user_id",id);
+ await say(token,chat,"✅ Berjaya! "+(p.action==="delete_case"?"Folder pelanggan dan failnya":
+  files.length+" dokumen")+" telah dipadam daripada sistem.\nMinta 'senarai' untuk semak baki fail.");
+}
+async function interpretChat(conf:any,account:any,telegramId:number,chat:number,text:string){
+ const c=await currentCase(account.id,chat);
+ const {count}=c?await db.from("lead_hub_telegram_files")
+   .select("id",{head:true,count:"exact"}).eq("case_id",c.id):{count:0};
+ const {data:saved}=await db.from("lead_hub_telegram_chat_memory")
+   .select("recent_turns,updated_at").eq("telegram_user_id",telegramId)
+   .eq("account_id",account.id).maybeSingle();
+ const recent=Array.isArray(saved?.recent_turns)&&Date.now()-Date.parse(saved.updated_at)<86400000
+  ?saved.recent_turns.slice(-4).filter((x:any)=>
+   (x.role==="user"||x.role==="assistant")&&typeof x.content==="string").map((x:any)=>({
+    role:x.role,content:String(x.content).slice(0,550)})):[];
+ const system="Anda pembantu AI Telegram FARIS R+PROTON, bercakap Bahasa Melayu Malaysia secara ringkas dan mesra. "+
+  "Balas sebagai JSON SAHAJA: {\"intent\":\"answer|help|status|list|lead_new|lead_claim|category|party|vso_start\",\"category\":\"IC|BANK|PAYSLIP|LESEN|SIJIL|SURAT_KERJA|VSO|OTHER|\",\"party\":\"HIRER|GUARANTOR|REBATE|\",\"reply\":\"jawapan\"}. "+
+  "Pilih intent selain answer HANYA jika pengguna JELAS MEMINTA tindakan, bukan bertanya cara melakukan tindakan. "+
+  "Jangan pilih tindakan berbahaya seperti padam, siapkan PDF, daftar nombor, atau hantar mesej; bot menangani sendiri. "+
+  "Jika bertanya harga kereta/loan terkini, jangan reka harga; sarankan semak quotation VSO rasmi. "+
+  "Jangan dakwa AI sudah mengimbas dokumen atau menghantar WhatsApp tanpa bukti. "+
+  "Maklumat kerja yang sah: kes aktif="+Boolean(c)+", bahagian="+(c?.active_party||"tiada")+
+  ", kategori dipilih="+(c?.active_category||"AUTO")+", bilangan fail="+(count||0)+
+  ", peranan pengguna="+account.role+". "+
+  "Boleh jelaskan: tulis 'buka folder nama Ahmad', 'ini IC', hantar fail, 'senarai', 'siapkan PDF', "+
+  "'ada nombor baru', 'buat VSO', 'buang fail no 1 sampai 3'. "+
+  "Jangan guna data pelanggan lain atau andaikan akses pentadbir.";
+ const userText=redactChat(text);
+ const messages=[{role:"system",content:system},...recent,{role:"user",content:userText}];
+ let obj:any=null;
+ const candidates=(conf?.deepseek_api_key_cipher&&conf?.deepseek_api_key_iv?
+  ["deepseek"]:[]).concat(conf?.ai_api_key_cipher&&conf?.ai_api_key_iv?["openai"]:[]);
+ for(const provider of candidates){
+  try{
+   let result:any;
+   if(provider==="deepseek"){
+    const apiKey=await decrypt(conf.deepseek_api_key_cipher,conf.deepseek_api_key_iv);
+    const resp=await fetch("https://api.deepseek.com/chat/completions",{
+     method:"POST",headers:{Authorization:"Bearer "+apiKey,"Content-Type":"application/json"},
+     signal:AbortSignal.timeout(18000),
+     body:JSON.stringify({model:"deepseek-flash",thinking:{type:"disabled"},
+       response_format:{type:"json_object"},max_tokens:360,messages})
+    });
+    if(!resp.ok)throw Error("DeepSeek API "+resp.status);
+    const j=await resp.json();result=j.choices?.[0]?.message?.content;
+   }else{
+    const apiKey=await decrypt(conf.ai_api_key_cipher,conf.ai_api_key_iv);
+    const resp=await fetch("https://api.openai.com/v1/chat/completions",{
+     method:"POST",headers:{Authorization:"Bearer "+apiKey,"Content-Type":"application/json"},
+     signal:AbortSignal.timeout(18000),
+     body:JSON.stringify({model:"gpt-4.1-mini",response_format:{type:"json_object"},
+       max_tokens:360,messages})
+    });
+    if(!resp.ok)throw Error("OpenAI API "+resp.status);
+    const j=await resp.json();result=j.choices?.[0]?.message?.content;
+   }
+   obj=JSON.parse(String(result||"{}"));break;
+  }catch(err){console.warn("Chat AI unavailable",provider,String(err).slice(0,90))}
+ }
+ if(!obj)return {kind:"answer",reply:"Aku faham. 😊 Cuba beritahu apa yang kau nak buat: susun dokumen pelanggan, semak fail, buat VSO atau ambil lead WhatsApp. Tulis ayat biasa pun boleh."};
+ const allowed=["answer","help","status","list","lead_new","lead_claim","category","party","vso_start"];
+ const intent=allowed.includes(obj.intent)?obj.intent:"answer";
+ const result={kind:intent,category:obj.category,party:obj.party,
+  reply:String(obj.reply||"").replace(/https?:\/\/\S+/g,"").slice(0,1100)};
+ const updated=[...recent,{role:"user",content:userText},{role:"assistant",content:result.reply}].slice(-4);
+ await db.from("lead_hub_telegram_chat_memory").upsert({
+  telegram_user_id:telegramId,account_id:account.id,recent_turns:updated,
+  updated_at:new Date().toISOString()
+ },{onConflict:"telegram_user_id"});
+ return result;
+}
+
 async function processUpdate(update:any,conf:any,token:string){
  const msg=update.message;
  if(!msg||msg.chat?.type!=="private"||!msg.from?.id)return;
@@ -481,7 +649,45 @@ async function processUpdate(update:any,conf:any,token:string){
  const {account,link}=linked;
  if(msg.document||msg.photo){await handleDoc(token,conf,chat,account,msg);return}
  if(!txt)return;
- const [cmd,...rest]=txt.split(/\s+/),arg=txt.slice(cmd.length).trim(),command=cmd.split("@")[0].toLowerCase();
+ // VSO wizard receives its text answers before the conversational router.
+ if(!txt.startsWith("/")&&!/^(?:batal(?:\s+vso)?|cancel\s+vso)$/i.test(txt)){
+  const {data:activeWizard}=await db.from("lead_hub_telegram_wizards")
+   .select("step").eq("telegram_user_id",id).maybeSingle();
+  if(activeWizard){await handleWizard(token,chat,id,account,txt);return}
+ }
+ const parsed=parseNatural(txt);
+ if(parsed.kind==="confirm_delete"){await decideDelete(token,chat,id,account,true);return}
+ if(parsed.kind==="cancel_delete"){await decideDelete(token,chat,id,account,false);return}
+ if(parsed.kind==="remove_files"||parsed.kind==="delete_case"){
+  await askDelete(token,chat,id,account,parsed);return;
+ }
+ if(parsed.kind==="ask"){await say(token,chat,parsed.reply);return}
+ if(parsed.kind==="status"){await caseStatus(token,chat,account);return}
+ if(parsed.kind==="greeting"){
+  const c=await currentCase(account.id,chat);
+  await say(token,chat,"Hai "+account.display_name+"! 😊\n"+
+   (c?"Aku masih ingat folder "+c.customer_name+". Cakap 'status' atau hantar dokumen seterusnya.":
+    "Nak urus dokumen, buat VSO atau tengok lead baharu? Cakap saja macam biasa."));return;
+ }
+ let routed=parsed.kind==="route"?parsed.command:txt;
+ if(parsed.kind==="chat"){
+  const ai=await interpretChat(conf,account,id,chat,txt);
+  if(ai.kind==="help")routed="/menu";
+  else if(ai.kind==="status"){await caseStatus(token,chat,account);return}
+  else if(ai.kind==="list")routed="/senarai";
+  else if(ai.kind==="lead_new")routed="/baru";
+  else if(ai.kind==="lead_claim")routed="/ambil";
+  else if(ai.kind==="vso_start")routed="/buatvso";
+  else if(ai.kind==="party"&&["HIRER","GUARANTOR","REBATE"].includes(ai.party))
+   routed=({HIRER:"/peminjam",GUARANTOR:"/penjamin",REBATE:"/rebate"} as any)[ai.party];
+  else if(ai.kind==="category"&&["IC","BANK","PAYSLIP","LESEN","SIJIL","SURAT_KERJA","VSO","OTHER"].includes(ai.category))
+   routed=({IC:"/ic",BANK:"/bank",PAYSLIP:"/gaji",LESEN:"/lesen",SIJIL:"/sijil",SURAT_KERJA:"/kerja",VSO:"/vso",OTHER:"/lain"} as any)[ai.category];
+  else{
+   await say(token,chat,ai.reply||"Aku boleh bantu urus fail, VSO dan lead. Apa yang kau nak buat?");
+   return;
+  }
+ }
+ const [cmd,...rest]=routed.split(/\s+/),arg=routed.slice(cmd.length).trim(),command=cmd.split("@")[0].toLowerCase();
  if(command==="/menu"||command==="/help"){
   const c=await currentCase(account.id,chat);
   await say(token,chat,"🤖 FARIS LEAD HUB\n"+
@@ -570,10 +776,7 @@ async function processUpdate(update:any,conf:any,token:string){
   const files=(received||[]).sort((x:any,y:any)=>((x.telegram_message_id??0)-(y.telegram_message_id??0))||
     x.created_at.localeCompare(y.created_at));
   if(command==="/padam"){
-   const paths=(files||[]).map((x:any)=>x.storage_path);
-   if(paths.length)await db.storage.from(BUCKET).remove(paths);
-   await db.from("lead_hub_telegram_cases").delete().eq("id",c.id);
-   await say(token,chat,"🗑 Kes dan semua fail pelanggan telah dipadam.");return;
+   await askDelete(token,chat,id,account,{kind:"delete_case"});return;
   }
   if(command==="/kategori"){
    const bits=arg.split(/\s+/);const n=Number(bits[0]),cat=String(bits[1]||"").toUpperCase();
@@ -651,7 +854,7 @@ async function processUpdate(update:any,conf:any,token:string){
   for(const lead of leads)await sendLead(token,chat,account,lead,link.selected_template);
   return;
  }
- await say(token,chat,"Arahan tidak dikenali. Taip /menu untuk senarai fungsi.");
+ await say(token,chat,"Aku belum kenal arahan itu. 😊 Cakap saja macam biasa, contohnya: 'ini IC', 'senarai dokumen' atau 'ada nombor baru?'.");
 }
 async function controller(req:Request){
  const origin=req.headers.get("origin")||"";
