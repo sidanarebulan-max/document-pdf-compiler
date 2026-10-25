@@ -72,6 +72,8 @@ export function parseNatural(raw){
  for(const [cmd,rx] of cats)if(rx.test(catText))return {kind:"route",command:cmd};
  if(/^(?:senarai|list|tunjuk senarai|bagi senarai|semak dokumen|check dokumen|list dokumen|apa dokumen yang ada|dokumen apa dah masuk|apa fail dah masuk|senarai fail)$/i.test(t))
   return {kind:"route",command:"/senarai"};
+ if(/^(?:apa|mana|tengok|semak|check|beritahu|bagitahu)\s+(?:saja\s+)?(?:dokumen|document|fail|file)\s+(?:yang\s+)?(?:belum\s+(?:lengkap|siap|disahkan)|perlu\s+semak|kurang|tak\s+lengkap)(?:\s+apa)?$/.test(t))
+  return {kind:"route",command:"/senarai"};
  if(/^(?:status|status kes|status dokumen|berapa (?:fail|dokumen|file)(?: (?:dah|sudah|telah) (?:masuk|diterima))?|jumlah fail|jumlah dokumen|berapa dah masuk|dah dapat berapa dokumen|dah dapat berapa fail|apa kategori aktif|sekarang bahagian apa)$/i.test(t))
   return {kind:"status"};
  if(/^(?:buat|bina|jana|generate|sediakan)\s+(?:satu|1)\s+(?:pdf|fail|file)\s+(?:dari|daripada|untuk)\s+(?:semua|baki|selebihnya)\s+(?:fail|file|dokumen|document)(?:\s+ini|\s+ni)?$/.test(t))
