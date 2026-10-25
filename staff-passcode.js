@@ -4,6 +4,11 @@ const API="https://qagsczjxzshjxmmxvkbq.supabase.co/functions/v1/lead-hub";
 const SESSION_KEY="faris_lead_hub_session_v2";
 const $=id=>document.getElementById(id);
 const STATUSES={new:"Belum diambil",claimed:"Sudah diambil",contacted:"Dihubungi",follow_up:"Follow-up",interested:"Berminat",booked:"Booking",not_interested:"Tidak berminat"};
+const DEFAULT_MESSAGES=Object.freeze({
+ intro:"Assalamualaikum {nama}, selamat pagi! 😊\n\nSaya {staff} daripada Proton. Saya ingin berkongsi maklumat tentang {model}.\n\nBoleh saya tahu, tuan/puan mencari kereta untuk kegunaan sendiri atau keluarga?",
+ follow:"Assalamualaikum {nama}, saya {staff} daripada Proton. 😊\n\nSaya nak buat susulan mengenai {model}.\n\nTuan/puan masih berminat untuk saya bantu semak pilihan yang sesuai?",
+ price:"Assalamualaikum {nama}, saya {staff} daripada Proton. 😊\n\nSaya boleh bantu sediakan maklumat harga dan anggaran ansuran untuk {model}.\n\nBoleh saya tahu anggaran deposit dan tempoh pinjaman yang tuan/puan mahukan?"
+});
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const normalizePhone=value=>{
  let p=String(value??"").trim().replace(/[^\d+]/g,"").replace(/^\+/,"");
@@ -11,11 +16,13 @@ const normalizePhone=value=>{
  return /^601\d{8,9}$/.test(p)?p:null;
 };
 let token=localStorage.getItem(SESSION_KEY)||"",user=null,leads=[],staff=[],busy=false,availableCount=0,expandedLeadId=null;
+let messageTemplates={team:{},personal:{}},editorDirty=false;
 function notice(id,text,error=false){
  const el=$(id);el.textContent=text;el.classList.remove("hide");el.classList.toggle("error",error);
 }
 function viewAuth(){
  $("authSection").classList.remove("hide");$("appSection").classList.add("hide");$("signoutBtn").classList.add("hide");
+ $("messageSettingsBtn").classList.add("hide");$("messageSettingsPanel").classList.add("hide");
 }
 function credentials(id,passcode){
  $("createdStaffId").textContent=id;
@@ -57,6 +64,9 @@ async function showApp(){
  if(!user)return viewAuth();
  $("authSection").classList.add("hide");$("appSection").classList.remove("hide");
  $("signoutBtn").classList.remove("hide");
+ $("messageSettingsBtn").classList.remove("hide");
+ $("adminMessageScope").classList.toggle("hide",user.role!=="admin");
+ $("messageScope").value=user.role==="admin"?"team":"personal";
  $("currentName").textContent=user.display_name;
  $("currentRole").textContent=user.role==="admin"?"ADMIN":"STAF";
  $("currentCode").textContent=user.staff_code;
@@ -73,8 +83,14 @@ async function reload(){
  $("listMessage").textContent="Memuatkan lead...";
  try{
   const r=await call("list");
+  // Muat semula skrip rasmi admin setiap kali staf tekan Refresh.
+  try{
+   const templates=await call("get_message_templates");
+   messageTemplates={team:templates.team||{},personal:templates.personal||{}};
+  }catch(e){console.warn("Tetapan mesej tidak dapat dikemas kini:",e.message)}
   leads=r.leads||[];staff=r.staff||[];availableCount=Number(r.available_count)||0;
   metrics();renderLeads();renderRoster();
+  if(!editorDirty)syncMessageEditor();
   $("lastRefresh").textContent="Dikemas kini: "+new Date().toLocaleTimeString("ms-MY",{hour:"2-digit",minute:"2-digit"});
   $("queueCount").textContent=user.role==="staff"?(availableCount?availableCount+" nombor tambahan belum diagih. Tekan 'Ambil nombor belum diagih' untuk dapatkan satu.":"Nombor baharu yang diagihkan oleh admin akan muncul selepas Refresh."):"";
  }catch(e){$("listMessage").textContent="Gagal memuatkan senarai: "+e.message;notice("appNotice",e.message,true)}
@@ -86,15 +102,97 @@ function metrics(){
  $("metricFollow").textContent=leads.filter(l=>l.stage==="follow_up").length;
  $("metricBooked").textContent=leads.filter(l=>l.stage==="booked").length;
 }
+function templateFor(kind){
+ const key=["intro","follow","price"].includes(kind)?kind:"intro";
+ return messageTemplates.personal[key]||messageTemplates.team[key]||DEFAULT_MESSAGES[key];
+}
+function fillMessage(raw,lead){
+ const data={
+  nama:String(lead?.customer_name||"tuan/puan"),
+  staff:String(user?.display_name||"staf Proton"),
+  model:String(lead?.model && lead.model!=="Belum pasti"?lead.model:"kereta Proton"),
+  telefon:String(lead?.phone_e164||"")
+ };
+ return String(raw||"").replace(/\{(nama|staff|model|telefon)\}/gi,(_,key)=>data[key.toLowerCase()]||"");
+}
 function textMessage(lead){
- const name=lead.customer_name||"tuan/puan";
- const advisor=user.display_name;
- const model=lead.model&&lead.model!=="Belum pasti"?lead.model:"kereta Proton";
- switch($("messageTemplate").value){
-  case "follow":return `Assalamualaikum ${name}, saya ${advisor} daripada Proton. 😊\n\nSaya nak buat susulan mengenai ${model}.\n\nTuan/puan masih berminat untuk saya bantu semak pilihan yang sesuai?`;
-  case "price":return `Assalamualaikum ${name}, saya ${advisor} daripada Proton. 😊\n\nSaya boleh bantu sediakan maklumat harga dan anggaran ansuran untuk ${model}.\n\nBoleh saya tahu anggaran deposit dan tempoh pinjaman yang tuan/puan mahukan?`;
-  default:return `Assalamualaikum ${name}, selamat pagi! 😊\n\nSaya ${advisor} daripada Proton. Saya ingin berkongsi maklumat tentang ${model}.\n\nBoleh saya tahu, tuan/puan mencari kereta untuk kegunaan sendiri atau keluarga?`;
+ return fillMessage(templateFor($("messageTemplate").value),lead);
+}
+function settingsScope(){
+ return user?.role==="admin"&&$("messageScope").value==="team"?"team":"personal";
+}
+function editorKey(){return $("settingsTemplateKind").value;}
+function editableTemplate(){
+ const key=editorKey(),scope=settingsScope();
+ return messageTemplates[scope][key]||(scope==="team"?DEFAULT_MESSAGES[key]:messageTemplates.team[key]||DEFAULT_MESSAGES[key]);
+}
+function activeTemplateSource(key,scope){
+ if(messageTemplates[scope][key])return scope==="team"?"Mesej rasmi admin yang disimpan":"Mesej sendiri yang disimpan";
+ return scope==="team"?"Skrip asal sistem":"Mesej rasmi admin / skrip asal sistem";
+}
+function syncMessageEditor(){
+ if(!user||!$("settingsMessageBody"))return;
+ $("settingsMessageBody").value=editableTemplate();
+ editorDirty=false;
+ $("settingsSaveStatus").textContent="";
+ renderMessagePreview();
+}
+function renderMessagePreview(){
+ const text=$("settingsMessageBody").value;
+ $("messagePreview").textContent=fillMessage(text,{
+  customer_name:"Encik Ahmad",phone_e164:"60123456789",model:"Proton e.MAS 7 PHEV"
+ });
+ $("settingsSourceInfo").textContent="Sumber semasa: "+activeTemplateSource(editorKey(),settingsScope());
+ if(editorDirty)$("settingsSaveStatus").textContent="Belum disimpan. Tekan Simpan Mesej untuk gunakan skrip ini.";
+}
+function toggleMessageSettings(force){
+ const box=$("messageSettingsPanel");
+ const open=typeof force==="boolean"?force:box.classList.contains("hide");
+ box.classList.toggle("hide",!open);
+ $("messageSettingsBtn").setAttribute("aria-expanded",String(open));
+ if(open){
+  syncMessageEditor();
+  box.scrollIntoView({behavior:"smooth",block:"start"});
  }
+}
+async function saveMessageTemplate(){
+ const btn=$("saveMessageBtn"),key=editorKey(),scope=settingsScope();
+ const message=$("settingsMessageBody").value.trim();
+ if(!message||message.length>2500){
+  $("settingsSaveStatus").textContent="Isi mesej antara 1 hingga 2,500 aksara.";return;
+ }
+ btn.disabled=true;
+ try{
+  await call("save_message_template",{template_key:key,scope,message});
+  messageTemplates[scope][key]=message;
+  editorDirty=false;
+  $("settingsSaveStatus").textContent=scope==="team"?"Mesej rasmi disimpan. Staf boleh tekan Refresh untuk menerima skrip terbaharu.":"Mesej sendiri berjaya disimpan.";
+  renderMessagePreview();renderLeads();
+ }catch(e){$("settingsSaveStatus").textContent="Gagal simpan: "+e.message}
+ finally{btn.disabled=false}
+}
+async function resetMessageTemplate(){
+ const key=editorKey(),scope=settingsScope(),btn=$("resetMessageBtn");
+ if(!messageTemplates[scope][key]){
+  syncMessageEditor();
+  $("settingsSaveStatus").textContent="Skrip kini menggunakan tetapan asal.";
+  return;
+ }
+ if(!confirm(scope==="team"?"Pulihkan skrip rasmi kepada mesej asal? Staf yang menggunakan mesej admin akan menerima perubahan selepas Refresh.":"Padam skrip sendiri dan gunakan mesej rasmi admin?"))return;
+ btn.disabled=true;
+ try{
+  await call("reset_message_template",{template_key:key,scope});
+  delete messageTemplates[scope][key];
+  syncMessageEditor();renderLeads();
+  $("settingsSaveStatus").textContent="Skrip asal telah dipulihkan.";
+ }catch(e){$("settingsSaveStatus").textContent="Gagal reset: "+e.message}
+ finally{btn.disabled=false}
+}
+function insertMessageToken(value){
+ const el=$("settingsMessageBody"),start=el.selectionStart??el.value.length,end=el.selectionEnd??start;
+ el.value=el.value.slice(0,start)+value+el.value.slice(end);
+ el.focus();el.setSelectionRange(start+value.length,start+value.length);
+ editorDirty=true;renderMessagePreview();
 }
 function waUrl(lead){
  return "https://wa.me/"+lead.phone_e164+"?text="+encodeURIComponent(textMessage(lead));
@@ -326,6 +424,14 @@ async function copy(text){
 function wireEvents(){
  $("loginForm").addEventListener("submit",login);
  $("signoutBtn").addEventListener("click",logout);
+ $("messageSettingsBtn").addEventListener("click",()=>toggleMessageSettings());
+ $("closeMessageSettingsBtn").addEventListener("click",()=>toggleMessageSettings(false));
+ $("messageScope").addEventListener("change",syncMessageEditor);
+ $("settingsTemplateKind").addEventListener("change",syncMessageEditor);
+ $("settingsMessageBody").addEventListener("input",()=>{editorDirty=true;renderMessagePreview()});
+ $("saveMessageBtn").addEventListener("click",saveMessageTemplate);
+ $("resetMessageBtn").addEventListener("click",resetMessageTemplate);
+ document.querySelectorAll("[data-token]").forEach(btn=>btn.addEventListener("click",()=>insertMessageToken(btn.dataset.token)));
  $("refreshBtn").addEventListener("click",reload);
  $("claimBtn").addEventListener("click",claim);
  $("openGenericDocs").addEventListener("click",()=>openWorkspace("COMPILER"));
