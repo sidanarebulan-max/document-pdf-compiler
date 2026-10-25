@@ -440,8 +440,80 @@ async function handleWizard(token:string,chat:number,telegramId:number,account:a
  }return true;
 }
 async function currentCase(accountId:string,chat:number){
- const {data}=await db.from("lead_hub_telegram_cases").select("*").eq("account_id",accountId).eq("chat_id",chat).eq("state","collecting").order("created_at",{ascending:false}).limit(1).maybeSingle();
+ // The user may switch between several unfinished customer folders.
+ const {data:focus}=await db.from("lead_hub_telegram_dialog")
+  .select("active_case_id").eq("account_id",accountId).eq("chat_id",chat).maybeSingle();
+ if(focus?.active_case_id){
+  const {data:chosen}=await db.from("lead_hub_telegram_cases").select("*")
+   .eq("id",focus.active_case_id).eq("account_id",accountId)
+   .eq("chat_id",chat).eq("state","collecting").maybeSingle();
+  if(chosen)return chosen;
+ }
+ const {data}=await db.from("lead_hub_telegram_cases").select("*")
+  .eq("account_id",accountId).eq("chat_id",chat).eq("state","collecting")
+  .order("created_at",{ascending:false}).limit(1).maybeSingle();
  return data;
+}
+async function setCustomerFocus(id:number,chat:number,account:any,caseId:string,step:string|null=null){
+ const {error}=await db.from("lead_hub_telegram_dialog").upsert({
+  telegram_user_id:id,account_id:account.id,chat_id:chat,active_case_id:caseId,
+  pending_step:step,pending_until:step?new Date(Date.now()+15*60*1000).toISOString():null,
+  updated_at:new Date().toISOString()
+ },{onConflict:"telegram_user_id"});
+ if(error)throw error;
+}
+async function beginNewCustomer(token:string,chat:number,id:number,account:any){
+ const c=await currentCase(account.id,chat);
+ const {error}=await db.from("lead_hub_telegram_dialog").upsert({
+  telegram_user_id:id,account_id:account.id,chat_id:chat,active_case_id:c?.id||null,
+  pending_step:"customer_name",pending_until:new Date(Date.now()+15*60*1000).toISOString(),
+  updated_at:new Date().toISOString()
+ },{onConflict:"telegram_user_id"});
+ if(error)throw error;
+ await say(token,chat,"👤 PELANGGAN BAHARU\n"+
+  (c?"📁 Kes "+c.customer_name+" yang lama kekal disimpan, tiada dokumen dibuang.\n\n":"")+
+  "Siapa nama pelanggan baharu?\nBalas dengan nama sahaja, contoh: Ahmad bin Ali.\nTaip 'batal' jika tersalah buka.");
+}
+async function createCustomer(token:string,chat:number,id:number,account:any,raw:string){
+ const name=String(raw||"").trim().replace(/\s+/g," ");
+ if(!/^[\p{L}][\p{L}.'’\- ]{1,119}$/u.test(name) ||
+    /^(?:new|list|status|senarai|batal|cancel|mula|siap|yes|no)$/i.test(name)){
+  await say(token,chat,"Nama belum jelas. Balas nama pelanggan, contoh 'Ahmad bin Ali', atau 'batal'.");return;
+ }
+ const existing=await currentCase(account.id,chat);
+ const {data:created,error}=await db.from("lead_hub_telegram_cases").insert({
+  account_id:account.id,chat_id:chat,customer_name:name,active_party:"HIRER",active_category:null
+ }).select("id,customer_name,active_party").single();
+ if(error)throw error;
+ await setCustomerFocus(id,chat,account,created.id);
+ await db.from("lead_hub_telegram_chat_memory").delete()
+  .eq("telegram_user_id",id).eq("account_id",account.id);
+ await rememberAction(id,account.id,chat,"new_case",created.id);
+ await say(token,chat,"✅ FOLDER PELANGGAN BAHARU DIBUKA\n"+
+  caseSummary(created)+
+  (existing?"\n📁 Folder "+existing.customer_name+" yang lama masih disimpan. Taip 'sambung kes "+existing.customer_name+"' untuk kembali.":"")+
+  "\n\nHantar sahaja fail PDF/JPG/PNG. Bot akan susun dalam folder pelanggan ini.\n"+
+  "Kalau nak asingkan kategori, cakap 'ini IC', 'bank', 'gaji' dan sebagainya.");
+}
+async function switchCustomer(token:string,chat:number,id:number,account:any,name:string){
+ const {data:cases,error}=await db.from("lead_hub_telegram_cases")
+  .select("id,customer_name,created_at").eq("account_id",account.id).eq("chat_id",chat)
+  .eq("state","collecting").order("created_at",{ascending:false}).limit(60);
+ if(error)throw error;
+ const exact=(cases||[]).filter((c:any)=>c.customer_name.toLowerCase()===name.trim().toLowerCase());
+ const matches=exact.length?exact:(cases||[]).filter((c:any)=>
+  c.customer_name.toLowerCase().includes(name.toLowerCase()));
+ if(matches.length!==1){
+  await say(token,chat,matches.length===0?
+   "Aku tak jumpa kes aktif bernama '"+name.slice(0,70)+"'. Semak nama penuh atau taip 'status'.":
+   "Ada lebih daripada satu nama yang sepadan. Cakap nama penuh untuk elakkan tersalah folder.");
+  return;
+ }
+ await setCustomerFocus(id,chat,account,matches[0].id);
+ await db.from("lead_hub_telegram_chat_memory").delete()
+  .eq("telegram_user_id",id).eq("account_id",account.id);
+ await say(token,chat,"✅ KEMBALI KE KES\n👤 "+matches[0].customer_name+
+  "\nFolder ini aktif semula. Taip 'senarai' untuk semak dokumen.");
 }
 async function handleDoc(token:string,conf:any,chat:number,account:any,message:any){
  const c=await currentCase(account.id,chat);
@@ -855,6 +927,27 @@ async function processUpdate(update:any,conf:any,token:string){
  const {account,link}=linked;
  if(msg.document||msg.photo){await handleDoc(token,conf,chat,account,msg);return}
  if(!txt)return;
+ const {data:dialog}=await db.from("lead_hub_telegram_dialog")
+  .select("pending_step,pending_until").eq("telegram_user_id",id)
+  .eq("account_id",account.id).eq("chat_id",chat).maybeSingle();
+ if(dialog?.pending_step==="customer_name"&&dialog.pending_until&&
+    Date.parse(dialog.pending_until)>Date.now()){
+  if(/^(?:batal|cancel|tak jadi|xjadi|stop)$/i.test(txt)){
+   await db.from("lead_hub_telegram_dialog").update({
+    pending_step:null,pending_until:null
+   }).eq("telegram_user_id",id).eq("account_id",account.id);
+   await say(token,chat,"✅ Batal tambah pelanggan. Folder asal tidak berubah.");
+   return;
+  }
+  const incoming=parseNatural(txt);
+  // A name is free text, but do not silently treat operational commands as names.
+  if(incoming.kind==="chat"&&!txt.startsWith("/")){
+   await createCustomer(token,chat,id,account,txt);return;
+  }
+ }
+ if(/^\/(?:new|pelangganbaru|customerbaru)(?:@\w+)?$/i.test(txt)){
+  await beginNewCustomer(token,chat,id,account);return;
+ }
  // Most commands need no extra database read; retrieve action history only
  // for short follow-ups like "baki sekarang apa" after deleting files.
  const needsHistory=/\b(?:baki|tinggal|selebihnya|lagi|remaining)\b/i.test(txt);
@@ -874,6 +967,12 @@ async function processUpdate(update:any,conf:any,token:string){
   return;
  }
  const initialIntent=parseNatural(txt,ctx);
+ if(initialIntent.kind==="new_customer"){
+  await beginNewCustomer(token,chat,id,account);return;
+ }
+ if(initialIntent.kind==="switch_customer"){
+  await switchCustomer(token,chat,id,account,initialIntent.name);return;
+ }
  // Read-only intent patterns previously inferred confidently by the AI.
  const cached=initialIntent.kind==="chat"?await learnedIntent(txt):null;
 
@@ -992,22 +1091,8 @@ async function processUpdate(update:any,conf:any,token:string){
  const {data:wizard}=await db.from("lead_hub_telegram_wizards").select("step").eq("telegram_user_id",id).maybeSingle();
  if(wizard&&!txt.startsWith("/")){await handleWizard(token,chat,id,account,txt);return}
  if(command==="/pelanggan"){
-  const customer=arg.trim();
-  if(customer.length<2||customer.length>120){await say(token,chat,"Contoh: /pelanggan AHMAD BIN ALI (nama 2–120 aksara)");return}
-  const existing=await currentCase(account.id,chat);
-  if(existing){await say(token,chat,"📁 KES MASIH AKTIF\n"+caseSummary(existing)+
- "\nKategori sekarang: "+(existing.active_category?DOC_NAMES[existing.active_category]:"Belum dipilih")+
- "\n\nHantar fail lagi, pilih kategori atau /siap. Selesaikan kes ini sebelum buka pelanggan baharu.");return}
-  const {data:created,error}=await db.from("lead_hub_telegram_cases")
-   .insert({account_id:account.id,chat_id:chat,customer_name:customer,active_party:"HIRER",active_category:null})
-   .select("id,customer_name,active_party").single();
-  if(error)throw error;
-  await db.from("lead_hub_telegram_chat_memory").delete()
-    .eq("telegram_user_id",id).eq("account_id",account.id);
-  await rememberAction(id,account.id,chat,"new_case",created.id);
-  await say(token,chat,"✅ KES DIBUKA\n"+caseSummary(created)+
-   "\n\nPilih kategori: /ic, /bank, /gaji, /lesen, /sijil, /kerja, /vso atau /lain.\n"+
-   "Hantar banyak fail, kemudian /senarai atau /siap.");return;
+  if(!arg.trim()){await beginNewCustomer(token,chat,id,account);return}
+  await createCustomer(token,chat,id,account,arg);return;
  }
  if(["/peminjam","/penjamin","/rebate"].includes(command)){
   const c=await currentCase(account.id,chat);
