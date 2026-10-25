@@ -169,6 +169,13 @@ function register(){
   finally{btn.disabled=false}
  });
  $("telegramUnlink").addEventListener("click",unlink);
+ document.querySelectorAll("[data-cli-copy]").forEach(button=>{
+  button.addEventListener("click",async()=>{
+   const command=button.dataset.cliCopy==="install"?"npm install -g @openai/codex":"codex";
+   try{await navigator.clipboard.writeText(command);notify("Arahan PowerShell berjaya disalin.");}
+   catch{window.prompt("Salin arahan ini:",command)}
+  });
+ });
  $("telegramCopyCode").addEventListener("click",async()=>{
   const code=$("telegramLinkCode").textContent;
   try{await navigator.clipboard.writeText(code);notify("Kod disalin. Tampal dalam bot jika perlu.");}
