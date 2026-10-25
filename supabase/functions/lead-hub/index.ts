@@ -88,7 +88,7 @@ async function handler(req:Request):Promise<Response> {
       "Access-Control-Max-Age":"3600","Vary":"Origin"
     }});
   }
-  if(req.method==="GET")return response(req,{ok:true,service:"lead-hub",version:2});
+  if(req.method==="GET")return response(req,{ok:true,service:"lead-hub",version:7});
   if(req.method!=="POST")return error(req,"Kaedah tidak dibenarkan",405);
   if(Number(req.headers.get("content-length")||0)>200000)return error(req,"Permintaan terlalu besar",413);
   let body:Record<string,any>;
@@ -121,6 +121,51 @@ async function handler(req:Request):Promise<Response> {
   const a=await requireAccount(req);
   if(!a)return error(req,"Sesi tamat atau akses tidak dibenarkan. Sila log masuk semula.",401);
   if(action==="me")return response(req,{ok:true,user:profile(a)});
+  if(action==="get_message_templates"){
+    const {data,error}=await db.from("lead_hub_message_templates")
+      .select("scope,account_id,template_key,body")
+      .or("scope.eq.team,account_id.eq."+a.id);
+    if(error)throw error;
+    const team:Record<string,string>={};
+    const personal:Record<string,string>={};
+    for(const item of data||[]){
+      if(item.scope==="team")team[item.template_key]=item.body;
+      else if(item.scope==="personal"&&item.account_id===a.id)personal[item.template_key]=item.body;
+    }
+    return response(req,{ok:true,team,personal});
+  }
+  if(action==="save_message_template"||action==="reset_message_template"){
+    const kind=String(body.template_key||"");
+    const scope=String(body.scope||"personal");
+    if(!["intro","follow","price"].includes(kind))return error(req,"Jenis skrip tidak sah");
+    if(!["team","personal"].includes(scope))return error(req,"Skop tetapan tidak sah");
+    if(scope==="team"&&a.role!=="admin")return error(req,"Hanya admin boleh ubah mesej untuk semua staf",403);
+    const owner=scope==="team"?null:a.id;
+    let query=db.from("lead_hub_message_templates")
+      .select("id").eq("scope",scope).eq("template_key",kind);
+    query=owner===null?query.is("account_id",null):query.eq("account_id",owner);
+    const {data:existing,error:lookupError}=await query.maybeSingle();
+    if(lookupError)throw lookupError;
+    if(action==="reset_message_template"){
+      if(existing){
+        const {error}=await db.from("lead_hub_message_templates").delete().eq("id",existing.id);
+        if(error)throw error;
+      }
+      return response(req,{ok:true,deleted:Boolean(existing)});
+    }
+    const message=String(body.message||"").replace(/\r\n/g,"\n").trim();
+    if(!message||message.length>2500)return error(req,"Mesej mesti antara 1 dan 2,500 aksara",400);
+    if(existing){
+      const {error}=await db.from("lead_hub_message_templates")
+        .update({body:message,updated_at:new Date().toISOString()}).eq("id",existing.id);
+      if(error)throw error;
+    }else{
+      const {error}=await db.from("lead_hub_message_templates")
+        .insert({scope,account_id:owner,template_key:kind,body:message});
+      if(error)throw error;
+    }
+    return response(req,{ok:true});
+  }
   if(action==="logout"){
     const token=String(req.headers.get("Authorization")||"").replace(/^Bearer\s+/i,"").trim();
     await db.from("lead_hub_sessions").update({revoked_at:new Date().toISOString()}).eq("token_hash",await sha256(token));
