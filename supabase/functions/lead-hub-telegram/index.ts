@@ -1030,11 +1030,23 @@ async function controller(req:Request){
  const secretHeader=req.headers.get("x-telegram-bot-api-secret-token");
  if(secretHeader){
   const conf=await config();
-  if(!conf?.enabled||!conf.webhook_secret_hash||!(/^[A-Za-z0-9_-]{32,80}$/.test(secretHeader))||await sha(secretHeader)!==conf.webhook_secret_hash)return fail(req,"Forbidden",403);
+  if(!conf?.enabled||!conf.webhook_secret_hash||
+     !(/^[A-Za-z0-9_-]{32,80}$/.test(secretHeader)))return fail(req,"Forbidden",403);
+  const requestSecretHash=await sha(secretHeader);
+  const currentMatches=requestSecretHash===conf.webhook_secret_hash;
+  const previousMatches=requestSecretHash===conf.webhook_previous_secret_hash&&
+    !!conf.webhook_previous_valid_until&&Date.parse(conf.webhook_previous_valid_until)>Date.now();
+  if(!currentMatches&&!previousMatches)return fail(req,"Forbidden",403);
   if(!Number.isSafeInteger(payload.update_id)||payload.update_id<0)return fail(req,"Invalid update",400);
   const {error:dedupe}=await db.from("lead_hub_telegram_updates").insert({update_id:payload.update_id});
   if(dedupe?.code==="23505")return out(req,{ok:true,duplicate:true});
   if(dedupe)throw dedupe;
+  if(conf.webhook_callbacks_configured!==true){
+   const repair=repairCallbackWebhook(conf).catch(e=>
+    console.error("Webhook auto-repair",String(e).slice(0,90)));
+   if(typeof EdgeRuntime!=="undefined")EdgeRuntime.waitUntil(repair);
+   else await repair;
+  }
   const job=(async()=>{let token="";try{
    token=await botToken(conf);
    await processUpdate(payload,conf,token);
@@ -1050,7 +1062,9 @@ async function controller(req:Request){
  const action=String(payload.action||"");
  if(action==="telegram_status"){
   const conf=await config(),{data:link}=await db.from("lead_hub_telegram_links").select("chat_id").eq("account_id",actor.id).maybeSingle();
-  return out(req,{ok:true,connected:!!conf?.enabled,bot_username:conf?.bot_username||null,
+  const callbacksReady=conf?.webhook_callbacks_configured===true||
+    await repairCallbackWebhook(conf).catch(e=>{console.error("Webhook admin repair",String(e).slice(0,80));return false});
+  return out(req,{ok:true,connected:!!conf?.enabled,callback_ready:callbacksReady,bot_username:conf?.bot_username||null,
    ai_enabled:!!(conf?.ai_api_key_cipher||conf?.deepseek_api_key_cipher),
    openai_enabled:!!conf?.ai_api_key_cipher,deepseek_enabled:!!conf?.deepseek_api_key_cipher,
    ai_primary_provider:conf?.ai_primary_provider||"auto",
