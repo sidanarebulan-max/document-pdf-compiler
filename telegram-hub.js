@@ -2,6 +2,7 @@
 "use strict";
 const URL="https://qagsczjxzshjxmmxvkbq.supabase.co/functions/v1/lead-hub-telegram";
 const SESSION="faris_lead_hub_session_v2";
+const CODEX_API="https://qagsczjxzshjxmmxvkbq.supabase.co/functions/v1/lead-hub-codex";
 const $=id=>document.getElementById(id);
 let currentUser=null,loaded=false,busy=false;
 async function api(action,args={}){
@@ -11,6 +12,54 @@ async function api(action,args={}){
  let value;try{value=await res.json()}catch{throw Error("Server Telegram tidak memberikan respons sah ("+res.status+")")}
  if(!res.ok||!value.ok)throw Error(value.error||"Ralat Telegram: "+res.status);
  return value;
+}
+async function codexApi(action,params={}){
+ const session=localStorage.getItem(SESSION)||"";
+ if(!session)throw Error("Login admin telah tamat.");
+ const res=await fetch(CODEX_API,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+session},
+  body:JSON.stringify({action,...params}),cache:"no-store"});
+ const j=await res.json();
+ if(!res.ok||!j.ok)throw Error(j.error||"Worker API "+res.status);
+ return j;
+}
+async function codexStatus(){
+ if(currentUser?.role!=="admin")return;
+ const btn=$("codexCheck");btn.disabled=true;
+ try{
+  const d=await codexApi("status_admin");
+  $("codexEnabled").checked=d.enabled;
+  const online=d.devices.filter(x=>x.online),active=d.devices.filter(x=>x.is_active);
+  $("codexWorkerStatusBadge").textContent=online.length?online.length+" PC Online":active.length?"PC Offline":"Belum Dipair";
+  $("codexWorkerStatusBadge").classList.toggle("on",online.length>0);
+  $("codexWorkerInfo").textContent=online.length
+   ?"✅ "+online.length+" PC bersambung. Tugasan menunggu: "+d.pending
+   :active.length
+    ?"⚠️ PC sudah dipair, tetapi worker tidak online. Buka START_WORKER.cmd pada PC. Tugasan menunggu: "+d.pending
+    :"Belum ada PC dipautkan. Jana kod pairing, kemudian jalankan pemasangan ZIP FARIS.";
+  $("codexDeviceList").textContent=d.devices.map(x=>
+   (x.online?"🟢 ":"⚪ ")+x.device_name+" — "+(x.is_active?(x.online?"ONLINE":"OFFLINE"):"DINYAHAKTIF")
+  ).join(" | ");
+ }catch(e){$("codexWorkerInfo").textContent="Ralat semak worker: "+e.message}
+ finally{btn.disabled=false}
+}
+async function createCodexPair(){
+ const btn=$("codexCreatePair");btn.disabled=true;
+ try{
+  const x=await codexApi("generate_pair");
+  $("codexPairCode").textContent=x.code;
+  $("codexPairResult").classList.remove("hide");
+  notify("✅ Kod pairing disediakan. Sah selama 15 minit. Masukkan dalam PowerShell FARIS Worker; ini bukan kod login ChatGPT.");
+ }catch(e){notify("Tidak boleh jana pairing: "+e.message,true)}
+ finally{btn.disabled=false}
+}
+async function codexToggle(){
+ const btn=$("codexSaveEnabled");btn.disabled=true;
+ try{
+  await codexApi("set_codex_enabled",{enabled:$("codexEnabled").checked});
+  notify("Pilihan ChatGPT Worker disimpan. Jika PC offline, sistem gunakan pilihan API atau semakan manual.");
+  await codexStatus();
+ }catch(e){notify("Tidak dapat ubah tetapan worker: "+e.message,true)}
+ finally{btn.disabled=false}
 }
 function notify(message,error=false){
  const notice=$("telegramNotice");notice.classList.remove("hide");notice.textContent=message;
@@ -156,6 +205,14 @@ function register(){
  $("telegramDeepSeekForm").addEventListener("submit",setDeepSeek);
  $("telegramDisableDeepSeek").addEventListener("click",disableDeepSeek);
  $("telegramSaveRouting").addEventListener("click",saveAIRouting);
+ $("codexCheck").addEventListener("click",codexStatus);
+ $("codexCreatePair").addEventListener("click",createCodexPair);
+ $("codexSaveEnabled").addEventListener("click",codexToggle);
+ $("codexCopyPair").addEventListener("click",async()=>{
+  const code=$("codexPairCode").textContent;
+  try{await navigator.clipboard.writeText(code);notify("Kod pairing disalin.");}
+  catch{window.prompt("Salin kod pairing:",code)}
+ });
  $("telegramGenerateLink").addEventListener("click",getLinkCode);
  $("telegramSyncCommands").addEventListener("click",async()=>{
   if(!currentUser||currentUser.role!=="admin"){
@@ -187,6 +244,8 @@ window.FARIS_TG={
   currentUser=user;
   $("telegramSettingsBtn").classList.remove("hide");
   $("telegramAdminSettings").classList.toggle("hide",user.role!=="admin");
+  $("farisCodexPairing").classList.toggle("hide",user.role!=="admin");
+  if(user.role==="admin")codexStatus();
   $("telegramSyncCommands").classList.toggle("hide",user.role!=="admin");
   loaded=false;
  },
