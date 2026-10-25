@@ -395,8 +395,18 @@ async function handleDoc(token:string,conf:any,chat:number,account:any,message:a
  const key=account.id+"/"+c.id+"/"+id+"."+extension;
  const {error:upError}=await db.storage.from(BUCKET).upload(key,bytes,{contentType:realMime,upsert:false});
  if(upError)throw upError;
+ // Prefer authenticated ChatGPT Codex worker when a paired PC is online.
+ // No ChatGPT OAuth token is copied to this server; documents wait on a private queue.
+ let codexQueued=false;
+ if(!c.active_category && conf.codex_worker_enabled!==false && bytes.length<=12*1024*1024){
+  const {data:online}=await db.from("lead_hub_codex_devices").select("id")
+   .eq("is_active",true).gt("last_seen_at",new Date(Date.now()-90000).toISOString()).limit(1);
+  codexQueued=Boolean(online?.length);
+ }
  let cls:any=null;
- if(c.active_category){
+ if(codexQueued){
+  cls={category:"OTHER",confidence:0,method:"codex_pending"};
+ }else if(c.active_category){
   // Explicit staff command applies to every attachment until a new command.
   cls={category:chosenCategory(c.active_category,c.active_party,filename+" "+String(message.caption||"")),
     confidence:1,method:"staff_command"};
@@ -416,6 +426,16 @@ async function handleDoc(token:string,conf:any,chat:number,account:any,message:a
  if(ie){await db.storage.from(BUCKET).remove([key]);
   if(ie.code==="23505")return;
   throw ie}
+ if(codexQueued){
+  const {error:jobError}=await db.from("lead_hub_codex_jobs")
+   .insert({file_id:id,status:"queued"});
+  if(jobError){
+   console.warn("Codex queue unavailable:",jobError.message);
+   await db.from("lead_hub_telegram_files").update({classification_method:"codex_failed"})
+    .eq("id",id);
+   codexQueued=false;
+  }
+ }
  const {count:total}=await db.from("lead_hub_telegram_files").select("id",{head:true,count:"exact"}).eq("case_id",c.id);
  const inGroup=(await db.from("lead_hub_telegram_files").select("id",{count:"exact",head:true})
   .eq("case_id",c.id).eq("party",c.active_party).eq("category",cls.category)).count||0;
@@ -423,7 +443,9 @@ async function handleDoc(token:string,conf:any,chat:number,account:any,message:a
  "👤 "+c.customer_name+"\n"+
  "📁 "+c.active_party+"  •  "+(DOC_NAMES[cls.category]||cls.category)+"\n"+
  "📎 Kategori ini: "+inGroup+" fail  |  Kes ini: "+total+" fail"+
- (review?"\n⚠️ Kategori kurang pasti. Semak /senarai dan betulkan melalui /kategori.":"\n✔️ Kategori telah ditetapkan.")+
+ (codexQueued?"\n🤖 Menunggu ChatGPT Worker di komputer untuk membaca fail.":
+  review?"\n⚠️ Kategori kurang pasti. Semak /senarai dan betulkan melalui /kategori.":
+  "\n✔️ Kategori telah ditetapkan.")+
  "\n\nHantar lagi fail, pilih kategori lain, atau /siap.");
 }
 async function linkedTelegramAccount(id:number){
