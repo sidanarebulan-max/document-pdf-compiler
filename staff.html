@@ -213,6 +213,23 @@
       <p class="muted small">Pilih <strong>Sign in with ChatGPT</strong> semasa diminta. Panduan rasmi: <a href="https://help.openai.com/en/articles/11369540-using-codex-with-your-chatgpt-plan" target="_blank" rel="noopener noreferrer">Codex dengan pelan ChatGPT</a>.</p>
       <p class="muted small"><strong>Untuk login ChatGPT terus dalam website FARIS:</strong> OpenAI menyediakan Sign in with ChatGPT untuk integrasi yang layak. Website persendirian berhos seperti ini belum semestinya mempunyai akses. <a href="https://developers.openai.com/siwc/request-client-id" target="_blank" rel="noopener noreferrer">Semak permohonan akses OAuth</a> sebelum kita boleh sambung secara rasmi.</p>
     </div>
+   <div class="tg-cli-guide" id="farisCodexPairing">
+    <div class="tg-provider-title"><b>🖥 ChatGPT Worker — Sambung PC dengan FARIS</b><span class="tg-provider-badge" id="codexWorkerStatusBadge">Belum disambung</span></div>
+    <p class="muted small">Cara ini menggunakan <strong>Codex CLI login ChatGPT pada komputer Windows</strong> untuk mengimbas dokumen Telegram. Ia tidak memerlukan kunci OpenAI API tetapi hanya berjalan semasa komputer dan worker hidup. Dokumen diproses oleh Codex menggunakan akaun yang log masuk pada PC.</p>
+    <div class="tg-actions">
+      <button class="primary" id="codexCreatePair" type="button">🔗 Jana Kod Pairing (15 minit)</button>
+      <button class="secondary" id="codexCheck" type="button">↻ Semak Worker</button>
+    </div>
+    <div id="codexPairResult" class="hide tg-secret">
+      <span>Kod untuk PowerShell:</span>
+      <b id="codexPairCode"></b>
+      <button type="button" class="secondary" id="codexCopyPair">Salin Kod</button>
+    </div>
+    <p class="muted small" id="codexWorkerInfo">Pasang pakej FARIS Codex Worker pada PC, log masuk ChatGPT dalam browser, kemudian masukkan kod pairing yang dijana di sini.</p>
+    <label class="checkline"><input type="checkbox" id="codexEnabled" checked><span>Gunakan ChatGPT Worker untuk imbasan automatik jika PC sedang online (kalau PC offline, guna API/semakan manual).</span></label>
+    <button type="button" class="secondary" id="codexSaveEnabled">Simpan Pilihan ChatGPT Worker</button>
+    <div id="codexDeviceList" class="small muted"></div>
+  </div>
    <div class="tg-routing">
     <h3>Penggunaan AI</h3>
     <label for="telegramAIRouting">Pilihan AI utama</label>
@@ -356,5 +373,5 @@
 </div>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="/staff-passcode.js?v=telegram-20261026"></script>
-<script src="/telegram-hub.js?v=cli-login-guide-20261026"></script>
+<script src="/telegram-hub.js?v=faris-local-worker-20261026"></script>
 </body></html>
