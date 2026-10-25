@@ -30,7 +30,16 @@ async function refresh(){
   $("telegramState").textContent=r.connected?"Bot Telegram Aktif":"Bot belum disambungkan";
   $("telegramUser").textContent=r.bot_username?"@"+r.bot_username:"Admin perlu sambungkan token bot daripada BotFather.";
   $("telegramDot").classList.toggle("connected",!!r.connected);
-  $("telegramAIStatus").textContent=r.ai_enabled?"AI Scan aktif (OpenAI; "+r.ai_model+").":"AI Scan belum aktif; klasifikasi nama fail dan semakan manual.";
+  $("tgOpenAIStatus").textContent=r.openai_enabled?"Aktif":"Belum disambung";
+  $("tgOpenAIStatus").classList.toggle("on",!!r.openai_enabled);
+  $("tgDeepSeekStatus").textContent=r.deepseek_enabled?"Aktif":"Belum disambung";
+  $("tgDeepSeekStatus").classList.toggle("on",!!r.deepseek_enabled);
+  $("telegramAIRouting").value=r.ai_primary_provider||"auto";
+  $("telegramFallback").checked=r.ai_fallback_enabled!==false;
+  $("telegramAIStatus").textContent=r.ai_enabled
+   ?"AI aktif: "+[r.openai_enabled?"OpenAI":"",r.deepseek_enabled?"DeepSeek Flash":""].filter(Boolean).join(" + ") +"."
+   :"Tiada key AI. Dokumen dikelaskan melalui nama fail dan wajib disemak.";
+  $("telegramDisableDeepSeek").disabled=!r.deepseek_enabled;
   $("telegramLinkStatus").textContent=r.telegram_linked?"✅ Akaun Telegram anda sudah dipautkan.":"Belum dipautkan dengan Telegram.";
   $("telegramGenerateLink").disabled=!r.connected;
   $("telegramDisconnect").disabled=!r.connected;
@@ -67,17 +76,55 @@ async function setAI(event){
  if(!currentUser||currentUser.role!=="admin")return;
  const key=$("telegramAPIKey").value.trim();
  if(!key)return notify("Isi OpenAI API key yang sah dahulu.",true);
- if(!confirm("Dokumen pelanggan akan dihantar ke OpenAI untuk pengelasan apabila AI aktif. Pastikan pelanggan telah memberikan kebenaran yang sesuai. Teruskan?"))return;
+ if(!confirm("Dokumen pelanggan yang dihantar kepada bot mungkin diproses oleh OpenAI. Pastikan kebenaran pelanggan dan pematuhan privasi. Sambung OpenAI?"))return;
  const btn=$("telegramSaveAI");setBusy(btn,true);
- try{await api("telegram_set_ai",{api_key:key});$("telegramAPIKey").value="";notify("✅ AI Scan diaktifkan. Pengelasan AI memerlukan kredit API OpenAI.");await refresh()}
+ try{await api("telegram_set_ai",{api_key:key});$("telegramAPIKey").value="";notify("✅ Key OpenAI disimpan. Ia boleh digunakan untuk PDF/imej mengikut pilihan AI.");await refresh()}
  catch(e){notify("Gagal aktifkan AI: "+e.message,true)}
  finally{setBusy(btn,false)}
 }
 async function disableAI(){
  if(!currentUser||currentUser.role!=="admin")return;
- if(!confirm("Matikan AI Scan untuk semua staf?"))return;
- try{await api("telegram_disable_ai");notify("AI Scan dimatikan. Bot kekal berfungsi dengan pengesanan nama fail.");await refresh()}
+ if(!confirm("Padam kunci OpenAI? DeepSeek masih kekal jika telah disambung."))return;
+ try{await api("telegram_disable_ai");notify("Key OpenAI dipadam. Pilihan DeepSeek tidak diubah.");await refresh()}
  catch(e){notify("Gagal matikan AI Scan: "+e.message,true)}
+}
+async function setDeepSeek(event){
+ event.preventDefault();
+ if(!currentUser||currentUser.role!=="admin")return;
+ const key=$("telegramDeepSeekKey").value.trim();
+ if(!key)return notify("Masukkan key DeepSeek dahulu.",true);
+ if(!confirm("Dokumen imej pelanggan mungkin dihantar kepada DeepSeek untuk pengelasan. Pastikan pelanggan membenarkan pemprosesan oleh pembekal luar. Teruskan?"))return;
+ const btn=$("telegramSaveDeepSeek");setBusy(btn,true);
+ try{
+  await api("telegram_set_deepseek",{api_key:key});
+  $("telegramDeepSeekKey").value="";
+  notify("✅ DeepSeek Flash disambungkan untuk imbasan gambar JPG/PNG.");
+  await refresh();
+ }catch(e){notify("Gagal simpan key DeepSeek: "+e.message,true)}
+ finally{setBusy(btn,false)}
+}
+async function disableDeepSeek(){
+ if(!currentUser||currentUser.role!=="admin")return;
+ if(!confirm("Padam key DeepSeek? OpenAI masih kekal jika disambung."))return;
+ const btn=$("telegramDisableDeepSeek");setBusy(btn,true);
+ try{
+  await api("telegram_disable_deepseek");
+  notify("Key DeepSeek dipadam. OpenAI tidak diubah.");
+  await refresh();
+ }catch(e){notify("Gagal padam key DeepSeek: "+e.message,true)}
+ finally{setBusy(btn,false)}
+}
+async function saveAIRouting(){
+ if(!currentUser||currentUser.role!=="admin")return;
+ const btn=$("telegramSaveRouting");setBusy(btn,true);
+ try{
+  const primary=$("telegramAIRouting").value,fallback_enabled=$("telegramFallback").checked;
+  await api("telegram_set_ai_routing",{primary,fallback_enabled});
+  notify("✅ Pilihan AI disimpan. "+(primary==="auto"?"Auto: DeepSeek untuk imej, OpenAI untuk PDF.":"AI utama: "+primary)+
+   (fallback_enabled?" Sandaran diaktifkan.":" Sandaran dimatikan."));
+  await refresh();
+ }catch(e){notify("Tidak dapat menyimpan pilihan AI: "+e.message,true)}
+ finally{setBusy(btn,false)}
 }
 async function getLinkCode(){
  const btn=$("telegramGenerateLink");setBusy(btn,true);
@@ -106,6 +153,9 @@ function register(){
  $("telegramDisconnect").addEventListener("click",disconnect);
  $("telegramAIForm").addEventListener("submit",setAI);
  $("telegramDisableAI").addEventListener("click",disableAI);
+ $("telegramDeepSeekForm").addEventListener("submit",setDeepSeek);
+ $("telegramDisableDeepSeek").addEventListener("click",disableDeepSeek);
+ $("telegramSaveRouting").addEventListener("click",saveAIRouting);
  $("telegramGenerateLink").addEventListener("click",getLinkCode);
  $("telegramUnlink").addEventListener("click",unlink);
  $("telegramCopyCode").addEventListener("click",async()=>{
@@ -124,7 +174,7 @@ window.FARIS_TG={
  onLogout(){
   currentUser=null;$("telegramSettingsBtn").classList.add("hide");
   $("telegramPanel").classList.add("hide");$("telegramLinkResult").classList.add("hide");
-  $("telegramBotToken").value="";$("telegramAPIKey").value="";
+  $("telegramBotToken").value="";$("telegramAPIKey").value="";$("telegramDeepSeekKey").value="";
  },
 };
 document.addEventListener("DOMContentLoaded",register);
