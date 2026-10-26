@@ -102,3 +102,17 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 @media(prefers-reduced-motion:reduce){
  html{scroll-behavior:auto}
 }
+
+/* Put WhatsApp customer work immediately beneath the greeting on phones. */
+@media(max-width:760px){
+ #appSection{display:flex;flex-direction:column}
+ #appSection>.welcome{order:1}
+ #appSection>#leadSection{order:2}
+ #appSection>.metrics{order:3}
+ #appSection>#staffWorkflow{order:4}
+ #appSection>#messageSettingsPanel{order:5}
+ #appSection>#telegramPanel{order:6}
+ #appSection>#adminPanel{order:7}
+ #appSection>#appNotice{order:8}
+ #leadSection{scroll-margin-top:12px}
+}
