@@ -1051,6 +1051,14 @@ async function processUpdate(update:any,conf:any,token:string){
  const {account,link}=linked;
  if(msg.document||msg.photo){await handleDoc(token,conf,chat,account,msg);return}
  if(!txt)return;
+ // Navigation words take priority over a pending customer-name prompt.
+ // Otherwise "resume" could accidentally be saved as a customer's name.
+ if(/^(?:resume|resum|continue|sambung(?: pelanggan)?|senarai pelanggan|list customer|customer lama)$/i.test(txt)){
+  await showResumeCustomerMenu(token,chat,id,account);return;
+ }
+ if(/^(?:menu|home|menu utama)$/i.test(txt)){
+  await showCustomerMenu(token,chat,id,account);return;
+ }
  const {data:dialog}=await db.from("lead_hub_telegram_dialog")
   .select("pending_step,pending_until").eq("telegram_user_id",id)
   .eq("account_id",account.id).eq("chat_id",chat).maybeSingle();
