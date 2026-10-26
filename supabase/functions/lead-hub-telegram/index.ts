@@ -960,6 +960,129 @@ async function interpretChat(conf:any,account:any,telegramId:number,chat:number,
  return {kind:"answer",reply};
 }
 
+
+function partialMergeButtons(tag:string){
+ return {inline_keyboard:[[
+  {text:"✅ Teruskan PDF separa",callback_data:"faris_partial:yes:"+tag},
+  {text:"❌ Batal",callback_data:"faris_partial:no:"+tag}
+ ]]};
+}
+async function getActiveFilesForMerge(c:any){
+ const {data,error}=await db.from("lead_hub_telegram_files").select("*")
+  .eq("case_id",c.id).order("created_at");
+ if(error)throw error;
+ return (data||[]).sort((x:any,y:any)=>
+  ((x.telegram_message_id??0)-(y.telegram_message_id??0))||
+   String(x.created_at).localeCompare(String(y.created_at)));
+}
+async function beginPartialMerge(token:string,chat:number,id:number,account:any){
+ const c=await currentCase(account.id,chat);
+ if(!c){await say(token,chat,"📂 Tiada kes pelanggan aktif. Pilih Resume Customer dahulu.");return}
+ const files=await getActiveFilesForMerge(c);
+ if(!files.length){await say(token,chat,"Belum ada fail dalam folder pelanggan ini.");return}
+ const unverified=files.map((f:any,i:number)=>f.needs_review?i+1:0).filter(Boolean);
+ if(unverified.length){
+  await say(token,chat,"⚠️ Sebelum susun PDF, sahkan kategori fail #"+unverified.join(", ")+
+   ". Taip 'senarai' dan betulkan kategori dahulu.");return;
+ }
+ const progress=await say(token,chat,"⏳ Menyemak "+files.length+" fail untuk PDF separa...");
+ async function display(msg:string,replyMarkup?:any){
+  try{await telegramCall(token,"editMessageText",{
+   chat_id:chat,message_id:progress.message_id,text:msg.slice(0,3800),
+   reply_markup:replyMarkup
+  })}catch(e){await say(token,chat,msg.slice(0,3800),replyMarkup?{reply_markup:replyMarkup}:{})}
+ }
+ try{
+  const preview=await makeMergedPdf(c,files,true);
+  if(!preview.issues.length){
+   await display("✅ SEMUA "+files.length+" FAIL BOLEH DIBACA\n"+caseSummary(c)+
+    "\nTiada dokumen perlu dikecualikan. Cakap 'siapkan PDF' untuk hasil lengkap.");
+   return;
+  }
+  const skipped=preview.issues.map((issue:any)=>files[issue.number-1]?.id).filter(Boolean);
+  if(skipped.length!==preview.issues.length)throw Error("Padanan fail bermasalah gagal");
+  const tag=crypto.randomUUID().replaceAll("-","").slice(0,12);
+  const {error}=await db.from("lead_hub_telegram_partial_merges").upsert({
+   telegram_user_id:id,account_id:account.id,chat_id:chat,
+   case_id:c.id,request_tag:tag,
+   file_ids:files.map((x:any)=>x.id),skipped_ids:skipped,
+   state:"pending",expires_at:new Date(Date.now()+10*60*1000).toISOString(),
+   created_at:new Date().toISOString()
+  },{onConflict:"telegram_user_id"});
+  if(error)throw error;
+  await display("📄 PENGESAHAN PDF SEPARA\n"+caseSummary(c)+
+   "\n✅ "+preview.mergedIds.length+" fail boleh digabung\n"+
+   "⚠️ "+preview.issues.length+" fail TIDAK akan dimasukkan:\n\n"+
+   mergeIssueText(preview.issues)+
+   "\n\n⚠️ PDF ini tidak lengkap. Fail asal tidak dipadam dan kes kekal aktif."+
+   "\nTekan 'Teruskan PDF separa' jika kau setuju. Sah 10 minit.",partialMergeButtons(tag));
+ }catch(e){
+  await display("⚠️ Tidak dapat memeriksa fail untuk gabungan separa. "+
+   (/100 muka surat|45MB|Tiada fail yang boleh/i.test(String(e))?
+    String(e):"Semak dokumen dan cuba semula. Semua fail asal kekal."));
+  console.warn("Partial merge preview error",String(e).slice(0,130));
+ }
+}
+async function finishPartialMerge(token:string,chat:number,id:number,account:any,tag:string,approve:boolean){
+ const {data:request,error:lookupError}=await db.from("lead_hub_telegram_partial_merges")
+  .select("*").eq("telegram_user_id",id).eq("account_id",account.id)
+  .eq("chat_id",chat).eq("request_tag",tag).maybeSingle();
+ if(lookupError)throw lookupError;
+ if(!request||request.state!=="pending"||Date.parse(request.expires_at)<=Date.now()){
+  await say(token,chat,"⚠️ Pengesahan PDF separa sudah tamat atau telah digunakan. Cakap 'susun fail yang boleh sahaja' semula.");
+  return;
+ }
+ if(!approve){
+  await db.from("lead_hub_telegram_partial_merges").update({state:"cancelled"})
+   .eq("telegram_user_id",id).eq("request_tag",tag).eq("state","pending");
+  await say(token,chat,"✅ Dibatalkan. Semua dokumen kekal dalam folder.");return;
+ }
+ // Atomic conditional claim stops duplicate sends from double-taps/replayed callbacks.
+ const {data:claim,error:claimError}=await db.from("lead_hub_telegram_partial_merges")
+  .update({state:"processing"}).eq("telegram_user_id",id)
+  .eq("account_id",account.id).eq("chat_id",chat).eq("request_tag",tag)
+  .eq("state","pending").gt("expires_at",new Date().toISOString())
+  .select("case_id,file_ids,skipped_ids").maybeSingle();
+ if(claimError)throw claimError;
+ if(!claim){await say(token,chat,"⚠️ Permintaan sedang diproses atau sudah selesai.");return}
+ const cancel=()=>db.from("lead_hub_telegram_partial_merges").update({state:"cancelled"})
+  .eq("telegram_user_id",id).eq("request_tag",tag).eq("state","processing");
+ try{
+  const {data:c,error:e}=await db.from("lead_hub_telegram_cases")
+   .select("*").eq("id",claim.case_id).eq("account_id",account.id)
+   .eq("chat_id",chat).eq("state","collecting").maybeSingle();
+  if(e)throw e;
+  if(!c)throw Error("Kes tidak lagi aktif");
+  const focus=await currentCase(account.id,chat);
+  if(focus?.id!==c.id)throw Error("Kes aktif sudah bertukar");
+  const files=await getActiveFilesForMerge(c);
+  const ids=files.map((x:any)=>x.id);
+  if(JSON.stringify(ids)!==JSON.stringify(claim.file_ids))
+   throw Error("Senarai fail telah berubah. Perlu pengesahan baharu");
+  const result=await makeMergedPdf(c,files,true);
+  const skipped=result.issues.map((x:any)=>files[x.number-1]?.id).filter(Boolean);
+  if(JSON.stringify(skipped)!==JSON.stringify(claim.skipped_ids))
+   throw Error("Status fail telah berubah. Perlu pengesahan baharu");
+  const clean=safePdfText(c.customer_name).replace(/\s+/g,"_").slice(0,44)||"CUSTOMER";
+  const caption="⚠️ PDF SEPARA — "+result.mergedIds.length+"/"+files.length+
+   " fail; "+result.issues.length+" fail tidak disertakan. Sila semak dan lengkapkan sebelum urusan rasmi.";
+  await telegramSendDocument(token,chat,result.bytes,clean+"_DOKUMEN_SEPARA.pdf",caption);
+  await db.from("lead_hub_telegram_partial_merges").update({state:"completed"})
+   .eq("telegram_user_id",id).eq("request_tag",tag).eq("state","processing");
+  await say(token,chat,"✅ PDF SEPARA DIHANTAR\n"+
+   result.mergedIds.length+" daripada "+files.length+" fail digabung. "+
+   result.issues.length+" tidak disertakan.\n"+
+   mergeIssueText(result.issues)+
+   "\n\n📂 Folder kekal aktif. Tiada fail asal dipadam; lengkapkan dokumen sebelum dihantar untuk permohonan.");
+ }catch(e){
+  await cancel();
+  console.warn("Partial merge failed:",String(e).slice(0,120));
+  await say(token,chat,"⚠️ PDF separa tidak dapat disahkan. "+
+   String(e).replace(/^Error:\s*/,"").slice(0,160)+
+   "\nTiada fail asal dipadam. Cuba 'susun fail yang boleh sahaja' semula.");
+ }
+}
+
 async function processUpdate(update:any,conf:any,token:string){
  // Telegram inline confirmation callbacks are handled before regular messages.
  // They are tied to the authenticated sender and the originating private chat.
