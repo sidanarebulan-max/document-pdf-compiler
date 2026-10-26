@@ -2,6 +2,7 @@
 "use strict";
 const API="https://qagsczjxzshjxmmxvkbq.supabase.co/functions/v1/lead-hub";
 const SESSION_KEY="faris_lead_hub_session_v2";
+const DEVICE_KEY="faris_lead_hub_trusted_browser_v1";
 const $=id=>document.getElementById(id);
 const STATUSES={new:"Belum diambil",claimed:"Sudah diambil",contacted:"Dihubungi",follow_up:"Follow-up",interested:"Berminat",booked:"Booking",not_interested:"Tidak berminat"};
 const DEFAULT_MESSAGES=Object.freeze({
@@ -15,7 +16,8 @@ const normalizePhone=value=>{
  if(p.startsWith("0"))p="6"+p;else if(p.startsWith("1"))p="60"+p;
  return /^601\d{8,9}$/.test(p)?p:null;
 };
-let token=localStorage.getItem(SESSION_KEY)||"",user=null,leads=[],staff=[],busy=false,availableCount=0,expandedLeadId=null;
+let token=localStorage.getItem(SESSION_KEY)||"",deviceToken=localStorage.getItem(DEVICE_KEY)||"",user=null,leads=[],staff=[],busy=false,availableCount=0,expandedLeadId=null;
+let renewalPromise=null;
 let messageTemplates={team:{},personal:{}},editorDirty=false;
 function notice(id,text,error=false){
  const el=$(id);el.textContent=text;el.classList.remove("hide");el.classList.toggle("error",error);
@@ -32,7 +34,33 @@ function credentials(id,passcode){
  $("newCredential").classList.remove("hide");
  $("newCredential").scrollIntoView({behavior:"smooth",block:"nearest"});
 }
-async function call(action,payload={},requiresSession=true){
+async function renewTrustedBrowser(){
+ if(!deviceToken)return false;
+ if(renewalPromise)return renewalPromise;
+ renewalPromise=(async()=>{
+  let response;
+  try{
+   response=await fetch(API,{method:"POST",mode:"cors",
+    headers:{"Content-Type":"application/json"},cache:"no-store",
+    body:JSON.stringify({action:"resume_device",device_token:deviceToken})});
+  }catch{
+   // Do not wipe the device trust credential during a temporary outage.
+   throw Error("Tidak dapat semak peranti. Cuba lagi selepas internet pulih.");
+  }
+  const data=await response.json().catch(()=>null);
+  if(!response.ok||!data?.ok){
+   if(response.status===401||response.status===403){
+    deviceToken="";localStorage.removeItem(DEVICE_KEY);
+    token="";localStorage.removeItem(SESSION_KEY);
+   }
+   throw Error(data?.error||"Tidak dapat sambung semula sesi peranti");
+  }
+  token=data.token;user=data.user;localStorage.setItem(SESSION_KEY,token);
+  return true;
+ })();
+ try{return await renewalPromise}finally{renewalPromise=null}
+}
+async function call(action,payload={},requiresSession=true,retried=false){
  let response;
  try{
   response=await fetch(API,{method:"POST",mode:"cors",headers:{
@@ -40,12 +68,17 @@ async function call(action,payload={},requiresSession=true){
    ...(requiresSession&&token?{"Authorization":"Bearer "+token}:{})
   },body:JSON.stringify({action,...payload}),cache:"no-store"});
  }catch(_){throw new Error("Tidak dapat sambung ke server. Semak internet atau cuba muat semula.");}
- let result;
- try{result=await response.json()}catch{throw new Error("Respons server tidak sah ("+response.status+")");}
+ const result=await response.json().catch(()=>null);
+ if(!result)throw new Error("Respons server tidak sah ("+response.status+")");
  if(!response.ok||!result.ok){
+  if(response.status===401&&requiresSession&&!retried&&action!=="logout"&&deviceToken){
+   try{
+    if(await renewTrustedBrowser())return call(action,payload,requiresSession,true);
+   }catch(e){console.warn("Trusted browser renewal:",e.message)}
+  }
   if(response.status===401&&requiresSession){
-    token="";user=null;localStorage.removeItem(SESSION_KEY);viewAuth();
-    notice("authNotice","Sesi sudah tamat. Masukkan ID dan passcode semula.",true);
+   token="";user=null;localStorage.removeItem(SESSION_KEY);viewAuth();
+   notice("authNotice","Sesi peranti telah tamat atau dibatalkan. Masukkan ID dan passcode sekali lagi.",true);
   }
   throw new Error(result.error||"Ralat "+response.status);
  }
@@ -56,8 +89,9 @@ async function login(e){
  try{
   const id=$("loginId").value.trim().toUpperCase();
   const passcode=$("loginPass").value.trim();
-  const r=await call("login",{id,passcode},false);
+  const r=await call("login",{id,passcode,previous_device_token:deviceToken},false);
   token=r.token;localStorage.setItem(SESSION_KEY,token);user=r.user;
+  if(r.device_token){deviceToken=r.device_token;localStorage.setItem(DEVICE_KEY,deviceToken);}
   $("loginPass").value="";await showApp();
  }catch(e){notice("authNotice",e.message,true)}
  finally{btn.disabled=false;}
@@ -80,8 +114,9 @@ async function showApp(){
  await reload();
 }
 async function logout(){
- try{await call("logout")}catch(e){console.warn("Server logout:",e.message)}
- token="";user=null;localStorage.removeItem(SESSION_KEY);viewAuth();
+ try{await call("logout",{device_token:deviceToken})}catch(e){console.warn("Server logout:",e.message)}
+ token="";deviceToken="";user=null;
+ localStorage.removeItem(SESSION_KEY);localStorage.removeItem(DEVICE_KEY);viewAuth();
 }
 async function reload(){
  if(busy)return;busy=true;$("refreshBtn").disabled=true;
@@ -498,8 +533,9 @@ function wireEvents(){
 }
 async function init(){
  wireEvents();
- if(!token){viewAuth();return}
+ if(!token&&!deviceToken){viewAuth();return}
  try{
+  if(!token&&deviceToken)await renewTrustedBrowser();
   const r=await call("me");user=r.user;await showApp();
  }catch(e){console.warn("Sesi:",e.message);viewAuth();}
 }
