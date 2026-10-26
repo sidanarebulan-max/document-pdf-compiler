@@ -481,6 +481,7 @@ async function setCustomerFocus(id:number,chat:number,account:any,caseId:string,
  if(error)throw error;
 }
 async function beginNewCustomer(token:string,chat:number,id:number,account:any){
+ await clearWhatsAppDraft(id,chat,account);
  const c=await currentCase(account.id,chat);
  const {error}=await db.from("lead_hub_telegram_dialog").upsert({
   telegram_user_id:id,account_id:account.id,chat_id:chat,active_case_id:c?.id||null,
@@ -756,6 +757,7 @@ async function claimAvailableNumber(token:string,chat:number,id:number,account:a
 async function showResumeCustomerMenu(token:string,chat:number,id:number,account:any,
  page:number=0,messageId?:number){
  await clearCustomerNamePrompt(id,chat,account);
+ await clearWhatsAppDraft(id,chat,account);
  const safePage=Math.max(0,Math.min(999,Math.floor(Number(page)||0)));
  const fetchPage=async(index:number)=>db.from("lead_hub_telegram_cases")
   .select("id,customer_name,created_at",{count:"exact"})
@@ -786,6 +788,7 @@ async function showResumeCustomerMenu(token:string,chat:number,id:number,account
 }
 async function resumeCustomerById(token:string,chat:number,id:number,account:any,caseId:string,
  messageId?:number){
+ await clearWhatsAppDraft(id,chat,account);
  const {data:c,error}=await db.from("lead_hub_telegram_cases").select("*")
   .eq("id",caseId).eq("account_id",account.id).eq("chat_id",chat)
   .eq("state","collecting").maybeSingle();
@@ -805,6 +808,7 @@ async function resumeCustomerById(token:string,chat:number,id:number,account:any
 }
 
 async function selectDocumentSection(token:string,chat:number,id:number,account:any,caseId:string,party:string,messageId?:number){
+ await clearWhatsAppDraft(id,chat,account);
  const current=await currentCase(account.id,chat);
  if(!current||current.id!==caseId){
   await say(token,chat,"⚠️ Menu ini daripada kes pelanggan lama atau tiada kes aktif. Taip 'menu' dan pilih pelanggan yang betul dahulu.");
