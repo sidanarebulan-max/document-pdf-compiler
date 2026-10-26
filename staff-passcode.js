@@ -112,6 +112,15 @@ async function showApp(){
  $("claimBtn").classList.toggle("hide",user.role==="admin");
  window.FARIS_TG?.onLogin?.(user);
  await reload();
+ // WhatsApp is the default working area on phone screens.
+ if(window.matchMedia("(max-width:760px) and (pointer:coarse)").matches){
+  requestAnimationFrame(()=>{
+   document.getElementById("leadSection")?.scrollIntoView({behavior:"instant",block:"start"});
+   const nav=document.getElementById("mobileDock");
+   nav?.querySelectorAll("[data-mobile-nav]").forEach(b=>b.removeAttribute("aria-current"));
+   nav?.querySelector('[data-mobile-nav="leads"]')?.setAttribute("aria-current","page");
+  });
+ }
 }
 async function logout(){
  try{await call("logout",{device_token:deviceToken})}catch(e){console.warn("Server logout:",e.message)}
