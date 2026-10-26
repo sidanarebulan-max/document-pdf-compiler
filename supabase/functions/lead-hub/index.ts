@@ -70,7 +70,7 @@ function profile(a:Account){return {id:a.id,staff_code:a.staff_code,display_name
 async function listLeads(a:Account) {
   const found=[];
   for(let offset=0;offset<10000;offset+=500){
-    let query=db.from("lead_hub_leads").select("id,customer_name,phone_e164,model,source,stage,notes,assigned_id,created_at,follow_up_at,last_opened_at,consent_confirmed").order("created_at",{ascending:false}).range(offset,offset+499);
+    let query=db.from("lead_hub_leads").select("id,customer_name,phone_e164,model,source,stage,notes,assigned_id,created_at,follow_up_at,last_opened_at,consent_confirmed,pm_confirmed_at,pm_confirmed_by").order("created_at",{ascending:false}).range(offset,offset+499);
     if(a.role!=="admin")query=query.eq("assigned_id",a.id);
     const {data,error}=await query;if(error)throw error;
     found.push(...data);if(data.length<500)break;
@@ -223,21 +223,56 @@ async function handler(req:Request):Promise<Response> {
   }
   if(action==="list"){
     const leads=await listLeads(a);
+    const validIds=new Set(leads.map((x:any)=>x.id));
+    let historyQuery=db.from("lead_hub_lead_activity")
+      .select("id,lead_id,actor_id,event_type,stage_before,stage_after,created_at")
+      .order("created_at",{ascending:false}).limit(250);
+    if(a.role!=="admin")historyQuery=historyQuery.eq("actor_id",a.id);
+    const {data:activity,error:activityErr}=await historyQuery;
+    if(activityErr)throw activityErr;
+    // Never leak other agents' contacts, even if they were reassigned later.
+    const history=(activity||[]).filter((ev:any)=>validIds.has(ev.lead_id)).slice(0,100);
     if(a.role!=="admin"){
       const {count,error}=await db.from("lead_hub_leads").select("id",{head:true,count:"exact"})
         .is("assigned_id",null).eq("stage","new").eq("consent_confirmed",true);
       if(error)throw error;
-      return response(req,{ok:true,leads,staff:[profile(a)],available_count:count||0});
+      return response(req,{ok:true,leads,history,staff:[profile(a)],available_count:count||0});
     }
     const {data:staff,error}=await db.from("lead_hub_accounts").select("id,staff_code,display_name,role,active,created_at").order("created_at",{ascending:true});
     if(error)throw error;
-    return response(req,{ok:true,leads,staff,available_count:leads.filter(x=>!x.assigned_id&&x.stage==="new").length});
+    return response(req,{ok:true,leads,history,staff,available_count:leads.filter(x=>!x.assigned_id&&x.stage==="new").length});
   }
   if(action==="claim"){
     if(a.role!=="staff")return error(req,"Hanya staf boleh mengambil lead",403);
     const {data,error}=await db.rpc("lead_hub_claim_next",{_staff_id:a.id});
     if(error)return error(req,error.message,400);
     return response(req,{ok:true,lead_id:data||null});
+  }
+  if(action==="confirm_pm"){
+    const id=String(body.lead_id||"");
+    if(!/^[a-f0-9-]{36}$/i.test(id))return error(req,"Rekod tidak sah",400);
+    let query=db.from("lead_hub_leads")
+      .select("id,stage,assigned_id,consent_confirmed,pm_confirmed_at").eq("id",id);
+    if(a.role!=="admin")query=query.eq("assigned_id",a.id);
+    const {data:lead,error:lookup}=await query.maybeSingle();
+    if(lookup)throw lookup;
+    if(!lead)return error(req,"Lead bukan milik anda",403);
+    if(!lead.consent_confirmed)return error(req,"Kebenaran pelanggan belum disahkan",400);
+    if(lead.pm_confirmed_at)return response(req,{ok:true,already_confirmed:true,pm_confirmed_at:lead.pm_confirmed_at});
+    const at=new Date().toISOString();
+    const stage=["new","claimed"].includes(lead.stage)?"contacted":lead.stage;
+    let update=db.from("lead_hub_leads").update({
+      pm_confirmed_at:at,pm_confirmed_by:a.id,stage,updated_at:at
+    }).eq("id",id).eq("stage",lead.stage).is("pm_confirmed_at",null);
+    if(a.role!=="admin")update=update.eq("assigned_id",a.id);
+    const {data:updated,error:ue}=await update.select("id,pm_confirmed_at").maybeSingle();
+    if(ue)throw ue;
+    if(!updated)return error(req,"Status telah berubah. Refresh dan cuba semula.",409);
+    const {error:activityError}=await db.from("lead_hub_lead_activity").insert({
+      lead_id:id,actor_id:a.id,event_type:"pm_confirmed",stage_before:lead.stage,stage_after:stage
+    });
+    if(activityError)console.error("PM confirmation audit failed:",activityError.message);
+    return response(req,{ok:true,pm_confirmed_at:at});
   }
   if(action==="save_lead"){
     const id=String(body.lead_id||"");
@@ -247,11 +282,24 @@ async function handler(req:Request):Promise<Response> {
     const notes=String(body.notes||"").slice(0,3000);
     const follow=body.follow_up_at?String(body.follow_up_at):null;
     if(follow&&!/^\d{4}-\d{2}-\d{2}$/.test(follow))return error(req,"Tarikh susulan tidak sah");
-    let q=db.from("lead_hub_leads").update({stage,notes,follow_up_at:follow,updated_at:new Date().toISOString()}).eq("id",id);
+    let beforeQuery=db.from("lead_hub_leads").select("stage").eq("id",id);
+    if(a.role!=="admin")beforeQuery=beforeQuery.eq("assigned_id",a.id);
+    const {data:before,error:beforeErr}=await beforeQuery.maybeSingle();
+    if(beforeErr)throw beforeErr;
+    if(!before)return error(req,"Lead bukan milik anda",403);
+    let q=db.from("lead_hub_leads").update({stage,notes,follow_up_at:follow,updated_at:new Date().toISOString()})
+      .eq("id",id).eq("stage",before.stage);
     if(a.role!=="admin")q=q.eq("assigned_id",a.id);
     const {data,error}=await q.select("id");
     if(error)throw error;
-    if(!data?.length)return error(req,"Lead bukan milik anda",403);
+    if(!data?.length)return error(req,"Status berubah. Refresh dan cuba semula.",409);
+    if(before.stage!==stage){
+      const {error:logError}=await db.from("lead_hub_lead_activity").insert({
+       lead_id:id,actor_id:a.id,event_type:"status_updated",
+       stage_before:before.stage,stage_after:stage
+      });
+      if(logError)console.error("Status audit failed:",logError.message);
+    }
     return response(req,{ok:true});
   }
   if(action==="opened"){
@@ -259,7 +307,14 @@ async function handler(req:Request):Promise<Response> {
     if(!/^[a-f0-9-]{36}$/i.test(id))return error(req,"Rekod tidak sah");
     let q=db.from("lead_hub_leads").update({last_opened_at:new Date().toISOString()}).eq("id",id);
     if(a.role!=="admin")q=q.eq("assigned_id",a.id);
-    await q;
+    const {data,error:openedError}=await q.select("id").maybeSingle();
+    if(openedError)throw openedError;
+    if(!data)return error(req,"Lead bukan milik anda",403);
+    const {error:auditError}=await db.from("lead_hub_lead_activity").insert({
+      lead_id:id,actor_id:a.id,event_type:"whatsapp_opened"
+    });
+    if(auditError)console.error("WhatsApp opened audit failed:",auditError.message);
+    // Opening a draft is not proof that WhatsApp message was delivered.
     return response(req,{ok:true});
   }
   if(a.role!=="admin")return error(req,"Hanya admin dibenarkan",403);
