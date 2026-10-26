@@ -1,0 +1,127 @@
+/* FARIS R+PROTON • Mobile Web App v1
+   Additive overrides: desktop remains unchanged. */
+.mobile-only{display:none!important}
+.mobile-dock{display:none}
+@media(max-width:780px){
+ html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+ html,body{max-width:100%;overflow-x:clip}
+ body{background:#091224;overscroll-behavior-y:contain}
+ .wrap{padding:12px 12px calc(102px + env(safe-area-inset-bottom));max-width:100%}
+ .mobile-only{display:block!important}
+ #appSection:not(.hide) .mobile-only{display:block!important}
+ #appSection .mobile-screen-off{display:none!important}
+ #appSection:not(.hide)~.mobile-dock{display:flex}
+ .header{flex-direction:row!important;align-items:center!important;gap:8px!important;
+   margin:0 0 18px!important;padding:7px 0 12px;border-bottom:1px solid #233553;min-height:63px}
+ .header>div:first-child{flex:1;min-width:0}
+ .eyebrow{font-size:9px;letter-spacing:1.15px}
+ .header h1{font-size:22px!important;letter-spacing:-.75px;margin:2px 0 1px}
+ .header p{font-size:10px;line-height:1.35;max-width:240px}
+ .header nav{display:flex!important;width:auto!important;flex:0 0 auto;align-items:center;gap:6px;flex-wrap:nowrap}
+ .header nav>a,.header nav>#messageSettingsBtn,.header nav>#telegramSettingsBtn,.header nav>#adminCredentialsShortcut{display:none!important}
+ .header nav>#signoutBtn:not(.hide){display:inline-flex!important;
+  min-width:auto;padding:9px 11px;font-size:11px;background:#172844;border-radius:10px}
+ .authcard{grid-template-columns:1fr!important;margin:12px auto 0;border-radius:18px}
+ .authinfo{padding:20px 22px 12px!important;background:radial-gradient(circle at top left,#244583,transparent 75%),#101b33}
+ .authinfo h2{font-size:20px;line-height:1.25;margin:10px 0 6px}
+ .authinfo p{font-size:12px;line-height:1.5;margin:6px 0}
+ .authinfo p:last-child{display:none}
+ .authform{padding:17px 22px 24px!important}
+ .authform h2{font-size:17px;margin:2px 0 13px}
+ .authform label{margin-top:13px}
+ #loginBtn{min-height:49px;font-size:14px}
+ input,select,textarea{font-size:16px;min-height:46px;border-radius:12px}
+ textarea{min-height:100px}
+ input[type="checkbox"]{min-height:auto}
+ button,.secondary,.primary,.wa{min-height:43px;touch-action:manipulation}
+ button:focus-visible,a:focus-visible{outline:3px solid #8fb5ff;outline-offset:2px}
+ .welcome{margin:0 0 13px;padding:17px;background:linear-gradient(138deg,#152b53,#101d38);
+  border:1px solid #304a77;border-radius:17px;gap:14px}
+ .welcome h2{font-size:21px;line-height:1.25;overflow-wrap:anywhere}
+ .welcome p{font-size:11px;overflow-wrap:anywhere}
+ .welcomeactions,.welcomeactions>*{width:100%;flex:1}
+ #claimBtn{min-height:48px;font-size:13px}
+ .metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:0 0 13px}
+ .metric{padding:13px 14px;min-height:90px;border-radius:14px;background:#111f3c}
+ .metric span{font-size:11px;line-height:1.35}
+ .metric strong{font-size:25px;margin-top:7px;line-height:1}
+ .panel{border-radius:17px;margin:0 0 12px;padding:15px}
+ .panelhead{align-items:flex-start;gap:11px;flex-wrap:wrap}
+ .panelhead h2{font-size:16px;line-height:1.3}
+ .panelhead p{font-size:11px;line-height:1.5;margin-bottom:9px}
+ .innerpanel{padding:13px;border-radius:13px}
+ .admin-grid,.tg-grid,.msg-settings-grid{grid-template-columns:minmax(0,1fr)!important;gap:11px}
+ .admin-grid>*:last-child{grid-column:auto!important}
+ .filters{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .filters #leadSearch{grid-column:1/-1;min-height:47px}
+ .filters select{width:100%;min-width:0;font-size:13px;padding:10px 8px;grid-column:auto}
+ .lead-list{grid-template-columns:minmax(0,1fr)!important;gap:10px}
+ .lead{padding:11px 12px!important;border-radius:14px}
+ .lead-compact{gap:8px;align-items:center}
+ .lead-identity{padding:6px 0;gap:5px}
+ .lead-customer{font-size:14px;line-height:1.3}
+ .lead-phone{font-size:12px}
+ .lead-secondary{font-size:10px;line-height:1.45}
+ .lead-quick-wa{font-size:12px!important;min-height:45px!important;padding:9px 11px!important;border-radius:11px}
+ .lead-expanded{padding-top:13px}
+ .lead-expanded .leadcontrols{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ .lead-expanded .leadcontrols input,.lead-expanded .leadcontrols select{font-size:14px;min-width:0}
+ .leadwork{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+ .leadwork button{min-height:46px}
+ .lead-section-head{align-items:center}
+ .lead-refresh{width:100%;min-height:44px}
+ .workflow-links{grid-template-columns:1fr;gap:9px}
+ .workflow-action{min-height:74px!important;text-align:left;gap:12px;border-radius:13px}
+ .workflow-action b{font-size:14px}
+ .workflow-action small{font-size:11px}
+ .msg-settings-head{align-items:center}
+ .msg-settings-editor textarea{min-height:170px;font-size:15px}
+ .msg-settings-actions>*{min-height:47px}
+ .tg-commands,.tg-provider-grid{grid-template-columns:1fr!important}
+ .tg-actions>*,.tg-status button{min-height:45px}
+ .tg-cli-command{flex-wrap:wrap;min-width:0}
+ .tg-cli-command code{min-width:0}
+ #telegramPanel, #messageSettingsPanel{scroll-margin-top:14px}
+ .credential code{font-size:15px;overflow-wrap:anywhere}
+ .admin-mobile-shortcuts{display:flex!important;gap:7px;overflow-x:auto;padding:1px 0 12px;
+  margin-bottom:6px;scrollbar-width:none}
+ .admin-mobile-shortcuts::-webkit-scrollbar{display:none}
+ .admin-mobile-shortcuts button{flex:0 0 auto;padding:9px 11px;font-size:11px}
+ .mobile-home-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));
+   gap:9px;margin:0 0 13px}
+ .mobile-home-actions button{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;
+   min-width:0;gap:5px;padding:13px;border-radius:14px;border:1px solid #2b4675;
+   background:#122541;color:#e9f2ff;text-align:left;min-height:82px;font-weight:800;font-size:13px}
+ .mobile-home-actions small{font-weight:500;color:#a2b8dd;font-size:10px;line-height:1.45}
+ .mobile-settings-hub{display:grid!important;grid-template-columns:1fr;gap:10px;
+    background:#101b32;border:1px solid #2b3e62;padding:15px;border-radius:17px;margin-bottom:12px}
+ .mobile-settings-hub h2{font-size:17px;margin:0 0 1px}
+ .mobile-settings-hub p{margin:0 0 5px;font-size:11px;color:#a9bddb}
+ .mobile-settings-hub button{width:100%;display:flex;align-items:center;justify-content:space-between;
+   padding:14px 15px;text-align:left;background:#182948;border:1px solid #344b73;
+   border-radius:13px;color:#ecf3ff;font-weight:750;font-size:13px;min-height:54px}
+ .mobile-settings-hub button span{font-size:11px;color:#aac1e6;font-weight:550}
+ .mobile-dock{position:fixed;left:0;right:0;bottom:0;z-index:1000;display:flex;
+   padding:6px max(7px,env(safe-area-inset-left)) calc(7px + env(safe-area-inset-bottom))
+   max(7px,env(safe-area-inset-right));gap:2px;border-top:1px solid #314669;
+   background:rgba(10,20,39,.98);box-shadow:0 -10px 24px #03091499}
+ .mobile-dock.hide{display:none!important}
+ .mobile-dock button{background:none;border:0;flex:1 1 0;min-width:0;min-height:54px;
+   border-radius:12px;color:#95adce;font-size:10px;font-weight:650;line-height:1.2;
+   display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:center;padding:6px 2px}
+ .mobile-dock button .dock-icon{font-size:20px;line-height:1}
+ .mobile-dock button[aria-current="page"]{background:#1b3358;color:#eff6ff}
+ .mobile-dock button[aria-current="page"] .dock-icon{filter:drop-shadow(0 0 7px #6ca1ff75)}
+ #appNotice:not(.hide){position:fixed;bottom:calc(80px + env(safe-area-inset-bottom));left:12px;right:12px;
+   max-height:150px;overflow:auto;z-index:1001;box-shadow:0 12px 30px #0009}
+ footer{display:none}
+}
+@media(max-width:365px){
+ .header h1{font-size:19px!important}
+ .header p{font-size:9px}
+ .mobile-dock button{font-size:9px}
+ .mobile-dock button .dock-icon{font-size:18px}
+ .lead-quick-wa{padding:8px!important;font-size:11px!important}
+ .lead-expanded .leadcontrols{grid-template-columns:1fr}
+}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
