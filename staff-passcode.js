@@ -400,6 +400,9 @@ async function changeAdminPass(e){
    new_staff_id:newId,old_passcode:oldPass,new_passcode:newPass
   });
   user.staff_code=r.staff_code;
+  if(r.device_token){
+   deviceToken=r.device_token;localStorage.setItem(DEVICE_KEY,deviceToken);
+  }
   $("currentCode").textContent=user.staff_code;
   $("adminPassForm").reset();
   $("newAdminId").value=user.staff_code;
