@@ -11,7 +11,7 @@
  </script>
  <title>FARIS LEAD HUB — ID & Passcode Staf</title>
  <meta name="description" content="Portal staf Proton: masuk menggunakan ID dan passcode, ambil nombor pelanggan, buka WhatsApp dalam telefon.">
- <link rel="stylesheet" href="/staff.css?v=team-history-v34-20261026">
+ <link rel="stylesheet" href="/staff.css?v=workspaces-v35-20261026">
  <style>
   .credential{border:1px solid #405e98;background:linear-gradient(135deg,#101d38,#1d3156);border-radius:14px;padding:16px;margin-top:10px}
   .credential strong{display:block;color:#96baff;font-size:10px;letter-spacing:1.5px}
@@ -282,7 +282,7 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
  <nav><div class="theme-switch" role="group" aria-label="Pilih warna paparan">
    <button type="button" class="theme-choice" data-theme-choice="light" aria-pressed="false" aria-label="Aktifkan Light Mode">☀ <span>Light</span></button>
    <button type="button" class="theme-choice" data-theme-choice="dark" aria-pressed="true" aria-label="Aktifkan Dark Mode">☾ <span>Dark</span></button>
-  </div><a class="secondary" href="/?tool=COMPILER&amp;origin=staff">← PDF Compiler</a><button class="secondary hide" id="messageSettingsBtn" type="button" aria-expanded="false" aria-controls="messageSettingsPanel">⚙ Tetapan Mesej</button><button class="secondary hide" id="telegramSettingsBtn" type="button" aria-expanded="false" aria-controls="telegramPanel">✈ Telegram Bot</button><button class="secondary hide" id="adminCredentialsShortcut" type="button">🔐 ID Admin</button><button class="secondary hide" id="signoutBtn" type="button">Keluar</button></nav>
+  </div><button class="secondary hide" id="signoutBtn" type="button">Keluar</button></nav>
 </header>
 
 <section id="authSection" class="authcard">
@@ -306,22 +306,58 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
  </div>
 </section>
 
-<section id="appSection" class="hide">
- <nav class="mobile-dock" id="mobileDock" aria-label="Navigasi FARIS untuk telefon">
-   <button type="button" data-mobile-nav="home" aria-current="page"><span aria-hidden="true">⌂</span><small>Utama</small></button>
-   <button type="button" data-mobile-nav="leads"><span aria-hidden="true">☏</span><small>Pelanggan</small></button>
-   <button type="button" data-mobile-nav="docs"><span aria-hidden="true">▤</span><small>Dokumen</small></button>
-   <button type="button" data-mobile-nav="telegram"><span aria-hidden="true">✈</span><small>Telegram</small></button>
-   <button type="button" data-mobile-nav="settings"><span aria-hidden="true">⚙</span><small>Tetapan</small></button>
- </nav>
- <div class="welcome">
+<section id="appSection" class="hide"><nav class="workspace-nav" id="workspaceNav" aria-label="Ruang kerja FARIS"><button type="button" data-workspace-nav="home" aria-controls="workspace-home"><span aria-hidden="true">⌂</span><small>Utama</small></button><button type="button" data-workspace-nav="whatsapp" aria-controls="workspace-whatsapp"><span aria-hidden="true">☏</span><small>WhatsApp</small></button><button type="button" data-workspace-nav="docs" aria-controls="workspace-docs"><span aria-hidden="true">▤</span><small>Dokumen</small></button><button type="button" data-workspace-nav="telegram" aria-controls="workspace-telegram"><span aria-hidden="true">✈</span><small>Telegram</small></button><button type="button" data-workspace-nav="settings" aria-controls="workspace-settings"><span aria-hidden="true">⚙</span><small>Staf & Akses</small></button></nav><nav class="mobile-dock" id="mobileDock" aria-label="Ruang kerja FARIS"><button type="button" data-mobile-nav="home" aria-controls="workspace-home"><span aria-hidden="true">⌂</span><small>Utama</small></button><button type="button" data-mobile-nav="whatsapp" aria-controls="workspace-whatsapp"><span aria-hidden="true">☏</span><small>WhatsApp</small></button><button type="button" data-mobile-nav="docs" aria-controls="workspace-docs"><span aria-hidden="true">▤</span><small>Dokumen</small></button><button type="button" data-mobile-nav="telegram" aria-controls="workspace-telegram"><span aria-hidden="true">✈</span><small>Telegram</small></button><button type="button" data-mobile-nav="settings" aria-controls="workspace-settings"><span aria-hidden="true">⚙</span><small>Staf & Akses</small></button></nav><div class="welcome">
   <div><span id="currentRole" class="pill">STAFF</span>
    <h2>Selamat datang, <span id="currentName"></span></h2>
-   <p class="muted">ID: <span id="currentCode"></span> · WhatsApp akan dibuka dalam aplikasi telefon</p>
+   <p class="muted">ID: <span id="currentCode"></span> · Pilih ruang kerja melalui menu</p>
   </div>
-  <div class="welcomeactions"><button class="primary" id="claimBtn" type="button">+ Ambil nombor belum diagih</button></div>
- </div>
- <section class="panel hide" id="messageSettingsPanel" aria-labelledby="messageSettingsTitle">
+
+ </div><section id="workspace-home" class="workspace-page hide" hidden data-workspace-page="home" aria-labelledby="workspaceHomeTitle"><div class="workspace-heading"><div><p class="eyebrow">RUANG KERJA</p><h2 id="workspaceHomeTitle">Pilih urusan anda</h2><p class="muted">Setiap urusan mempunyai ruang sendiri.</p></div></div><div class="workspace-cards"><button type="button" class="secondary workspace-card" data-workspace-nav="whatsapp"><span aria-hidden="true">☏</span><b>WhatsApp</b><small>Pelanggan, claim, PM, sejarah dan skrip mesej.</small></button><button type="button" class="secondary workspace-card" data-workspace-nav="docs"><span aria-hidden="true">▤</span><b>Dokumen & VSO</b><small>Susun fail pelanggan dan sediakan VSO.</small></button><button type="button" class="secondary workspace-card" data-workspace-nav="telegram"><span aria-hidden="true">✈</span><b>Telegram</b><small>Bot Telegram, pautan akaun dan sambungan AI.</small></button><button type="button" class="secondary workspace-card" data-workspace-nav="settings"><span aria-hidden="true">⚙</span><b>Staf & Akses</b><small>Maklumat akaun, ID, passcode dan pengurusan staf.</small></button></div></section><section id="workspace-whatsapp" class="workspace-page hide" hidden data-workspace-page="whatsapp" aria-labelledby="workspaceWhatsAppTitle"><div class="workspace-heading"><div><p class="eyebrow">URUSAN PELANGGAN</p><h2 id="workspaceWhatsAppTitle">WhatsApp</h2><p class="muted">Nombor pelanggan, tugasan, claim dan sejarah pasukan.</p></div><div class="workspace-actions"><button class="primary" id="claimBtn" type="button">+ Ambil nombor belum diagih</button><button class="secondary hide" id="messageSettingsBtn" type="button" aria-expanded="false" aria-controls="messageSettingsPanel">✎ Skrip WhatsApp</button></div></div><div class="metrics">
+  <div class="metric"><span>Jumlah lead</span><strong id="metricTotal">0</strong></div>
+  <div class="metric"><span>Belum selesai</span><strong id="metricNew">0</strong></div>
+  <div class="metric"><span>Follow-up</span><strong id="metricFollow">0</strong></div>
+  <div class="metric"><span>Booking</span><strong id="metricBooked">0</strong></div>
+ </div><section id="leadSection" class="panel">
+  <div class="panelhead lead-section-head"><div><h2>WhatsApp · Senarai Pelanggan</h2><p class="muted">Tekan WhatsApp untuk mesej pelanggan. Tekan nama atau nombor untuk buka status, tarikh dan catatan.</p><p class="small muted" id="lastRefresh" aria-live="polite">Belum disegarkan.</p></div>
+      <button class="secondary lead-refresh" id="refreshBtn" type="button">↻ Refresh Nombor</button></div>
+  <div class="filters">
+   <input id="leadSearch" type="search" placeholder="Cari nama, nombor atau model...">
+   <select id="stageFilter"><option value="">Semua status</option><option value="new">Belum diambil</option><option value="claimed">Sudah diambil</option><option value="contacted">Dihubungi</option><option value="follow_up">Follow-up</option><option value="interested">Berminat</option><option value="booked">Booking</option><option value="not_interested">Tidak berminat</option></select>
+   <select id="messageTemplate"><option value="intro">Skrip: Pengenalan</option><option value="follow">Skrip: Follow-up</option><option value="price">Skrip: Harga / Loan</option></select>
+  </div>
+  <div class="pm-tabs" id="staffPmTabs" role="tablist" aria-label="Senarai WhatsApp staf">
+   <button type="button" class="pm-tab" role="tab" data-pm-tab="pending" aria-selected="true" aria-controls="leadList">⏳ Belum PM <span id="pmPendingCount" class="pm-count">0</span></button>
+   <button type="button" class="pm-tab" role="tab" data-pm-tab="sent" aria-selected="false" aria-controls="leadList">✅ Dah PM <span id="pmSentCount" class="pm-count">0</span></button>
+   <button type="button" class="pm-tab" role="tab" data-pm-tab="history" aria-selected="false" aria-controls="pmHistoryList">🕓 Sejarah <span id="pmHistoryCount" class="pm-count">0</span></button>
+  </div>
+  <p id="pmTabHint" class="small muted pm-tab-hint">Belum PM / Dah PM ialah tugasan anda. Sejarah menunjukkan siapa yang claim atau menerima agihan nombor dalam pasukan. Buka WhatsApp sahaja belum bermaksud mesej dihantar.</p>
+  <p class="muted small" id="listMessage"></p>
+  <p class="small muted" id="queueCount" aria-live="polite"></p>
+  <div class="lead-list" id="leadList" aria-live="polite"></div>
+  <div class="pm-history-list hide" id="pmHistoryList" role="tabpanel" aria-live="polite" aria-label="Sejarah WhatsApp staf"></div>
+ </section><section id="whatsappAdminPanel" class="panel hide" data-admin-only><div class="panelhead"><div><h2>Tambah & Import Nombor</h2><p class="muted">Masukkan nombor pelanggan dan agihkan kepada staf aktif.</p></div></div><div class="admin-grid"><section class="innerpanel">
+    <h3>Tambah satu nombor pelanggan</h3>
+    <form id="addLeadForm">
+      <label for="addName">Nama pelanggan</label><input id="addName" required maxlength="120" placeholder="Contoh: Ahmad">
+      <label for="addPhone">Nombor WhatsApp</label><input id="addPhone" inputmode="tel" required placeholder="0123456789">
+      <label for="addModel">Model diminati</label><select id="addModel">
+       <option>Belum pasti</option><option>Proton e.MAS 7 PHEV</option><option>Proton e.MAS 7 EV</option><option>Proton e.MAS 5</option><option>Proton Saga</option><option>Proton X50</option><option>Proton S70</option><option>Proton X70</option><option>Proton X90</option><option>Proton Iriz</option><option>Proton Persona</option>
+      </select>
+      <label class="checkline"><input id="addConsent" type="checkbox" required> Saya sahkan nombor ini boleh dihubungi untuk tujuan jualan.</label>
+      <label class="checkline"><input id="addAutoAssign" type="checkbox" checked> <span>Auto agihkan kepada staf aktif. Nombor akan muncul dalam senarai staf selepas tekan Refresh.</span></label>
+      <button class="primary full" type="submit" id="addLeadBtn">+ Simpan Nombor</button>
+    </form>
+   </section><section class="innerpanel">
+    <h3>Import Excel / tampal senarai</h3>
+    <p class="muted small">Excel atau CSV dengan lajur Nama, WhatsApp/Telefon dan Model. Atau tampal nombor satu baris satu pelanggan.</p>
+    <input id="importFile" type="file" accept=".xlsx,.xls,.csv,.txt">
+    <label for="importText">Atau tampal senarai nombor</label>
+    <textarea id="importText" rows="4" placeholder="Ahmad, 0123456789, Proton e.MAS 7 PHEV&#10;Siti, 0171234567, Proton e.MAS 5"></textarea>
+    <label class="checkline"><input id="importConsent" type="checkbox"> Saya sahkan nombor boleh dihubungi.</label>
+    <label class="checkline"><input id="importAutoAssign" type="checkbox" checked> <span>Auto agihkan nombor kepada staf aktif.</span></label>
+    <button class="primary full" id="importBtn" type="button">Import Lead</button>
+    <p id="importResult" class="small muted"></p>
+   </section></div></section><section class="panel hide" id="messageSettingsPanel" aria-labelledby="messageSettingsTitle">
    <div class="panelhead msg-settings-head">
      <div>
        <h2 id="messageSettingsTitle">⚙ Tetapan Mesej WhatsApp</h2>
@@ -370,8 +406,16 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
        <p class="muted small" id="settingsSourceInfo"></p>
      </div>
    </div>
- </section>
- <section id="telegramPanel" class="panel hide" aria-labelledby="telegramTitle">
+ </section></section><section id="workspace-docs" class="workspace-page hide" hidden data-workspace-page="docs" aria-labelledby="workspaceDocsTitle"><section id="staffWorkflow" class="panel">
+  <div class="panelhead"><div>
+   <h2 id="workspaceDocsTitle">Dokumen &amp; VSO</h2>
+   <p class="muted">Susun dokumen peminjam, penjamin dan COP Rebate, atau sediakan VSO pelanggan. Maklumat pelanggan akan dibawa apabila dibuka daripada kad WhatsApp.</p>
+  </div></div>
+  <div class="workflow-links">
+   <button class="secondary workflow-action" id="openGenericDocs" type="button"><span class="workflow-icon">📑</span><span><b>Document Compiler</b><small>Hirer · Guarantor · COP Rebate</small></span><span aria-hidden="true">↗</span></button>
+   <button class="secondary workflow-action" id="openGenericVso" type="button"><span class="workflow-icon">🚘</span><span><b>VSO Generator</b><small>Buat dan semak dokumen jualan</small></span><span aria-hidden="true">↗</span></button>
+  </div>
+ </section></section><section id="workspace-telegram" class="workspace-page hide" hidden data-workspace-page="telegram" aria-labelledby="telegramTitle"><section id="telegramPanel" class="panel hide" aria-labelledby="telegramTitle">
  <div class="panelhead tg-head"><div><h2 id="telegramTitle">✈ Telegram Bot · FARIS LEAD HUB</h2>
  <p class="muted">Satu sistem untuk fail pelanggan, VSO DRAF dan nombor WhatsApp. Kongsi fail daripada WhatsApp ke Telegram secara manual; bot tidak membaca inbox WhatsApp.</p></div>
  <button id="telegramClose" class="secondary" type="button">Tutup ✕</button></div>
@@ -477,27 +521,7 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
   </div>
   <p class="muted small">Contoh: “buka folder nama Haris” → “ini bank” → hantar tiga PDF → “ini gaji” → hantar slip gaji → “berapa fail dah masuk?” → “siapkan PDF”. Semua fail kekal dalam satu ID kes.</p>
   <p class="muted small">Ayat yang jelas diproses terus tanpa caj AI; soalan bebas dijawab menggunakan DeepSeek jika API diaktifkan. ChatGPT Worker Codex masih digunakan untuk pengelasan dokumen. Data akaun pelanggan terhad mengikut ID staf/admin.</p>
- </section></section>
- <div class="metrics">
-  <div class="metric"><span>Jumlah lead</span><strong id="metricTotal">0</strong></div>
-  <div class="metric"><span>Belum selesai</span><strong id="metricNew">0</strong></div>
-  <div class="metric"><span>Follow-up</span><strong id="metricFollow">0</strong></div>
-  <div class="metric"><span>Booking</span><strong id="metricBooked">0</strong></div>
- </div>
- <section id="staffWorkflow" class="panel">
-  <div class="panelhead"><div>
-   <h2>🧭 Ruang Kerja Staf</h2>
-   <p class="muted">Ambil nombor daripada senarai pelanggan, kemudian urus dokumen atau jana VSO dalam website yang sama. Nama dan nombor pelanggan akan diisi apabila membuka daripada kad lead.</p>
-  </div></div>
-  <div class="workflow-links">
-   <button class="secondary workflow-action" id="openGenericDocs" type="button"><span class="workflow-icon">📑</span><span><b>Document Compiler</b><small>Hirer · Guarantor · COP Rebate</small></span><span aria-hidden="true">↗</span></button>
-   <button class="secondary workflow-action" id="openGenericVso" type="button"><span class="workflow-icon">🚘</span><span><b>VSO Generator</b><small>Buat dan semak dokumen jualan</small></span><span aria-hidden="true">↗</span></button>
-  </div>
- </section>
- <section id="adminPanel" class="panel hide">
-  <div class="panelhead"><div><h2>🔐 Admin Control Center</h2><p class="muted">Kau boleh cipta ID staf, jana passcode, tambah nombor pelanggan dan agihkan lead kepada staf. Tiada e-mel staf diperlukan.</p></div></div>
-  <div class="admin-grid">
-   <section class="innerpanel">
+ </section></section></section><section id="workspace-settings" class="workspace-page hide" hidden data-workspace-page="settings" aria-labelledby="workspaceSettingsTitle"><div class="workspace-heading"><div><p class="eyebrow">PENGURUSAN AKAUN</p><h2 id="workspaceSettingsTitle">Staf &amp; Akses</h2><p class="muted">Maklumat akaun, ID, passcode dan pengurusan staf.</p></div><button class="secondary hide" id="adminCredentialsShortcut" type="button">🔐 ID / Passcode Admin</button></div><section class="panel access-summary"><h3>Akaun saya</h3><dl><div><dt>Nama</dt><dd id="accessName"></dd></div><div><dt>ID</dt><dd id="accessCode"></dd></div><div><dt>Peranan</dt><dd id="accessRole"></dd></div></dl><p class="small muted" id="accessHelp">Untuk reset passcode staf, hubungi admin.</p></section><section id="adminPanel" class="panel hide" data-admin-only><div class="panelhead"><div><h2>Pengurusan Staf &amp; Passcode</h2><p class="muted">Cipta ID staf, urus akses dan tetapkan ID atau passcode admin.</p></div></div><div class="admin-grid"><section class="innerpanel">
     <h3>1. Cipta ID &amp; passcode staf</h3>
     <form id="createStaffForm">
      <label for="staffName">Nama staf</label><input id="staffName" placeholder="Contoh: Aiman" minlength="2" maxlength="100" required>
@@ -514,38 +538,12 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
      <button id="copyCredential" type="button" class="primary full">Salin ID + Passcode untuk staf</button>
      <p class="attention small">Simpan atau berikan kepada staf sekarang. Passcode tidak disimpan dalam bentuk asal dan tidak boleh dilihat semula selepas halaman ditutup.</p>
     </div>
-   </section>
-   <section class="innerpanel">
-    <h3>2. Tambah satu nombor pelanggan</h3>
-    <form id="addLeadForm">
-      <label for="addName">Nama pelanggan</label><input id="addName" required maxlength="120" placeholder="Contoh: Ahmad">
-      <label for="addPhone">Nombor WhatsApp</label><input id="addPhone" inputmode="tel" required placeholder="0123456789">
-      <label for="addModel">Model diminati</label><select id="addModel">
-       <option>Belum pasti</option><option>Proton e.MAS 7 PHEV</option><option>Proton e.MAS 7 EV</option><option>Proton e.MAS 5</option><option>Proton Saga</option><option>Proton X50</option><option>Proton S70</option><option>Proton X70</option><option>Proton X90</option><option>Proton Iriz</option><option>Proton Persona</option>
-      </select>
-      <label class="checkline"><input id="addConsent" type="checkbox" required> Saya sahkan nombor ini boleh dihubungi untuk tujuan jualan.</label>
-      <label class="checkline"><input id="addAutoAssign" type="checkbox" checked> <span>Auto agihkan kepada staf aktif. Nombor akan muncul dalam senarai staf selepas tekan Refresh.</span></label>
-      <button class="primary full" type="submit" id="addLeadBtn">+ Simpan Nombor</button>
-    </form>
-   </section>
-   <section class="innerpanel">
-    <h3>3. Import Excel / tampal senarai</h3>
-    <p class="muted small">Excel atau CSV dengan lajur Nama, WhatsApp/Telefon dan Model. Atau tampal nombor satu baris satu pelanggan.</p>
-    <input id="importFile" type="file" accept=".xlsx,.xls,.csv,.txt">
-    <label for="importText">Atau tampal senarai nombor</label>
-    <textarea id="importText" rows="4" placeholder="Ahmad, 0123456789, Proton e.MAS 7 PHEV&#10;Siti, 0171234567, Proton e.MAS 5"></textarea>
-    <label class="checkline"><input id="importConsent" type="checkbox"> Saya sahkan nombor boleh dihubungi.</label>
-    <label class="checkline"><input id="importAutoAssign" type="checkbox" checked> <span>Auto agihkan nombor kepada staf aktif.</span></label>
-    <button class="primary full" id="importBtn" type="button">Import Lead</button>
-    <p id="importResult" class="small muted"></p>
-   </section>
-   <section class="innerpanel">
-    <h3>4. Pengurusan staf</h3>
+   </section><section class="innerpanel">
+    <h3>2. Pengurusan staf</h3>
     <p class="muted small">Aktif atau nyahaktif akaun. Jika staf terlupa passcode, tekan Reset untuk jana passcode baharu.</p>
     <div id="staffRoster" class="staffcards"><p class="muted small">Memuatkan senarai staf...</p></div>
-   </section>
-   <section class="innerpanel">
-    <h3>5. ID &amp; Passcode Admin Saya</h3>
+   </section><section class="innerpanel">
+    <h3>3. ID &amp; Passcode Admin Saya</h3>
     <p class="muted small">Tetapkan ID login admin pilihan sendiri dan passcode baharu tanpa membuka Supabase. Boleh ubah ID sahaja, passcode sahaja, atau kedua-duanya sekali.</p>
     <form id="adminPassForm">
       <label for="newAdminId">ID Admin pilihan sendiri</label>
@@ -559,65 +557,12 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
       <button class="primary full" id="changeAdminBtn" type="submit">Simpan ID / Passcode Admin</button>
       <p class="muted small" id="adminCredentialStatus" role="status"></p>
     </form>
-   </section>
-  </div>
- </section>
- <section id="leadSection" class="panel">
-  <div class="panelhead lead-section-head"><div><h2>WhatsApp · Senarai Pelanggan</h2><p class="muted">Tekan WhatsApp untuk mesej pelanggan. Tekan nama atau nombor untuk buka status, tarikh dan catatan.</p><p class="small muted" id="lastRefresh" aria-live="polite">Belum disegarkan.</p></div>
-      <button class="secondary lead-refresh" id="refreshBtn" type="button">↻ Refresh Nombor</button></div>
-  <div class="filters">
-   <input id="leadSearch" type="search" placeholder="Cari nama, nombor atau model...">
-   <select id="stageFilter"><option value="">Semua status</option><option value="new">Belum diambil</option><option value="claimed">Sudah diambil</option><option value="contacted">Dihubungi</option><option value="follow_up">Follow-up</option><option value="interested">Berminat</option><option value="booked">Booking</option><option value="not_interested">Tidak berminat</option></select>
-   <select id="messageTemplate"><option value="intro">Skrip: Pengenalan</option><option value="follow">Skrip: Follow-up</option><option value="price">Skrip: Harga / Loan</option></select>
-  </div>
-  <div class="pm-tabs" id="staffPmTabs" role="tablist" aria-label="Senarai WhatsApp staf">
-   <button type="button" class="pm-tab" role="tab" data-pm-tab="pending" aria-selected="true" aria-controls="leadList">⏳ Belum PM <span id="pmPendingCount" class="pm-count">0</span></button>
-   <button type="button" class="pm-tab" role="tab" data-pm-tab="sent" aria-selected="false" aria-controls="leadList">✅ Dah PM <span id="pmSentCount" class="pm-count">0</span></button>
-   <button type="button" class="pm-tab" role="tab" data-pm-tab="history" aria-selected="false" aria-controls="pmHistoryList">🕓 Sejarah <span id="pmHistoryCount" class="pm-count">0</span></button>
-  </div>
-  <p id="pmTabHint" class="small muted pm-tab-hint">Belum PM / Dah PM ialah tugasan anda. Sejarah menunjukkan siapa yang claim atau menerima agihan nombor dalam pasukan. Buka WhatsApp sahaja belum bermaksud mesej dihantar.</p>
-  <p class="muted small" id="listMessage"></p>
-  <p class="small muted" id="queueCount" aria-live="polite"></p>
-  <div class="lead-list" id="leadList" aria-live="polite"></div>
-  <div class="pm-history-list hide" id="pmHistoryList" role="tabpanel" aria-live="polite" aria-label="Sejarah WhatsApp staf"></div>
- </section>
- <div id="appNotice" class="notice hide" role="status"></div>
-</section>
+   </section></div></section></section><div id="appNotice" class="notice hide" role="status"></div></section>
 <footer>FARIS R+PROTON · Staff Lead Operations · Sambungan selamat melalui HTTPS</footer>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="/staff-passcode.js?v=team-history-v34-20261026"></script>
-<script>(()=>{
- "use strict";
- document.addEventListener("DOMContentLoaded",()=>{
-  const dock=document.getElementById("mobileDock");
-  if(!dock)return;
-  const buttons=[...dock.querySelectorAll("[data-mobile-nav]")];
-  function scrollToId(id){
-   const target=document.getElementById(id);
-   if(!target||target.classList.contains("hide"))return false;
-   target.scrollIntoView({behavior:"smooth",block:"start"});
-   return true;
-  }
-  dock.addEventListener("click",event=>{
-   const button=event.target.closest("[data-mobile-nav]");
-   if(!button)return;
-   const section=button.dataset.mobileNav;
-   const target=section==="home"?"appSection":
-    section==="leads"?"leadSection":section==="docs"?"staffWorkflow":
-    section==="telegram"?"telegramPanel":"messageSettingsPanel";
-   if(section==="telegram"||section==="settings"){
-    const trigger=document.getElementById(section==="telegram"?"telegramSettingsBtn":"messageSettingsBtn");
-    const panel=document.getElementById(target);
-    if(!trigger||trigger.classList.contains("hide"))return;
-    if(panel?.classList.contains("hide"))trigger.click();
-    // The existing FARIS handlers own the panel state; never bypass them.
-    requestAnimationFrame(()=>scrollToId(target));
-   }else scrollToId(target);
-   for(const item of buttons)item.removeAttribute("aria-current");
-   button.setAttribute("aria-current","page");
-  });
- });
-})();</script>
-<script src="/telegram-hub.js?v=faris-ai-diagnostic-20261026"></script>
+<script src="/staff-navigation.js?v=workspaces-v35-20261026"></script>
+<script src="/staff-passcode.js?v=workspaces-v35-20261026"></script>
+
+<script src="/telegram-hub.js?v=workspaces-v35-20261026"></script>
 </body></html>

@@ -1,5 +1,15 @@
 # FARIS LEAD HUB — Panduan ID Staf & Passcode
 
+## Ruang kerja berasingan (26 Oktober 2026)
+
+- Navigasi telefon dan desktop kini menukar halaman aktif: **Utama**, **WhatsApp**, **Dokumen**, **Telegram**, **Staf & Akses**. Hanya satu ruang dipaparkan pada satu masa; navigasi bukan lagi pautan skrol pada halaman panjang.
+- **WhatsApp:** senarai pelanggan, claim, PM/sejarah, metrik, skrip mesej, tambah/import nombor untuk admin.
+- **Dokumen:** pintasan Document Compiler dan VSO; handoff daripada kad pelanggan kekal.
+- **Telegram:** bot, pautan Telegram dan sambungan AI/worker. Semakan status Telegram/worker hanya dipanggil apabila ruang Telegram dibuka.
+- **Staf & Akses:** ringkasan akaun sendiri; admin mempunyai cipta ID/passcode staf, roster/reset/aktif-nyahaktif, serta ID/passcode admin. Staf biasa tidak dipaparkan borang pengurusan admin.
+- `staff-navigation.js` mengawal halaman/hash dan menyegerakkan menu telefon/desktop. Login masih menggunakan endpoint/sesi sama. Tiada perubahan backend, data lead, passcode atau sambungan Telegram.
+- Pengesahan pelayar dengan data simulasi: 4 kombinasi admin/staf × telefon/desktop lulus; termasuk skrip WhatsApp, sejarah claim, kawalan admin, logout, tiada limpahan melintang atau ralat JavaScript. Skrip: `node tests/staff-workspaces.browser.cjs` (Playwright; boleh tetapkan `FARIS_TEST_CHROMIUM_PATH` untuk Chromium setempat).
+
 ## Sejarah claim / agihan pasukan (26 Oktober 2026)
 
 - Tab **Sejarah** staf memaparkan rekod claim dan agihan semua staf, termasuk apabila akaun sendiri mempunyai 0 lead. Nama pelanggan, nombor, model, nama serta ID staf penerima dipaparkan secara baca sahaja. Nama/ID staf juga boleh dicari.
@@ -8,7 +18,7 @@
 - Agihan sedia ada dimasukkan sebagai `legacy_assignment` dengan masa claim tidak diketahui. Jangan gunakan `updated_at` sebagai masa claim lama.
 - Skema sumber: `supabase/assignment-history.sql`. RLS aktif, tiada akses terus anon/authenticated; Edge Function `lead-hub` mengesahkan sesi sebelum mengembalikan sejarah pasukan.
 - Pengesahan: 5 ujian `node --test tests/staff-history.test.cjs` lulus. Ujian trigger insert → claim → tukar pemilik → status → nyahagih lulus dalam transaksi rollback. Permintaan HTTP `list` sebenar sebagai SAZ0001 mengembalikan 0 tugasan sendiri + sejarah Ridwhan/AIMAN01 tanpa nota peribadi. Sesi pengesahan sementara sudah dibuang.
-- Skrip paparan telefon/desktop: `node tests/staff-history.browser.cjs` (memerlukan Playwright + Chromium). Ujian pelayar belum dijalankan kerana muat turun Chromium gagal; jangan wakilkan ia sebagai ujian telefon sebenar yang lulus.
+- Skrip paparan telefon/desktop: `node tests/staff-history.browser.cjs` kini menjalankan suite ruang kerja, termasuk regresi sejarah claim. Ujian pelayar dengan data simulasi lulus; ini bukan ujian pada peranti fizikal pengguna.
 
 Website: https://document-pdf-compiler.vercel.app/staff.html
 Repo: sidanarebulan-max/document-pdf-compiler
@@ -71,7 +81,7 @@ Modul awal `staff.js` dan jadual `sales_*` menggunakan Supabase Auth e-mel. Modu
 - Buat masa ini nama Sales Advisor pada template VSO asal masih bergantung pada template tersedia; **semak nama penasihat jualan sebelum gunakan VSO sebagai dokumen rasmi**.
 
 ## Tetapan Mesej WhatsApp (2026-10-26)
-- Pada halaman `/staff.html`, selepas login klik `⚙ Tetapan Mesej` pada bahagian atas.
+- Pada halaman `/staff.html`, selepas login buka **WhatsApp → Skrip WhatsApp**.
 - Pilih Mesej Pengenalan, Follow-up atau Harga/Pinjaman. Edit mesej, lihat pratonton, tekan `Simpan Mesej`.
 - Teks menyokong pemboleh ubah `{nama}`, `{staff}`, `{model}`, `{telefon}`. Nilai sebenar diisi apabila pengguna tekan butang WhatsApp untuk sesuatu lead; mesej masih perlu dihantar secara manual oleh staf.
 - **Admin:** pilihan `Semua staf` menetapkan mesej rasmi untuk seluruh pasukan. Pilihan `Mesej akaun saya` membuat skrip peribadi admin.
@@ -82,7 +92,7 @@ Modul awal `staff.js` dan jadual `sales_*` menggunakan Supabase Auth e-mel. Modu
 - Tiada penghantaran mesej secara automatik; penggunaan pautan `wa.me` hanya membuka aplikasi WhatsApp dan pra-isi teks.
 
 ## Tetapan ID & Passcode Admin Sendiri (2026-10-26)
-- Masuk menggunakan akaun admin dalam `/staff.html` kemudian tekan **🔐 ID Admin** di bahagian atas.
+- Masuk menggunakan akaun admin dalam `/staff.html`, buka **Staf & Akses**, kemudian tekan **ID / Passcode Admin**.
 - Bahagian `ID & Passcode Admin Saya` membenarkan admin tukar ID login kepada pilihan sendiri (4–20 aksara, bermula huruf, hanya huruf/nombor/sengkang).
 - Masukkan passcode semasa sebagai pengesahan wajib. Jika mahu menukar passcode, masukkan passcode baharu (10–32 aksara, kombinasi huruf dan nombor). Boleh kosongkan passcode baharu jika hanya mahu ubah ID.
 - Tekan `Simpan ID / Passcode Admin`. Paparan ID di dashboard terus dikemas kini. Sesi semasa dikekalkan, sesi admin pada peranti lain dibatalkan. Peranan admin dan semua data pelanggan/staf tidak berubah.

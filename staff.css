@@ -103,22 +103,42 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
  html{scroll-behavior:auto}
 }
 
-/* Put WhatsApp customer work immediately beneath the greeting on phones. */
+/* Separate workspaces on both desktop and phone. */
+[hidden]{display:none!important}
+.workspace-nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:0 0 21px;padding:7px;border:1px solid var(--line);border-radius:16px;background:var(--sub)}
+.workspace-nav button{display:flex;align-items:center;justify-content:center;gap:9px;min-width:0;min-height:48px;border:1px solid transparent;border-radius:11px;background:transparent;color:var(--muted);font-weight:750}
+.workspace-nav button span{font-size:21px}
+.workspace-nav button small{font-size:13px}
+.workspace-nav button[aria-current="page"]{border-color:var(--blue);background:var(--panel);color:var(--text)}
+.workspace-page{min-width:0;scroll-margin-top:16px}
+.workspace-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:20px 0 18px}
+.workspace-heading .eyebrow{margin:0 0 7px;color:var(--muted);font-size:10px}
+.workspace-heading h2{font-size:27px;margin:0 0 7px;letter-spacing:-.6px}
+.workspace-heading p{font-size:13px;line-height:1.6;margin:0}
+.workspace-actions{display:flex;gap:9px;flex-wrap:wrap}
+.workspace-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.workspace-card{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:12px;padding:24px;min-height:174px;text-align:left;background:var(--panel);border-color:var(--line)}
+.workspace-card>span{font-size:30px;color:var(--blue)}
+.workspace-card b{font-size:18px;color:var(--text)}
+.workspace-card small{font-size:13px;color:var(--muted);font-weight:450;line-height:1.6}
+.access-summary h3{margin-top:0;font-size:15px}
+.access-summary dl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:18px 0}
+.access-summary dt{font-size:11px;color:var(--muted);margin-bottom:7px}
+.access-summary dd{font-size:14px;font-weight:750;margin:0;overflow-wrap:anywhere}
+#whatsappAdminPanel .admin-grid>*:last-child{grid-column:auto}
 @media(max-width:760px){
- #appSection{display:flex;flex-direction:column}
- #appSection>.welcome{order:1}
- #appSection>#leadSection{order:2}
- #appSection>.metrics{order:3}
- #appSection>#staffWorkflow{order:4}
- #appSection>#messageSettingsPanel{order:5}
- #appSection>#telegramPanel{order:6}
- #appSection>#adminPanel{order:7}
- #appSection>#appNotice{order:8}
- #leadSection{scroll-margin-top:12px}
+ .workspace-nav{display:none}
+ .workspace-heading{align-items:stretch;flex-direction:column;gap:13px;margin:18px 0 15px}
+ .workspace-heading h2{font-size:25px}
+ .workspace-heading p{font-size:12px}
+ .workspace-actions{display:grid;grid-template-columns:1fr;width:100%;gap:8px}
+ .workspace-actions button{min-height:46px;width:100%}
+ .workspace-cards{grid-template-columns:1fr;gap:10px}
+ .workspace-card{min-height:144px;padding:19px}
+ .access-summary dl{grid-template-columns:1fr;gap:16px}
 }
 
-
-/* FARIS v33: clear three-part WhatsApp workflow for mobile staff. */
+/* Three-part WhatsApp workflow. */
 .pm-tabs{display:none}
 .pm-tab-hint{display:none}
 .pm-tabs.pm-active{

@@ -72,8 +72,9 @@ function notify(message,error=false){
 }
 function setBusy(el,v){el.disabled=v}
 function toggle(open){
+ if(window.FARIS_NAV){window.FARIS_NAV.show(open?"telegram":"home");return}
  $("telegramPanel").classList.toggle("hide",!open);
- $("telegramSettingsBtn").setAttribute("aria-expanded",String(open));
+ $("telegramSettingsBtn")?.setAttribute("aria-expanded",String(open));
  if(open){$("telegramPanel").scrollIntoView({behavior:"smooth",block:"start"});refresh();}
 }
 async function refresh(){
@@ -227,7 +228,7 @@ async function unlink(){
  finally{setBusy(btn,false)}
 }
 function register(){
- $("telegramSettingsBtn").addEventListener("click",()=>toggle($("telegramPanel").classList.contains("hide")));
+ $("telegramSettingsBtn")?.addEventListener("click",()=>toggle($("telegramPanel").classList.contains("hide")));
  $("telegramClose").addEventListener("click",()=>toggle(false));
  $("telegramRefresh").addEventListener("click",refresh);
  $("telegramTestAI").addEventListener("click",diagnoseAI);
@@ -275,16 +276,20 @@ function register(){
 window.FARIS_TG={
  onLogin(user){
   currentUser=user;
-  $("telegramSettingsBtn").classList.remove("hide");
+  $("telegramSettingsBtn")?.classList.remove("hide");
   $("telegramAdminSettings").classList.toggle("hide",user.role!=="admin");
   $("farisCodexPairing").classList.toggle("hide",user.role!=="admin");
   $("telegramAIDiagnostics").classList.toggle("hide",user.role!=="admin");
-  if(user.role==="admin")codexStatus();
+  // Telegram/worker status is fetched only when its own workspace is opened.
   $("telegramSyncCommands").classList.toggle("hide",user.role!=="admin");
   loaded=false;
  },
+ onShow(){
+  refresh();
+  if(currentUser?.role==="admin")codexStatus();
+ },
  onLogout(){
-  currentUser=null;$("telegramSettingsBtn").classList.add("hide");
+  currentUser=null;$("telegramSettingsBtn")?.classList.add("hide");
   $("telegramPanel").classList.add("hide");$("telegramLinkResult").classList.add("hide");
   $("telegramBotToken").value="";$("telegramAPIKey").value="";$("telegramDeepSeekKey").value="";
  },

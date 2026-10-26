@@ -26,9 +26,11 @@ function viewAuth(){
  $("authSection").classList.remove("hide");$("appSection").classList.add("hide");$("signoutBtn").classList.add("hide");
  $("messageSettingsBtn").classList.add("hide");$("messageSettingsPanel").classList.add("hide");
  $("adminCredentialsShortcut").classList.add("hide");
+ window.FARIS_NAV?.onLogout?.();
  window.FARIS_TG?.onLogout?.();
 }
 function credentials(id,passcode){
+ window.FARIS_NAV?.show?.("settings",{scroll:false});
  $("createdStaffId").textContent=id;
  $("createdPass").textContent=passcode;
  $("newCredential").classList.remove("hide");
@@ -111,16 +113,8 @@ async function showApp(){
  $("adminPanel").classList.toggle("hide",user.role!=="admin");
  $("claimBtn").classList.toggle("hide",user.role==="admin");
  window.FARIS_TG?.onLogin?.(user);
+ window.FARIS_NAV?.onLogin?.(user);
  await reload();
- // WhatsApp is the default working area on phone screens.
- if(window.matchMedia("(max-width:760px) and (pointer:coarse)").matches){
-  requestAnimationFrame(()=>{
-   document.getElementById("leadSection")?.scrollIntoView({behavior:"instant",block:"start"});
-   const nav=document.getElementById("mobileDock");
-   nav?.querySelectorAll("[data-mobile-nav]").forEach(b=>b.removeAttribute("aria-current"));
-   nav?.querySelector('[data-mobile-nav="leads"]')?.setAttribute("aria-current","page");
-  });
- }
 }
 async function logout(){
  try{await call("logout",{device_token:deviceToken})}catch(e){console.warn("Server logout:",e.message)}
@@ -197,6 +191,7 @@ function renderMessagePreview(){
 function toggleMessageSettings(force){
  const box=$("messageSettingsPanel");
  const open=typeof force==="boolean"?force:box.classList.contains("hide");
+ if(open)window.FARIS_NAV?.show?.("whatsapp",{scroll:false});
  box.classList.toggle("hide",!open);
  $("messageSettingsBtn").setAttribute("aria-expanded",String(open));
  if(open){
@@ -368,7 +363,7 @@ function renderLeads(){
  if(!filtered.length){
   $("leadList").innerHTML='<div class="empty">'+(pmView?
    (activePmTab==="sent"?"Belum ada nombor yang disahkan sudah PM.":"Tiada nombor yang belum PM."):
-   (user.role==="staff"?"Belum ada nombor ditugaskan. Tekan Refresh atau Ambil nombor belum diagih.":"Belum ada pelanggan. Masukkan nombor melalui kawasan Admin dahulu."))+'</div>';
+    (user.role==="staff"?"Belum ada nombor ditugaskan. Tekan Refresh atau Ambil nombor belum diagih.":"Belum ada pelanggan. Tambah nombor melalui bahagian Tambah & Import Nombor di bawah."))+'</div>';
   return;
  }
  $("leadList").innerHTML=filtered.map(l=>{
@@ -512,6 +507,7 @@ async function changeAdminPass(e){
    deviceToken=r.device_token;localStorage.setItem(DEVICE_KEY,deviceToken);
   }
   $("currentCode").textContent=user.staff_code;
+  if($("accessCode"))$("accessCode").textContent=user.staff_code;
   $("adminPassForm").reset();
   $("newAdminId").value=user.staff_code;
   status.textContent=(r.id_changed?"ID Admin berjaya ditukar. ":"")+
@@ -599,6 +595,7 @@ function wireEvents(){
  $("messageSettingsBtn").addEventListener("click",()=>toggleMessageSettings());
  $("adminCredentialsShortcut").addEventListener("click",()=>{
    if(!user||user.role!=="admin")return;
+   window.FARIS_NAV?.show?.("settings",{scroll:false});
    $("adminPassForm").scrollIntoView({behavior:"smooth",block:"center"});
    $("newAdminId").focus({preventScroll:true});
  });
