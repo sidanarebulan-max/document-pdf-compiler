@@ -218,15 +218,21 @@ async function makeMergedPdf(caseRow:any,files:any[],allowPartial=false){
    issues.push({number,filename,problem:"missing"});
    continue;
   }
-  if(item.party!==lastParty&&(item.party==="GUARANTOR"||item.party==="REBATE")){
-   await cover(pdf,item.party==="GUARANTOR"?"GUARANTOR / PENJAMIN":"COP REBATE",caseRow.customer_name,
-    item.party==="GUARANTOR"?"Dokumen Penjamin":"Dokumen Rebate");pages++;
-  }
-  lastParty=item.party;
+  // Add a section cover only when a readable document from that party is added.
+  // Otherwise skipping a locked PDF can leave an empty cover page.
+  const addPartyCover=async()=>{
+   if(item.party!==lastParty&&(item.party==="GUARANTOR"||item.party==="REBATE")){
+    await cover(pdf,item.party==="GUARANTOR"?"GUARANTOR / PENJAMIN":"COP REBATE",caseRow.customer_name,
+     item.party==="GUARANTOR"?"Dokumen Penjamin":"Dokumen Rebate");pages++;
+   }
+   lastParty=item.party;
+  };
   if(item.mime_type==="application/pdf"){
    try{
     const source=await PDFDocument.load(bytes,{updateMetadata:false});
     const copied=await pdf.copyPages(source,source.getPageIndices());
+    if(!copied.length)throw Error("PDF has no pages");
+    await addPartyCover();
     for(const page of copied){pdf.addPage(page);pages++}
     mergedIds.push(item.id);
    }catch(e){
@@ -236,6 +242,7 @@ async function makeMergedPdf(caseRow:any,files:any[],allowPartial=false){
   }else{
    try{
     const image=item.mime_type==="image/png"?await pdf.embedPng(bytes):await pdf.embedJpg(bytes);
+    await addPartyCover();
     const page=pdf.addPage([595,842]),ratio=Math.min(555/image.width,802/image.height);
     page.drawImage(image,{x:(595-image.width*ratio)/2,y:(842-image.height*ratio)/2,width:image.width*ratio,height:image.height*ratio});
     pages++;
