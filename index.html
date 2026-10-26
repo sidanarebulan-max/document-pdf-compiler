@@ -3,6 +3,42 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script>
+  // Phone entry: FARIS WhatsApp/Lead Hub. Document tools are accessible
+  // after staff login through ?tool=...&origin=staff.
+  (()=>{
+   if(!window.matchMedia("(max-width:900px) and (pointer:coarse)").matches)return;
+   const params=new URLSearchParams(location.search);
+   const isStaffWorkspace=params.get("origin")==="staff"&&
+     ["VSO","COMPILER"].includes(params.get("tool")||"");
+   const leadUrl="/staff.html";
+   if(!isStaffWorkspace){location.replace(leadUrl);return;}
+   document.documentElement.style.visibility="hidden";
+   const api="https://qagsczjxzshjxmmxvkbq.supabase.co/functions/v1/lead-hub";
+   const SESSION_KEY="faris_lead_hub_session_v2";
+   const DEVICE_KEY="faris_lead_hub_trusted_browser_v1";
+   async function verify(action,body,session){
+    const response=await fetch(api,{method:"POST",cache:"no-store",
+     headers:{"Content-Type":"application/json",...(session?{"Authorization":"Bearer "+session}:{})},
+     body:JSON.stringify({action,...body})});
+    const data=await response.json().catch(()=>null);
+    return response.ok&&data?.ok?data:null;
+   }
+   (async()=>{
+    const existing=localStorage.getItem(SESSION_KEY)||"";
+    if(existing&&await verify("me",{},existing))return true;
+    const device=localStorage.getItem(DEVICE_KEY)||"";
+    if(!device)return false;
+    const renewed=await verify("resume_device",{device_token:device});
+    if(!renewed?.token)return false;
+    localStorage.setItem(SESSION_KEY,renewed.token);
+    return true;
+   })().then(ok=>{
+    if(ok)document.documentElement.style.visibility="";
+    else location.replace(leadUrl);
+   }).catch(()=>location.replace(leadUrl));
+  })();
+  </script>
   <title>Proton Document Center — Original VSO Template & PDF Compiler</title>
   <meta name="description" content="Jana VSO Proton, pilih tanpa markup atau markup 90%, pratonton PDF dan gabungkan dokumen Hirer, Guarantor serta COP Rebate." />
   <link rel="stylesheet" href="styles.css">
