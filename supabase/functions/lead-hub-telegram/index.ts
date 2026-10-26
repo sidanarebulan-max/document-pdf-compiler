@@ -90,7 +90,9 @@ const TYPES=["VSO","IC","IC_FRONT","IC_BACK","LESEN","PAYSLIP","BANK","SURAT_KER
 const REBATE_TYPES=["VSO","IC","IC_FRONT","IC_BACK","LESEN","PAYSLIP","BANK","SURAT_KERJA","SIJIL_LAHIR","SIJIL_NIKAH","SIJIL","OTHER"];
 const RANK:{[k:string]:number}={VSO:1,IC:2,IC_FRONT:2,IC_BACK:2,LESEN:3,PAYSLIP:4,BANK:5,SURAT_KERJA:6,SIJIL_LAHIR:7,SIJIL_NIKAH:8,SIJIL:9,OTHER:10};
 const TELEGRAM_COMMAND_MENU=[
- {command:"menu",description:"Menu utama: New atau Resume"},
+ {command:"menu",description:"Menu utama FARIS"},
+ {command:"whatsapp",description:"WhatsApp: tambah no dan no tersedia"},
+ {command:"dokumen",description:"Dokumen: New atau Resume"},
  {command:"new",description:"Pelanggan baharu"},
  {command:"resume",description:"Sambung kes pelanggan lama"},
  {command:"pelanggan",description:"Buka kes pelanggan baharu"},
@@ -560,6 +562,7 @@ async function clearCustomerNamePrompt(id:number,chat:number,account:any){
 }
 async function showCustomerMenu(token:string,chat:number,id:number,account:any,messageId?:number){
  await clearCustomerNamePrompt(id,chat,account);
+ await clearWhatsAppDraft(id,chat,account);
  const c=await currentCase(account.id,chat);
  await navReply(token,chat,mainMenu(c),messageId);
 }
@@ -1354,6 +1357,12 @@ async function processUpdate(update:any,conf:any,token:string){
    }
    const account=linked.account;
    if(nav.kind==="home")await showCustomerMenu(token,chat,id,account,messageId);
+   else if(nav.kind==="docs")await showDocumentMenu(token,chat,id,account,messageId);
+   else if(nav.kind==="wa")await showWhatsAppMenu(token,chat,id,account,messageId);
+   else if(nav.kind==="wa_add")await beginWhatsAppAdd(token,chat,id,account,messageId);
+   else if(nav.kind==="wa_list")await showAvailableNumbers(token,chat,id,account,nav.page,messageId);
+   else if(nav.kind==="wa_open")await openAvailableNumber(token,chat,id,account,nav.leadId,messageId);
+   else if(nav.kind==="wa_claim")await claimAvailableNumber(token,chat,id,account);
    else if(nav.kind==="new"){
     try{await telegramCall(token,"editMessageReplyMarkup",{
      chat_id:chat,message_id:messageId,reply_markup:{inline_keyboard:[]}
@@ -1433,9 +1442,16 @@ async function processUpdate(update:any,conf:any,token:string){
  if(/^(?:resume|resum|continue|sambung(?: pelanggan)?|senarai pelanggan|list customer|customer lama)$/i.test(txt)){
   await showResumeCustomerMenu(token,chat,id,account);return;
  }
- if(/^(?:menu|home|menu utama)$/i.test(txt)){
+ if(/^(?:menu|home|menu utama|\/menu)$/i.test(txt)){
   await showCustomerMenu(token,chat,id,account);return;
  }
+ if(/^(?:whatsapp|wasap|watsap|wa|\/whatsapp)$/i.test(txt)){
+  await showWhatsAppMenu(token,chat,id,account);return;
+ }
+ if(/^(?:dokumen|document|documents|\/dokumen)$/i.test(txt)){
+  await showDocumentMenu(token,chat,id,account);return;
+ }
+ if(await handleWhatsAppDraft(token,chat,id,account,txt))return;
  const {data:dialog}=await db.from("lead_hub_telegram_dialog")
   .select("pending_step,pending_until").eq("telegram_user_id",id)
   .eq("account_id",account.id).eq("chat_id",chat).maybeSingle();
@@ -1571,6 +1587,8 @@ async function processUpdate(update:any,conf:any,token:string){
  if(command==="/menu"){
   await showCustomerMenu(token,chat,id,account);return;
  }
+ if(command==="/whatsapp"){await showWhatsAppMenu(token,chat,id,account);return}
+ if(command==="/dokumen"){await showDocumentMenu(token,chat,id,account);return}
  if(command==="/resume"||command==="/sambung"){
   await showResumeCustomerMenu(token,chat,id,account);return;
  }
