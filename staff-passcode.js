@@ -16,7 +16,7 @@ const normalizePhone=value=>{
  if(p.startsWith("0"))p="6"+p;else if(p.startsWith("1"))p="60"+p;
  return /^601\d{8,9}$/.test(p)?p:null;
 };
-let token=localStorage.getItem(SESSION_KEY)||"",deviceToken=localStorage.getItem(DEVICE_KEY)||"",user=null,leads=[],staff=[],busy=false,availableCount=0,expandedLeadId=null;
+let token=localStorage.getItem(SESSION_KEY)||"",deviceToken=localStorage.getItem(DEVICE_KEY)||"",user=null,leads=[],staff=[],busy=false,availableCount=0,expandedLeadId=null,history=[],activePmTab="pending";
 let renewalPromise=null;
 let messageTemplates={team:{},personal:{}},editorDirty=false;
 function notice(id,text,error=false){
@@ -137,7 +137,7 @@ async function reload(){
    const templates=await call("get_message_templates");
    messageTemplates={team:templates.team||{},personal:templates.personal||{}};
   }catch(e){console.warn("Tetapan mesej tidak dapat dikemas kini:",e.message)}
-  leads=r.leads||[];staff=r.staff||[];availableCount=Number(r.available_count)||0;
+  leads=r.leads||[];history=r.history||[];staff=r.staff||[];availableCount=Number(r.available_count)||0;
   metrics();renderLeads();renderRoster();
   if(!editorDirty)syncMessageEditor();
   $("lastRefresh").textContent="Dikemas kini: "+new Date().toLocaleTimeString("ms-MY",{hour:"2-digit",minute:"2-digit"});
@@ -266,13 +266,98 @@ function openWorkspace(tool,leadId=null){
  const mode=tool==="COMPILER"?"COMPILER":"VSO";
  window.location.assign("/?tool="+mode+"&origin=staff");
 }
+function isStaffPhone(){
+ return user?.role==="staff"&&window.matchMedia("(max-width:760px) and (pointer:coarse)").matches;
+}
+function pmEventHistory(){
+ const current=new Map(leads.map(x=>[x.id,x]));
+ const entries=history.filter(e=>current.has(e.lead_id)).map(e=>({
+  ...e,customer:current.get(e.lead_id),
+  at:e.created_at
+ }));
+ const loggedOpened=new Set(entries.filter(x=>x.event_type==="whatsapp_opened").map(x=>x.lead_id));
+ for(const lead of leads){
+  if(lead.last_opened_at&&!loggedOpened.has(lead.id)){
+   entries.push({lead_id:lead.id,event_type:"legacy_opened",at:lead.last_opened_at,customer:lead});
+  }
+ }
+ return entries.sort((a,b)=>Date.parse(b.at)-Date.parse(a.at)).slice(0,150);
+}
+function pmTime(value){
+ if(!value)return "Masa belum diketahui";
+ const d=new Date(value);
+ return Number.isNaN(d.getTime())?"Masa tidak diketahui":
+  d.toLocaleString("ms-MY",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
+}
+function renderPmTabs(){
+ const visible=isStaffPhone(),nav=$("staffPmTabs"),hint=$("pmTabHint");
+ nav?.classList.toggle("pm-active",visible);
+ hint?.classList.toggle("pm-active",visible);
+ if(!visible){$("leadList").classList.remove("hide");$("pmHistoryList").classList.add("hide");return false}
+ const pending=leads.filter(x=>!x.pm_confirmed_at).length;
+ const sent=leads.length-pending;
+ const events=pmEventHistory();
+ $("pmPendingCount").textContent=String(pending);
+ $("pmSentCount").textContent=String(sent);
+ $("pmHistoryCount").textContent=String(events.length);
+ nav.querySelectorAll("[data-pm-tab]").forEach(btn=>{
+  const active=btn.dataset.pmTab===activePmTab;
+  btn.setAttribute("aria-selected",String(active));
+  btn.tabIndex=active?0:-1;
+ });
+ const showingHistory=activePmTab==="history";
+ $("pmHistoryList").classList.toggle("hide",!showingHistory);
+ $("leadList").classList.toggle("hide",showingHistory);
+ if(showingHistory){
+  const search=$("leadSearch").value.trim().toLowerCase();
+  const shown=events.filter(e=>!search||[
+   e.customer?.customer_name,e.customer?.phone_e164,e.customer?.model
+  ].some(x=>String(x||"").toLowerCase().includes(search)));
+  const label={
+   whatsapp_opened:"WhatsApp dibuka (belum semestinya dihantar)",
+   pm_confirmed:"Staf sahkan mesej telah dihantar",
+   status_updated:"Status pelanggan dikemas kini",
+   legacy_opened:"Rekod lama: WhatsApp pernah dibuka"
+  };
+  $("listMessage").textContent=shown.length+" rekod aktiviti WhatsApp.";
+  $("pmHistoryList").innerHTML=shown.length?shown.map(e=>
+   '<article class="pm-history-card"><div class="pm-history-icon" aria-hidden="true">'+
+   (e.event_type==="pm_confirmed"?"✓":e.event_type==="status_updated"?"↻":"↗")+
+   '</div><div class="pm-history-content"><strong>'+esc(e.customer?.customer_name||"Pelanggan")+
+   '</strong><p>'+esc(label[e.event_type]||"Aktiviti")+
+   (e.event_type==="status_updated"&&e.stage_after?" · "+esc(STATUSES[e.stage_after]||e.stage_after):"")+
+   '</p><time>'+esc(pmTime(e.at))+'</time></div></article>'
+  ).join(""):'<div class="empty">Belum ada sejarah aktiviti untuk nombor ini.</div>';
+ }
+ return showingHistory;
+}
+async function confirmSentPm(leadId,button){
+ const lead=leads.find(x=>x.id===leadId);
+ if(!lead||!user)return;
+ if(!lead.consent_confirmed){notice("appNotice","Tiada kebenaran pelanggan untuk dihubungi.",true);return}
+ if(!window.confirm("Sahkan mesej WhatsApp kepada "+lead.customer_name+" telah BENAR-BENAR dihantar?")){
+  return;
+ }
+ button.disabled=true;
+ try{
+  await call("confirm_pm",{lead_id:leadId});
+  notice("appNotice","✅ PM disahkan dan direkodkan dalam Sejarah.");
+  activePmTab="sent";await reload();
+ }catch(e){notice("appNotice","Tidak berjaya merekod PM: "+e.message,true);button.disabled=false}
+}
 function renderLeads(){
  const search=$("leadSearch").value.trim().toLowerCase(),filter=$("stageFilter").value;
- const filtered=leads.filter(l=>(!filter||l.stage===filter)&&(!search||
+ if(renderPmTabs())return;
+ const pmView=isStaffPhone();
+ const filtered=leads.filter(l=>
+  (!pmView||activePmTab==="sent"?Boolean(l.pm_confirmed_at):!l.pm_confirmed_at)&&
+  (!filter||l.stage===filter)&&(!search||
   [l.customer_name,l.phone_e164,l.model,l.notes].some(x=>String(x||"").toLowerCase().includes(search))));
  $("listMessage").textContent=`Memaparkan ${filtered.length} daripada ${leads.length} lead yang dibenarkan.`;
  if(!filtered.length){
-  $("leadList").innerHTML='<div class="empty">'+(user.role==="staff"?'Belum ada nombor ditugaskan. Tekan Refresh atau Ambil nombor belum diagih.':'Belum ada pelanggan. Masukkan nombor melalui kawasan Admin dahulu.')+'</div>';
+  $("leadList").innerHTML='<div class="empty">'+(pmView?
+   (activePmTab==="sent"?"Belum ada nombor yang disahkan sudah PM.":"Tiada nombor yang belum PM."):
+   (user.role==="staff"?"Belum ada nombor ditugaskan. Tekan Refresh atau Ambil nombor belum diagih.":"Belum ada pelanggan. Masukkan nombor melalui kawasan Admin dahulu."))+'</div>';
   return;
  }
  $("leadList").innerHTML=filtered.map(l=>{
@@ -308,6 +393,9 @@ function renderLeads(){
       <label>Catatan pelanggan</label>
       <textarea data-notes class="notes" placeholder="Catatan selepas hubungi pelanggan...">${esc(l.notes||"")}</textarea>
       <button class="secondary save-details" data-save="${esc(l.id)}" type="button">Simpan status & catatan</button>
+      ${l.pm_confirmed_at?
+        '<p class="pm-confirmed-note">✅ Dah PM · '+esc(pmTime(l.pm_confirmed_at))+'</p>':
+        '<button class="pm-confirm-button" type="button" data-confirm-pm="'+esc(l.id)+'">✓ Tandakan Dah PM</button>'}
       <div class="leadwork">
         <button class="secondary" type="button" data-workspace-doc="${esc(l.id)}">📑 Urus Dokumen</button>
         <button class="secondary" type="button" data-workspace-vso="${esc(l.id)}">🚘 Buat VSO</button>
@@ -511,6 +599,20 @@ function wireEvents(){
  $("resetMessageBtn").addEventListener("click",resetMessageTemplate);
  document.querySelectorAll("[data-token]").forEach(btn=>btn.addEventListener("click",()=>insertMessageToken(btn.dataset.token)));
  $("refreshBtn").addEventListener("click",reload);
+ $("staffPmTabs").addEventListener("click",e=>{
+  const choice=e.target.closest("[data-pm-tab]");
+  if(!choice)return;
+  activePmTab=choice.dataset.pmTab;expandedLeadId=null;renderLeads();
+ });
+ $("staffPmTabs").addEventListener("keydown",e=>{
+  const tabs=[...$("staffPmTabs").querySelectorAll("[data-pm-tab]")];
+  const index=tabs.indexOf(document.activeElement);
+  if(index<0||!["ArrowLeft","ArrowRight","Home","End"].includes(e.key))return;
+  e.preventDefault();
+  const next=e.key==="Home"?0:e.key==="End"?tabs.length-1:
+   (index+(e.key==="ArrowRight"?1:-1)+tabs.length)%tabs.length;
+  activePmTab=tabs[next].dataset.pmTab;renderLeads();tabs[next].focus();
+ });
  $("claimBtn").addEventListener("click",claim);
  $("openGenericDocs").addEventListener("click",()=>openWorkspace("COMPILER"));
  $("openGenericVso").addEventListener("click",()=>openWorkspace("VSO"));
@@ -531,6 +633,8 @@ function wireEvents(){
   if(exp){toggleLeadDetails(exp.dataset.expand);return}
   const saveBtn=e.target.closest("[data-save]");
   if(saveBtn){save(saveBtn.closest("[data-id]"),saveBtn.dataset.save);return}
+  const confirmed=e.target.closest("[data-confirm-pm]");
+  if(confirmed){confirmSentPm(confirmed.dataset.confirmPm,confirmed);return}
   const docs=e.target.closest("[data-workspace-doc]");
   if(docs){openWorkspace("COMPILER",docs.dataset.workspaceDoc);return}
   const vso=e.target.closest("[data-workspace-vso]");
