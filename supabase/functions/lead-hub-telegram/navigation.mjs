@@ -4,6 +4,14 @@ export const CALLBACK_PREFIX="faris_nav:";
 export function parseNavCallback(value){
  const v=String(value||"");
  if(v==="faris_nav:home")return {kind:"home"};
+ if(v==="faris_nav:docs")return {kind:"docs"};
+ if(v==="faris_nav:wa")return {kind:"wa"};
+ if(v==="faris_nav:wa:add")return {kind:"wa_add"};
+ if(v==="faris_nav:wa:claim")return {kind:"wa_claim"};
+ const waList=v.match(/^faris_nav:wa:list:(\d{1,3})$/);
+ if(waList)return {kind:"wa_list",page:Math.min(999,Number(waList[1]))};
+ const waDetail=v.match(/^faris_nav:wa:open:([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/i);
+ if(waDetail)return {kind:"wa_open",leadId:waDetail[1].toLowerCase()};
  if(v==="faris_nav:new")return {kind:"new"};
  const section=v.match(/^faris_nav:party:([hgr]):([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/i);
  if(section)return {kind:"party",party:({h:"HIRER",g:"GUARANTOR",r:"REBATE"})[section[1].toLowerCase()],caseId:section[2].toLowerCase()};
@@ -23,19 +31,62 @@ export function partyButtons(caseId){
  ];
 }
 export function mainMenu(activeCase){
- const active=activeCase?"\n📂 Kes aktif: "+String(activeCase.customer_name||"").slice(0,80):"\n📂 Tiada kes aktif dipilih";
  return {
-  text:"👋 FARIS R+PROTON • MENU PELANGGAN"+active+
-    "\n\nApa yang kau nak buat sekarang?\n"+
-    "🆕 New Customer — buka folder pelanggan baharu.\n"+
-    "📂 Resume Customer — pilih pelanggan lama daripada senarai.\n"+
-    (activeCase?"\nTambah dokumen: Peminjam, Add Guarantor atau Cop Rebate.\n":"\nPilih New atau Resume dahulu sebelum menambah dokumen.\n")+
-    "\nKes dan dokumen lama tidak akan dipadam.",
+  text:"🏠 FARIS R+PROTON • MENU UTAMA\n"+
+   (activeCase?"📂 Kes dokumen: "+String(activeCase.customer_name||"").slice(0,75)+"\n":"")+
+   "\nPilih halaman kerja. Dokumen dan nombor WhatsApp diurus berasingan.",
   reply_markup:{inline_keyboard:[
-   [{text:"🆕 New Customer",callback_data:"faris_nav:new"}],
-   [{text:"📂 Resume Customer",callback_data:"faris_nav:resume:0"}],
-   ...partyButtons(activeCase?.id)
+   [{text:"📁 Dokumen",callback_data:"faris_nav:docs"},
+    {text:"📲 WhatsApp",callback_data:"faris_nav:wa"}]
   ]}
+ };
+}
+export function documentMenu(activeCase){
+ return {
+  text:"📁 FARIS • DOKUMEN\n"+
+   (activeCase?"👤 Kes aktif: "+String(activeCase.customer_name||"").slice(0,80)+"\n":"📂 Tiada kes aktif.\n")+
+   "\nBuka pelanggan baharu atau sambung folder lama."+
+   (activeCase?"\nPilih bahagian untuk fail seterusnya.":""),
+  reply_markup:{inline_keyboard:[
+   [{text:"🆕 New Customer",callback_data:"faris_nav:new"},
+    {text:"📂 Resume Customer",callback_data:"faris_nav:resume:0"}],
+   ...partyButtons(activeCase?.id),
+   [{text:"🏠 Menu Utama",callback_data:"faris_nav:home"}]
+  ]}
+ };
+}
+export function whatsappMenu(){
+ return {
+  text:"📲 FARIS • WHATSAPP\n\nPilih tindakan.\n"+
+  "➕ Tambah No Baru — daftar nama dan nombor pelanggan dengan kebenaran.\n"+
+  "📇 No Tersedia — lihat lead yang dibenarkan untuk akaun kau dan buka WhatsApp terus.",
+  reply_markup:{inline_keyboard:[
+   [{text:"➕ Tambah No Baru",callback_data:"faris_nav:wa:add"},
+    {text:"📇 No Tersedia",callback_data:"faris_nav:wa:list:0"}],
+   [{text:"🏠 Menu Utama",callback_data:"faris_nav:home"}]
+  ]}
+ };
+}
+export function availableNumbersMenu(leads,page,total,admin){
+ const totalPages=Math.max(1,Math.ceil(total/7));
+ const current=Math.max(0,Math.min(page,totalPages-1));
+ const rows=(leads||[]).map(x=>[{
+  text:"📱 "+String(x.customer_name||"Pelanggan").replace(/[\r\n\t]/g," ").slice(0,32)+
+   " · "+String(x.phone_e164||"").slice(-4),
+  callback_data:"faris_nav:wa:open:"+x.id
+ }]);
+ const nav=[];
+ if(current>0)nav.push({text:"⬅️",callback_data:"faris_nav:wa:list:"+(current-1)});
+ if(current+1<totalPages)nav.push({text:"Seterusnya ➡️",callback_data:"faris_nav:wa:list:"+(current+1)});
+ if(nav.length)rows.push(nav);
+ if(!admin)rows.push([{text:"🎯 Ambil No Belum Diagih",callback_data:"faris_nav:wa:claim"}]);
+ rows.push([{text:"🔄 Refresh",callback_data:"faris_nav:wa:list:"+current}]);
+ rows.push([{text:"📲 Menu WhatsApp",callback_data:"faris_nav:wa"}]);
+ return {
+  text:"📇 NO TERSEDIA\n"+(admin?"Senarai lead FARIS":"Lead yang diagihkan kepada akaun kau")+
+   "\nJumlah: "+total+" · Halaman "+(current+1)+"/"+totalPages+
+   (total?"\n\nTekan nama untuk buka nombor dan mesej WhatsApp.":"\n\nTiada nombor tersedia buat masa ini."),
+  reply_markup:{inline_keyboard:rows}
  };
 }
 export function resumeMenu(cases,page,total,activeCaseId){
