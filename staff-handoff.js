@@ -35,7 +35,7 @@ info.style.cssText="font-size:12px;color:#bdd0ed;overflow-wrap:anywhere";
 info.textContent=lead?"Pelanggan: "+lead.name+" · +"+lead.phone+" · "+(lead.model||"Model belum pasti"):"Tiada pelanggan dipilih. Isi butiran pelanggan secara manual.";
 detail.append(title,info);
 const back=document.createElement("a");
-back.href="/staff.html";
+back.href="/staff.html#docs";
 back.style.cssText="display:inline-flex;border:1px solid #5275b6;background:#223b68;color:white;border-radius:10px;padding:10px 14px;text-decoration:none;font-weight:700;font-size:12px";
 back.textContent="← Kembali ke Lead Hub";
 banner.append(detail,back);

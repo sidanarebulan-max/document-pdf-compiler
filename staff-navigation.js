@@ -21,6 +21,7 @@ function show(page,{scroll=true,updateHash=true}={}){
   $("telegramPanel").classList.remove("hide");
   window.FARIS_TG?.onShow?.();
  }
+ if(page==="docs")window.FARIS_INBOX?.onShow?.();
  if(scroll)$("workspace-"+page)?.scrollIntoView({behavior:"instant",block:"start"});
  return true;
 }

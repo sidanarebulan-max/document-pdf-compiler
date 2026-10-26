@@ -2,6 +2,10 @@
 <html lang="ms">
 <head>
  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+ <link rel="manifest" href="/manifest.webmanifest">
+ <link rel="apple-touch-icon" href="/assets/faris-app-192.png">
+ <meta name="apple-mobile-web-app-capable" content="yes">
+ <meta name="apple-mobile-web-app-title" content="FARIS Dokumen">
  <meta name="theme-color" content="#0b1020" id="farisThemeColor">
  <script>
  // Set theme before first paint. Only visual preference is stored, never login data.
@@ -11,7 +15,7 @@
  </script>
  <title>FARIS LEAD HUB — ID & Passcode Staf</title>
  <meta name="description" content="Portal staf Proton: masuk menggunakan ID dan passcode, ambil nombor pelanggan, buka WhatsApp dalam telefon.">
- <link rel="stylesheet" href="/staff.css?v=workspaces-v35-20261026">
+ <link rel="stylesheet" href="/staff.css?v=inbox-v36-20261026">
  <style>
   .credential{border:1px solid #405e98;background:linear-gradient(135deg,#101d38,#1d3156);border-radius:14px;padding:16px;margin-top:10px}
   .credential strong{display:block;color:#96baff;font-size:10px;letter-spacing:1.5px}
@@ -312,7 +316,7 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
    <p class="muted">ID: <span id="currentCode"></span> · Pilih ruang kerja melalui menu</p>
   </div>
 
- </div><section id="workspace-home" class="workspace-page hide" hidden data-workspace-page="home" aria-labelledby="workspaceHomeTitle"><div class="workspace-heading"><div><p class="eyebrow">RUANG KERJA</p><h2 id="workspaceHomeTitle">Pilih urusan anda</h2><p class="muted">Setiap urusan mempunyai ruang sendiri.</p></div></div><div class="workspace-cards"><button type="button" class="secondary workspace-card" data-workspace-nav="whatsapp"><span aria-hidden="true">☏</span><b>WhatsApp</b><small>Pelanggan, claim, PM, sejarah dan skrip mesej.</small></button><button type="button" class="secondary workspace-card" data-workspace-nav="docs"><span aria-hidden="true">▤</span><b>Dokumen & VSO</b><small>Susun fail pelanggan dan sediakan VSO.</small></button><button type="button" class="secondary workspace-card" data-workspace-nav="telegram"><span aria-hidden="true">✈</span><b>Telegram</b><small>Bot Telegram, pautan akaun dan sambungan AI.</small></button><button type="button" class="secondary workspace-card" data-workspace-nav="settings"><span aria-hidden="true">⚙</span><b>Staf & Akses</b><small>Maklumat akaun, ID, passcode dan pengurusan staf.</small></button></div></section><section id="workspace-whatsapp" class="workspace-page hide" hidden data-workspace-page="whatsapp" aria-labelledby="workspaceWhatsAppTitle"><div class="workspace-heading"><div><p class="eyebrow">URUSAN PELANGGAN</p><h2 id="workspaceWhatsAppTitle">WhatsApp</h2><p class="muted">Nombor pelanggan, tugasan, claim dan sejarah pasukan.</p></div><div class="workspace-actions"><button class="primary" id="claimBtn" type="button">+ Ambil nombor belum diagih</button><button class="secondary hide" id="messageSettingsBtn" type="button" aria-expanded="false" aria-controls="messageSettingsPanel">✎ Skrip WhatsApp</button></div></div><div class="metrics">
+ </div><section id="workspace-home" class="workspace-page hide" hidden data-workspace-page="home" aria-labelledby="workspaceHomeTitle"><div class="workspace-heading"><div><p class="eyebrow">RUANG KERJA</p><h2 id="workspaceHomeTitle">Pilih urusan anda</h2><p class="muted">Setiap urusan mempunyai ruang sendiri.</p></div></div><div class="workspace-cards"><button type="button" class="secondary workspace-card" data-workspace-nav="whatsapp"><span aria-hidden="true">☏</span><b>WhatsApp</b><small>Pelanggan, claim, PM, sejarah dan skrip mesej.</small></button><button type="button" class="secondary workspace-card" data-workspace-nav="docs"><span aria-hidden="true">▤</span><b>Dokumen & VSO</b><small>Fail Masuk, susun dokumen pelanggan dan sediakan VSO.</small></button><button type="button" class="secondary workspace-card" data-workspace-nav="telegram"><span aria-hidden="true">✈</span><b>Telegram</b><small>Bot Telegram, pautan akaun dan sambungan AI.</small></button><button type="button" class="secondary workspace-card" data-workspace-nav="settings"><span aria-hidden="true">⚙</span><b>Staf & Akses</b><small>Maklumat akaun, ID, passcode dan pengurusan staf.</small></button></div></section><section id="workspace-whatsapp" class="workspace-page hide" hidden data-workspace-page="whatsapp" aria-labelledby="workspaceWhatsAppTitle"><div class="workspace-heading"><div><p class="eyebrow">URUSAN PELANGGAN</p><h2 id="workspaceWhatsAppTitle">WhatsApp</h2><p class="muted">Nombor pelanggan, tugasan, claim dan sejarah pasukan.</p></div><div class="workspace-actions"><button class="primary" id="claimBtn" type="button">+ Ambil nombor belum diagih</button><button class="secondary hide" id="messageSettingsBtn" type="button" aria-expanded="false" aria-controls="messageSettingsPanel">✎ Skrip WhatsApp</button></div></div><div class="metrics">
   <div class="metric"><span>Jumlah lead</span><strong id="metricTotal">0</strong></div>
   <div class="metric"><span>Belum selesai</span><strong id="metricNew">0</strong></div>
   <div class="metric"><span>Follow-up</span><strong id="metricFollow">0</strong></div>
@@ -415,7 +419,43 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
    <button class="secondary workflow-action" id="openGenericDocs" type="button"><span class="workflow-icon">📑</span><span><b>Document Compiler</b><small>Hirer · Guarantor · COP Rebate</small></span><span aria-hidden="true">↗</span></button>
    <button class="secondary workflow-action" id="openGenericVso" type="button"><span class="workflow-icon">🚘</span><span><b>VSO Generator</b><small>Buat dan semak dokumen jualan</small></span><span aria-hidden="true">↗</span></button>
   </div>
- </section></section><section id="workspace-telegram" class="workspace-page hide" hidden data-workspace-page="telegram" aria-labelledby="telegramTitle"><section id="telegramPanel" class="panel hide" aria-labelledby="telegramTitle">
+ </section><section class="panel" id="documentInbox" aria-labelledby="inboxTitle">
+ <div class="panelhead"><div><h2 id="inboxTitle">Fail Masuk</h2><p class="muted">Simpan dokumen dan bahan dahulu. Pilih pelanggan, bahagian dan kategori apabila sudah bersedia.</p></div><div class="workspace-actions"><button id="inboxUploadButton" type="button" class="primary">+ Muat Naik Fail</button><button id="inboxRefresh" type="button" class="secondary">Refresh Fail</button></div></div>
+ <input id="inboxUpload" type="file" multiple hidden accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.docx,.xlsx,.xls,.txt">
+ <p class="small muted">PDF, gambar, Word, Excel dan TXT · Maksimum 20 MB setiap fail · Simpanan peribadi mengikut akaun.</p>
+ <div id="inboxNotice" class="notice hide" role="status" aria-live="polite"></div>
+ <details id="inboxIphoneGuide" class="inbox-guide"><summary>Share dari iPhone — setup sekali</summary>
+  <p>iPhone tidak mendaftarkan web app ini sebagai penerima fail terus dalam menu Share. Gunakan Apple Shortcut <b>Hantar ke FARIS</b>. Shortcut menerima fail, menyimpannya dalam Fail Masuk, kemudian membuka ruang Dokumen.</p>
+  <p class="small muted">Jika belum mahu setup Shortcut: WhatsApp → Share → Save to Files, kemudian tekan Muat Naik Fail di atas dan pilih dokumen tersebut.</p>
+  <div class="inbox-key-actions"><button id="inboxCreateKey" class="secondary" type="button">Jana / Ganti Kunci iPhone</button><button id="inboxRevokeKey" class="secondary" type="button">Nyahaktif Kunci</button></div>
+  <p id="inboxKeyStatus" class="small muted">Buka panduan untuk semak kunci akaun.</p>
+  <div id="inboxKeyResult" class="hide"><label for="inboxUploadKey">Kunci muat naik akaun ini — salin sekali ke Shortcut</label><input id="inboxUploadKey" readonly autocomplete="off" spellcheck="false"><button id="inboxCopyKey" class="secondary" type="button">Salin Kunci</button><p class="small muted">Kunci hanya boleh menghantar fail. Tamat selepas 90 hari; ganti atau nyahaktif di sini. Jangan kongsi Shortcut yang masih mengandungi kunci akaun anda.</p></div>
+  <ol class="inbox-shortcut-steps">
+   <li>Buka aplikasi <b>Shortcuts</b> pada iPhone, tekan <b>+</b>, namakan <b>Hantar ke FARIS</b>. Dalam Details, hidupkan <b>Show in Share Sheet</b> dan terima <b>Files / PDFs / Images</b>.</li>
+   <li>Tambah tindakan <b>Repeat with Each</b>. Input: <b>Shortcut Input</b>.</li>
+   <li>Dalam Repeat, tambah <b>Get Contents of URL</b>. Salin URL di bawah. Method: <b>POST</b>.</li>
+   <li>Dalam Headers, tambah <b>X-Faris-Upload-Key</b>. Nilainya: kunci yang dijana di atas. Jangan gunakan passcode staf.</li>
+   <li>Request Body: <b>Form</b>. Tambah medan jenis <b>File</b>, nama medan <b>file</b>, nilai <b>Repeat Item</b>. Jangan isi Content-Type sendiri; Shortcuts akan menetapkannya.</li>
+   <li>Tambah <b>Get Dictionary Value</b> untuk kunci <b>ok</b> daripada hasil Get Contents of URL. Tambah <b>If</b>: jika nilainya tidak benar, <b>Show Alert</b> “Fail tidak berjaya dihantar” dan <b>Stop This Shortcut</b>. Tutup If dan Repeat.</li>
+   <li>Selepas End Repeat, tambah <b>URL</b> dengan pautan Dokumen di bawah, kemudian <b>Open URLs</b>.</li>
+   <li>Di WhatsApp, buka dokumen → <b>Share → Hantar ke FARIS</b>. Benarkan Shortcut menghubungi server apabila diminta kali pertama. Dokumen akan disimpan, kemudian ruang Dokumen dibuka. Log masuk jika diminta.</li>
+  </ol>
+  <label>URL muat naik</label><code id="inboxEndpoint" class="inbox-copy-value"></code><button id="inboxCopyEndpoint" class="secondary" type="button">Salin URL Muat Naik</button>
+  <label>URL buka Dokumen</label><code class="inbox-copy-value">https://document-pdf-compiler.vercel.app/staff.html#docs</code><button id="inboxCopyOpenUrl" class="secondary" type="button">Salin URL Dokumen</button>
+  <p class="small muted"><a href="https://support.apple.com/guide/shortcuts/run-a-shortcut-from-another-app-apd163eb9f95/ios" target="_blank" rel="noopener noreferrer">Panduan rasmi Apple: Share Sheet</a> · <a href="https://support.apple.com/guide/shortcuts/request-your-first-api-apd58d46713f/ios" target="_blank" rel="noopener noreferrer">Panduan POST / Form</a></p>
+ </details>
+ <div class="inbox-filters"><input id="inboxSearch" type="search" placeholder="Cari nama fail..." aria-label="Cari nama fail"><button id="inboxSearchButton" type="button" class="secondary">Cari</button><select id="inboxState" aria-label="Status simpanan fail"><option value="inbox">Belum diagih</option><option value="assigned">Sudah disusun / diagih</option><option value="all">Semua fail</option></select></div>
+ <label id="inboxTeamLabel" class="checkline hide"><input id="inboxTeam" type="checkbox"> Lihat fail semua staf (admin)</label>
+ <div class="inbox-selection"><label class="checkline"><input id="inboxSelectAll" type="checkbox"> Pilih semua yang dipaparkan</label><span id="inboxSelectedCount" class="small muted">0 fail dipilih</span></div>
+ <p id="inboxTotal" class="small muted"></p><div id="inboxList" class="inbox-list" aria-live="polite"><div class="empty">Buka Dokumen untuk memuatkan Fail Masuk.</div></div>
+ <button id="inboxLoadMore" type="button" class="secondary hide">Muat Lagi Fail</button>
+ <form id="inboxAssignmentForm" class="innerpanel inbox-assignment">
+  <h3>Susun fail yang dipilih</h3><p class="small muted">Pilih maksimum 30 fail untuk seorang pelanggan. Fail asal kekal disimpan selepas agihan atau dibuka dalam Compiler.</p>
+  <div class="inbox-assignment-grid"><label>Nama pelanggan<input id="inboxCustomer" maxlength="120" minlength="2" placeholder="Contoh: Ahmad bin Ali" required></label><label>Nombor pelanggan (pilihan)<input id="inboxPhone" inputmode="tel" placeholder="0123456789"></label><label>Bahagian<select id="inboxParty"><option value="HIRER">Peminjam / Hirer</option><option value="GUARANTOR">Penjamin / Guarantor</option><option value="REBATE">COP Rebate</option></select></label><label>Kategori<select id="inboxCategory"></select></label><label id="inboxOwnerLabel" class="hide">Agihkan kepada staf<select id="inboxOwner"><option value="">Kekalkan pemilik fail</option></select></label></div>
+  <div class="workspace-actions"><button id="inboxSaveAssignment" type="submit" class="secondary" disabled>Simpan Agihan</button><button id="inboxOpenCompiler" type="button" class="primary" disabled>Buka Dalam Compiler</button></div>
+ </form>
+</section>
+</section><section id="workspace-telegram" class="workspace-page hide" hidden data-workspace-page="telegram" aria-labelledby="telegramTitle"><section id="telegramPanel" class="panel hide" aria-labelledby="telegramTitle">
  <div class="panelhead tg-head"><div><h2 id="telegramTitle">✈ Telegram Bot · FARIS LEAD HUB</h2>
  <p class="muted">Satu sistem untuk fail pelanggan, VSO DRAF dan nombor WhatsApp. Kongsi fail daripada WhatsApp ke Telegram secara manual; bot tidak membaca inbox WhatsApp.</p></div>
  <button id="telegramClose" class="secondary" type="button">Tutup ✕</button></div>
@@ -561,8 +601,10 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
 <footer>FARIS R+PROTON · Staff Lead Operations · Sambungan selamat melalui HTTPS</footer>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="/staff-navigation.js?v=workspaces-v35-20261026"></script>
-<script src="/staff-passcode.js?v=workspaces-v35-20261026"></script>
+<script src="/inbox-client.js?v=inbox-v36-20261026"></script>
+<script src="/staff-inbox.js?v=inbox-v36-20261026"></script>
+<script src="/staff-navigation.js?v=inbox-v36-20261026"></script>
+<script src="/staff-passcode.js?v=inbox-v36-20261026"></script>
 
-<script src="/telegram-hub.js?v=workspaces-v35-20261026"></script>
+<script src="/telegram-hub.js?v=inbox-v36-20261026"></script>
 </body></html>

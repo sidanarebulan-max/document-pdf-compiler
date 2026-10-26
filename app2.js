@@ -5,10 +5,12 @@
     if(item.thumbnail || item.thumbnailBusy)return;
     item.thumbnailBusy=true;
     const ext=extOf(item.file.name);
+    const originalPages=item.pages;
     try{
       let canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
       if(ext==='pdf'){
         const pdf=await pdfjsLib.getDocument({data:new Uint8Array(await item.file.arrayBuffer())}).promise;
+        item.pages=pdf.numPages;
         try{
           const page=await pdf.getPage(1);
           const vp=page.getViewport({scale:0.6});
@@ -44,6 +46,7 @@
     }catch(e){item.thumbnailError=true;log('Thumbnail tidak tersedia untuk '+item.file.name+': '+e.message);}
     finally{
       item.thumbnailBusy=false;
+      if(item.pages!==originalPages&&items.includes(item))render();
       const el=document.querySelector('[data-source-thumb="'+item.id+'"]');
       if(el && item.thumbnail)el.innerHTML='<img src="'+item.thumbnail+'" alt="Pratonton muka surat pertama">';
     }
@@ -95,7 +98,7 @@
     item.analyzed=true;
   }
 
-  async function addFiles(fileList){
+  async function addFiles(fileList,options={}){
     const accepted=['pdf','jpg','jpeg','png','webp','heic','heif','docx','xlsx','xls','txt'];
     const files=[...fileList].filter(f=>accepted.includes(extOf(f.name)));
     const rejected=[...fileList].filter(f=>!accepted.includes(extOf(f.name)));
@@ -121,8 +124,29 @@
     render();
     // Jana thumbnail secara berperingkat, bebas daripada analisis pengelasan.
     for(const item of newlyAdded)makeSourceThumbnail(item);
-    if(files.length){ await analyzeAll(false,uploadParty); }
+    if(files.length&&options.analyze!==false){ await analyzeAll(false,uploadParty); }
+    return newlyAdded;
   }
+
+  window.FARIS_COMPILER={async importInbox(entries){
+    for(const {file,metadata} of entries){
+      const party=['HIRER','GUARANTOR','REBATE'].includes(metadata.party)?metadata.party:'HIRER';
+      switchParty(party);
+      const added=await addFiles([file],{analyze:false});
+      if(added.length!==1)throw Error('Format fail tidak boleh dibuka dalam Compiler: '+file.name);
+      const item=added[0],valid=categoriesFor(party).map(x=>x.id);
+      const manual=valid.includes(metadata.category);
+      const guess=party==='REBATE'?classifyRebateItem(file.name,''):classifyText(file.name,'');
+      item.category=manual?metadata.category:valid.includes(guess.category)?guess.category:'OTHER';
+      item.confidence=manual?100:guess.confidence;item.review=!manual;item.analyzed=manual;
+      item.note=manual?'Kategori dipilih daripada Fail Masuk':'Dari Fail Masuk — semak kategori atau tekan Analisis';
+      partyNames[party]=metadata.customer_name||'';
+      $('#partyName').value=partyNames[party];
+      if(metadata.customer_name)$('#customerName').value=metadata.customer_name;
+      if(metadata.customer_phone)$('#customerPhone').value=metadata.customer_phone;
+    }
+    render();log(entries.length+' fail dimuatkan daripada Fail Masuk. Fail asal kekal disimpan.');
+  }};
 
   async function analyzeAll(force=true,party=activeParty){
     const current=partyItems(party);

@@ -18,14 +18,14 @@ const path=require('node:path');
     const url=new URL(route.request().url());
     if(url.hostname==='workspace.test'){
      const file=url.pathname==='/staff.html'?'staff.html':url.pathname.slice(1);
-     if(['staff.html','staff.css','staff-navigation.js','staff-passcode.js','telegram-hub.js'].includes(file)){
+     if(['staff.html','staff.css','staff-navigation.js','staff-passcode.js','telegram-hub.js','inbox-client.js','staff-inbox.js'].includes(file)){
       return route.fulfill({status:200,contentType:file.endsWith('.html')?'text/html':file.endsWith('.css')?'text/css':'text/javascript',body:fs.readFileSync(path.join(process.cwd(),file),'utf8')});
      }
     }
     if(url.hostname.endsWith('.supabase.co')){
      if(route.request().method()==='OPTIONS')return route.fulfill({status:204,headers:{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization,content-type','Access-Control-Allow-Methods':'POST'}});
      const {action}=route.request().postDataJSON();calls.push(action);
-     const result=action==='me'?{ok:true,user}:action==='list'?{ok:true,leads:[],history:[],staff:[],available_count:0,assignment_history:[{
+     const result=url.pathname.endsWith('/lead-hub-inbox')&&action==='list'?{ok:true,files:[],total:0,next_offset:null,staff:[]}:action==='me'?{ok:true,user}:action==='list'?{ok:true,leads:[],history:[],staff:[],available_count:0,assignment_history:[{
       id:1,lead_id:'ridwhan',assignee_name:'Aiman',assignee_code:'AIMAN01',event_type:'legacy_assignment',assigned_at:null,recorded_at:'2026-10-26T12:00:00Z',lead:{customer_name:'Ridwhan',phone_e164:'60123456789',model:'Proton e.MAS 5'}
      }]}:action==='status_admin'?{ok:true,devices:[],enabled:false,pending:0}:{ok:true,team:{},personal:{},connected:false};
      return route.fulfill({status:200,contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:JSON.stringify(result)});

@@ -27,6 +27,7 @@ function viewAuth(){
  $("messageSettingsBtn").classList.add("hide");$("messageSettingsPanel").classList.add("hide");
  $("adminCredentialsShortcut").classList.add("hide");
  window.FARIS_NAV?.onLogout?.();
+ window.FARIS_INBOX?.onLogout?.();
  window.FARIS_TG?.onLogout?.();
 }
 function credentials(id,passcode){
@@ -113,6 +114,7 @@ async function showApp(){
  $("adminPanel").classList.toggle("hide",user.role!=="admin");
  $("claimBtn").classList.toggle("hide",user.role==="admin");
  window.FARIS_TG?.onLogin?.(user);
+ window.FARIS_INBOX?.onLogin?.(user);
  window.FARIS_NAV?.onLogin?.(user);
  await reload();
 }
@@ -590,6 +592,7 @@ async function copy(text){
  catch{window.prompt("Salin maklumat:",text)}
 }
 function wireEvents(){
+ window.addEventListener("faris-session-renewed",e=>{if(e.detail?.token)token=e.detail.token});
  $("loginForm").addEventListener("submit",login);
  $("signoutBtn").addEventListener("click",logout);
  $("messageSettingsBtn").addEventListener("click",()=>toggleMessageSettings());
