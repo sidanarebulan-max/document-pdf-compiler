@@ -292,8 +292,19 @@ async function handler(req:Request):Promise<Response> {
     const {error:se}=await db.from("lead_hub_sessions")
       .delete().eq("account_id",a.id).neq("token_hash",await sha256(currentToken));
     if(se)console.error("Other session revocation:",se.message);
+    // Password/identity changes revoke remembered browsers across all devices.
+    // This browser receives a fresh trusted credential only after current-pass verification.
+    const {error:revoke}=await db.from("lead_hub_trusted_devices").delete().eq("account_id",a.id);
+    if(revoke)throw revoke;
+    const newDeviceToken=randomHex(32);
+    const {error:trustErr}=await db.from("lead_hub_trusted_devices").insert({
+      token_hash:await sha256(newDeviceToken),account_id:a.id,
+      expires_at:new Date(Date.now()+365*24*60*60*1000).toISOString()
+    });
+    if(trustErr)throw trustErr;
     return response(req,{ok:true,staff_code:updated.staff_code,
-      id_changed:updated.staff_code!==mine.staff_code,passcode_changed:Boolean(fresh)});
+      id_changed:updated.staff_code!==mine.staff_code,passcode_changed:Boolean(fresh),
+      device_token:newDeviceToken});
   }
   if(action==="create_staff"){
     const name=String(body.name||"").trim().slice(0,100);
