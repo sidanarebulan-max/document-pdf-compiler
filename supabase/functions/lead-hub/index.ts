@@ -77,6 +77,20 @@ async function listLeads(a:Account) {
   }
   return found;
 }
+async function listAssignmentHistory() {
+  // Shared, read-only team history authorized by the owner. Working leads and
+  // private notes remain scoped to the assigned account in listLeads().
+  const found=[];
+  for(let offset=0;;offset+=500){
+    const {data,error}=await db.from("lead_hub_assignment_history")
+      .select("id,lead_id,assignee_name,assignee_code,event_type,assigned_at,recorded_at,lead:lead_hub_leads!lead_id(customer_name,phone_e164,model)")
+      .order("recorded_at",{ascending:false}).order("id",{ascending:false})
+      .range(offset,offset+499);
+    if(error)throw error;
+    found.push(...data);if(data.length<500)break;
+  }
+  return found;
+}
 async function handler(req:Request):Promise<Response> {
   const origin=req.headers.get("origin");
   if(origin&&!ORIGINS.has(origin))return error(req,"Origin tidak dibenarkan",403);
@@ -223,6 +237,7 @@ async function handler(req:Request):Promise<Response> {
   }
   if(action==="list"){
     const leads=await listLeads(a);
+    const assignment_history=await listAssignmentHistory();
     const validIds=new Set(leads.map((x:any)=>x.id));
     let historyQuery=db.from("lead_hub_lead_activity")
       .select("id,lead_id,actor_id,event_type,stage_before,stage_after,created_at")
@@ -230,17 +245,17 @@ async function handler(req:Request):Promise<Response> {
     if(a.role!=="admin")historyQuery=historyQuery.eq("actor_id",a.id);
     const {data:activity,error:activityErr}=await historyQuery;
     if(activityErr)throw activityErr;
-    // Never leak other agents' contacts, even if they were reassigned later.
+    // Detailed PM activity stays scoped; the separate assignment history is shared.
     const history=(activity||[]).filter((ev:any)=>validIds.has(ev.lead_id)).slice(0,100);
     if(a.role!=="admin"){
       const {count,error}=await db.from("lead_hub_leads").select("id",{head:true,count:"exact"})
         .is("assigned_id",null).eq("stage","new").eq("consent_confirmed",true);
       if(error)throw error;
-      return response(req,{ok:true,leads,history,staff:[profile(a)],available_count:count||0});
+      return response(req,{ok:true,leads,history,assignment_history,staff:[profile(a)],available_count:count||0});
     }
     const {data:staff,error}=await db.from("lead_hub_accounts").select("id,staff_code,display_name,role,active,created_at").order("created_at",{ascending:true});
     if(error)throw error;
-    return response(req,{ok:true,leads,history,staff,available_count:leads.filter(x=>!x.assigned_id&&x.stage==="new").length});
+    return response(req,{ok:true,leads,history,assignment_history,staff,available_count:leads.filter(x=>!x.assigned_id&&x.stage==="new").length});
   }
   if(action==="claim"){
     if(a.role!=="staff")return error(req,"Hanya staf boleh mengambil lead",403);

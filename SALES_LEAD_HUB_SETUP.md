@@ -1,5 +1,15 @@
 # FARIS LEAD HUB — Panduan ID Staf & Passcode
 
+## Sejarah claim / agihan pasukan (26 Oktober 2026)
+
+- Tab **Sejarah** staf memaparkan rekod claim dan agihan semua staf, termasuk apabila akaun sendiri mempunyai 0 lead. Nama pelanggan, nombor, model, nama serta ID staf penerima dipaparkan secara baca sahaja. Nama/ID staf juga boleh dicari.
+- **Belum PM / Dah PM** dan tindakan simpan/buka WhatsApp kekal mengikut pemilik tugasan. Nota peribadi dan aktiviti PM staf lain tidak dikongsi melalui sejarah pasukan.
+- `lead_hub_assignment_history` menyimpan snapshot nama/ID staf; trigger `lead_hub_assignment_audit` meliputi tambah lead, agihan website, claim atomik dan Telegram. Sejarah lama kekal selepas pertukaran/pembatalan agihan. Rekod asal lead yang dipadam masih mengikut dasar cascade sedia ada.
+- Agihan sedia ada dimasukkan sebagai `legacy_assignment` dengan masa claim tidak diketahui. Jangan gunakan `updated_at` sebagai masa claim lama.
+- Skema sumber: `supabase/assignment-history.sql`. RLS aktif, tiada akses terus anon/authenticated; Edge Function `lead-hub` mengesahkan sesi sebelum mengembalikan sejarah pasukan.
+- Pengesahan: 5 ujian `node --test tests/staff-history.test.cjs` lulus. Ujian trigger insert → claim → tukar pemilik → status → nyahagih lulus dalam transaksi rollback. Permintaan HTTP `list` sebenar sebagai SAZ0001 mengembalikan 0 tugasan sendiri + sejarah Ridwhan/AIMAN01 tanpa nota peribadi. Sesi pengesahan sementara sudah dibuang.
+- Skrip paparan telefon/desktop: `node tests/staff-history.browser.cjs` (memerlukan Playwright + Chromium). Ujian pelayar belum dijalankan kerana muat turun Chromium gagal; jangan wakilkan ia sebagai ujian telefon sebenar yang lulus.
+
 Website: https://document-pdf-compiler.vercel.app/staff.html
 Repo: sidanarebulan-max/document-pdf-compiler
 Backend: Supabase project FarisProton / Edge Function `lead-hub`
