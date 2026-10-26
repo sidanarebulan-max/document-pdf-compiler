@@ -1,6 +1,6 @@
 import {parseNatural} from "./natural.mjs";
 import {interpretPdfRequest,isLikelyHumanName} from "./pdf-intents.mjs";
-import {mainMenu,resumeMenu,resumedMessage,parseNavCallback,partyButtons,PAGE_SIZE} from "./navigation.mjs";
+import {mainMenu,documentMenu,whatsappMenu,availableNumbersMenu,resumeMenu,resumedMessage,parseNavCallback,partyButtons,PAGE_SIZE} from "./navigation.mjs";
 import {touchCaseCard} from "./case-card.mjs";
 import {policyModelIntent} from "./intent-policy.mjs";
 import {createClient} from "npm:@supabase/supabase-js@2.57.4";
@@ -563,6 +563,193 @@ async function showCustomerMenu(token:string,chat:number,id:number,account:any,m
  const c=await currentCase(account.id,chat);
  await navReply(token,chat,mainMenu(c),messageId);
 }
+
+async function clearWhatsAppDraft(telegramId:number,chat:number,account:any){
+ const {error}=await db.from("lead_hub_telegram_wa_drafts").delete()
+  .eq("telegram_user_id",telegramId).eq("account_id",account.id).eq("chat_id",chat);
+ if(error)throw error;
+}
+async function showDocumentMenu(token:string,chat:number,id:number,account:any,messageId?:number){
+ await clearCustomerNamePrompt(id,chat,account);
+ await clearWhatsAppDraft(id,chat,account);
+ await navReply(token,chat,documentMenu(await currentCase(account.id,chat)),messageId);
+}
+async function showWhatsAppMenu(token:string,chat:number,id:number,account:any,messageId?:number){
+ await clearCustomerNamePrompt(id,chat,account);
+ await clearWhatsAppDraft(id,chat,account);
+ await navReply(token,chat,whatsappMenu(),messageId);
+}
+async function beginWhatsAppAdd(token:string,chat:number,id:number,account:any,messageId?:number){
+ await clearCustomerNamePrompt(id,chat,account);
+ const {error}=await db.from("lead_hub_telegram_wa_drafts").upsert({
+  telegram_user_id:id,account_id:account.id,chat_id:chat,step:"name",payload:{},
+  expires_at:new Date(Date.now()+20*60*1000).toISOString(),
+  updated_at:new Date().toISOString()
+ },{onConflict:"telegram_user_id"});
+ if(error)throw error;
+ await navReply(token,chat,{
+  text:"➕ TAMBAH NO WHATSAPP — LANGKAH 1/4\n\nMasukkan nama pelanggan.\nContoh: Ahmad bin Ali\n\nTaip 'batal' untuk keluar.",
+  reply_markup:{inline_keyboard:[[{text:"❌ Batal",callback_data:"faris_nav:wa"}]]}
+ },messageId);
+}
+async function handleWhatsAppDraft(token:string,chat:number,id:number,account:any,text:string){
+ const {data:d,error}=await db.from("lead_hub_telegram_wa_drafts")
+  .select("step,payload,expires_at").eq("telegram_user_id",id)
+  .eq("account_id",account.id).eq("chat_id",chat).maybeSingle();
+ if(error)throw error;
+ if(!d)return false;
+ const expired=Date.parse(d.expires_at)<=Date.now();
+ if(expired){
+  await clearWhatsAppDraft(id,chat,account);
+  await say(token,chat,"⏰ Borang nombor tamat tempoh. Buka WhatsApp → Tambah No Baru untuk bermula semula.");return true;
+ }
+ if(/^(?:batal|cancel|stop|xjadi|tak jadi)$/i.test(text.trim())){
+  await clearWhatsAppDraft(id,chat,account);
+  await say(token,chat,"✅ Penambahan nombor dibatalkan. Tiada nombor disimpan.",{
+   reply_markup:{inline_keyboard:[[{text:"📲 Menu WhatsApp",callback_data:"faris_nav:wa"}]]}
+  });return true;
+ }
+ const payload=d.payload||{};
+ async function advance(step:string,next:any,message:string){
+  const {error:e}=await db.from("lead_hub_telegram_wa_drafts").update({
+   step,payload:next,updated_at:new Date().toISOString(),
+   expires_at:new Date(Date.now()+20*60*1000).toISOString()
+  }).eq("telegram_user_id",id).eq("account_id",account.id).eq("chat_id",chat).eq("step",d.step);
+  if(e)throw e;
+  await say(token,chat,message);
+ }
+ if(d.step==="name"){
+  if(!isLikelyHumanName(text)){
+   await say(token,chat,"⚠️ Nama kurang jelas. Taip nama pelanggan sahaja. Contoh: Ahmad bin Ali.");return true;
+  }
+  await advance("phone",{name:text.trim().replace(/\s+/g," ")},
+   "➕ TAMBAH NO WHATSAPP — LANGKAH 2/4\n\nMasukkan nombor Malaysia.\nContoh: 0123456789 atau +60123456789.");
+  return true;
+ }
+ if(d.step==="phone"){
+  const phone=normalPhone(text);
+  if(!phone){
+   await say(token,chat,"⚠️ Nombor tidak sah. Gunakan nombor telefon bimbit Malaysia, contoh 0123456789.");return true;
+  }
+  // Check duplication before requesting consent, but never disclose an unrelated lead owner.
+  const {data:existing}=await db.from("lead_hub_leads").select("id").eq("phone_e164",phone).maybeSingle();
+  if(existing){
+   await clearWhatsAppDraft(id,chat,account);
+   await say(token,chat,"⚠️ Nombor ini sudah wujud dalam FARIS. Rekod asal tidak diubah. "+
+    "Jika tak nampak dalam No Tersedia, minta Admin semak agihan lead.",{
+     reply_markup:{inline_keyboard:[[{text:"📇 No Tersedia",callback_data:"faris_nav:wa:list:0"}]]}
+    });return true;
+  }
+  await advance("model",{...payload,phone},
+    "➕ TAMBAH NO WHATSAPP — LANGKAH 3/4\n\nModel kereta yang pelanggan minat?\nContoh: Proton e.MAS 7\n\nTaip 'langkau' jika belum tahu.");
+  return true;
+ }
+ if(d.step==="model"){
+  const value=text.trim();
+  const skip=/^(?:langkau|skip|tak tahu|belum tahu|tiada|belum pasti)$/i.test(value);
+  if(!skip&&(value.length<2||value.length>100)){
+   await say(token,chat,"⚠️ Model mesti 2–100 aksara. Contoh: e.MAS 5, atau taip 'langkau'.");return true;
+  }
+  const model=skip?"Belum ditentukan":value.slice(0,100);
+  await advance("consent",{...payload,model},
+   "➕ TAMBAH NO WHATSAPP — LANGKAH 4/4\n"+
+   "👤 "+payload.name+"\n📱 +"+payload.phone+"\n🚘 "+model+
+   "\n\nAdakah pelanggan sudah memberi kebenaran untuk nombor digunakan bagi urusan jualan dan dihubungi?\n"+
+   "Taip YA untuk simpan, atau BATAL. Jangan simpan tanpa kebenaran.");
+  return true;
+ }
+ if(d.step==="consent"){
+  if(text.trim().toUpperCase()!=="YA"){
+   await say(token,chat,"⚠️ Nombor belum disimpan. Taip YA hanya jika pelanggan benar-benar memberi kebenaran, atau BATAL.");return true;
+  }
+  if(!isLikelyHumanName(payload.name)||!normalPhone(payload.phone)||!payload.model){
+   await clearWhatsAppDraft(id,chat,account);
+   await say(token,chat,"⚠️ Maklumat borang tidak lengkap. Sila daftar semula.");return true;
+  }
+  const row={customer_name:payload.name,phone_e164:payload.phone,
+   model:payload.model,consent_confirmed:true,source:"Telegram "+account.staff_code,
+   created_by:account.id,...(account.role==="staff"?{assigned_id:account.id,stage:"new"}:{})};
+  const {data:created,error:e}=await db.from("lead_hub_leads")
+   .upsert(row,{onConflict:"phone_e164",ignoreDuplicates:true}).select("id").maybeSingle();
+  if(e)throw e;
+  await clearWhatsAppDraft(id,chat,account);
+  await say(token,chat,created?
+   "✅ NOMBOR BERJAYA DISIMPAN\n👤 "+payload.name+
+    "\n📱 +"+payload.phone+"\n🚘 "+payload.model+
+    "\n\nRekod terus masuk FARIS LEAD HUB.":
+   "⚠️ Nombor telah wujud. Rekod asal kekal, tiada pendua dicipta.",{
+    reply_markup:{inline_keyboard:[
+     [{text:"📇 No Tersedia",callback_data:"faris_nav:wa:list:0"}],
+     [{text:"📲 Menu WhatsApp",callback_data:"faris_nav:wa"}]
+    ]}
+   });return true;
+ }
+ return false;
+}
+async function showAvailableNumbers(token:string,chat:number,id:number,account:any,page:number=0,messageId?:number){
+ await clearCustomerNamePrompt(id,chat,account);
+ await clearWhatsAppDraft(id,chat,account);
+ const requestPage=Math.max(0,Math.min(Number(page)||0,999));
+ const query=(p:number)=>{
+  let q=db.from("lead_hub_leads").select("id,customer_name,phone_e164,created_at",{count:"exact"})
+   .order("created_at",{ascending:false}).order("id",{ascending:false})
+   .range(p*7,p*7+6);
+  if(account.role!=="admin")q=q.eq("assigned_id",account.id);
+  return q;
+ };
+ let {data,error,count}=await query(requestPage);
+ if(error)throw error;
+ const validPage=Math.min(requestPage,Math.max(0,Math.ceil((count||0)/7)-1));
+ if(validPage!==requestPage){
+  const r=await query(validPage);
+  if(r.error)throw r.error;
+  data=r.data;count=r.count;
+ }
+ await navReply(token,chat,availableNumbersMenu(data,validPage,count||0,account.role==="admin"),messageId);
+}
+async function openAvailableNumber(token:string,chat:number,id:number,account:any,leadId:string,messageId?:number){
+ let query=db.from("lead_hub_leads").select("id,customer_name,phone_e164,model,stage,assigned_id")
+  .eq("id",leadId);
+ if(account.role!=="admin")query=query.eq("assigned_id",account.id);
+ const {data:lead,error}=await query.maybeSingle();
+ if(error)throw error;
+ if(!lead){
+  await navReply(token,chat,{text:"⚠️ Nombor ini tiada atau belum ditugaskan kepada akaun kau.",
+   reply_markup:{inline_keyboard:[[{text:"📇 No Tersedia",callback_data:"faris_nav:wa:list:0"}]]}
+  },messageId);return;
+ }
+ const {data:link}=await db.from("lead_hub_telegram_links").select("selected_template")
+  .eq("telegram_user_id",id).eq("account_id",account.id).maybeSingle();
+ const template=["intro","follow","price"].includes(link?.selected_template)?link.selected_template:"intro";
+ const message=await messageFor(account,lead,template);
+ const url="https://wa.me/"+lead.phone_e164+"?text="+encodeURIComponent(message);
+ const result={
+  text:"📲 WHATSAPP PELANGGAN\n👤 "+lead.customer_name+
+   "\n📱 +"+lead.phone_e164+"\n🚘 "+(lead.model||"Belum ditentukan")+
+   "\n📋 Status: "+lead.stage+
+   "\n📝 Skrip: "+template+"\n\nTekan butang untuk membuka WhatsApp dengan mesej siap. "+
+   "Penghantaran tidak dibuat automatik.",
+  reply_markup:{inline_keyboard:[
+   [{text:"💬 Buka WhatsApp",url}],
+   [{text:"📇 No Tersedia",callback_data:"faris_nav:wa:list:0"}],
+   [{text:"📲 Menu WhatsApp",callback_data:"faris_nav:wa"}]
+  ]}
+ };
+ await navReply(token,chat,result,messageId);
+}
+async function claimAvailableNumber(token:string,chat:number,id:number,account:any){
+ if(account.role==="admin"){
+  await say(token,chat,"Admin boleh agihkan nombor melalui dashboard FARIS.");return;
+ }
+ const {data,error}=await db.rpc("lead_hub_claim_next",{_staff_id:account.id});
+ if(error){await say(token,chat,"⚠️ Tidak dapat ambil nombor. Semak agihan dengan Admin.");return;}
+ await say(token,chat,data?
+  "✅ Nombor berjaya diambil dan dipautkan ke ID staf kau. Buka No Tersedia untuk WhatsApp.":
+  "📭 Tiada nombor belum diagih buat masa ini.",{
+   reply_markup:{inline_keyboard:[[{text:"📇 No Tersedia",callback_data:"faris_nav:wa:list:0"}]]}
+  });
+}
+
 async function showResumeCustomerMenu(token:string,chat:number,id:number,account:any,
  page:number=0,messageId?:number){
  await clearCustomerNamePrompt(id,chat,account);
