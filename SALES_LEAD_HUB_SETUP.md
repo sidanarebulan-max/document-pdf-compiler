@@ -263,3 +263,13 @@ If the native Telegram slash-command list still shows older actions, an admin ca
 - Aliran New Customer kini mengesahkan input menyerupai nama sebenar, bukan soalan/perintah. Ini mencegah pendaftaran baharu menggunakan ayat perbualan sebagai nama; rekod lama yang tersalah nama **tidak diubah automatik**.
 
 **Pengesahan:** Edge Function v26 ACTIVE dan mengandungi modul `pdf-intents.mjs`. SQL menyemak jadual partial merge RLS aktif, tiada permintaan separa sintetik ditinggalkan, serta kes ujian asal masih mempunyai 7 fail dan status collecting. Ujian parser beberapa ayat pengguna lulus. Belum dilakukan ujian sebenar dengan muat naik PDF terkunci dan klik dalam Telegram; cuba pada kes dummy atau kes yang dibenarkan dan semak output sebelum urusan rasmi.
+
+## Telegram v28 — navigasi ikut halaman dan WhatsApp (26 Oktober 2026)
+
+**Menu utama:** dua butang sebaris **📁 Dokumen** dan **📲 WhatsApp**. Bahagian Dokumen membuka submenu New Customer / Resume Customer, bersama pilihan Peminjam, Add Guarantor dan Cop Rebate untuk kes yang aktif. Halaman WhatsApp menunjukkan **➕ Tambah No Baru** dan **📇 No Tersedia** bersebelahan, dengan butang kembali ke Menu Utama.
+
+**Tambah No Baru:** borang Telegram berperingkat: (1) nama, (2) no. telefon bimbit Malaysia, (3) model kereta (boleh langkau), (4) pengesahan pelanggan telah mengizinkan nombornya digunakan untuk urusan jualan. Data hanya ditulis ke `lead_hub_leads` selepas staf membalas `YA` pada pengesahan tersebut. Unik pada `phone_e164` dan tidak menimpa lead lama. Staf ditugaskan pada lead yang mereka daftarkan; lead Admin tidak diagih secara automatik. Borang boleh dibatalkan dan luput dalam 20 minit.
+
+**No Tersedia:** senarai tersusun mengikut tarikh, 7 nombor setiap halaman, butang seterusnya / kembali / refresh. Admin melihat lead keseluruhan; staf hanya lead `assigned_id` milik akaun sendiri. Nombor belum diagih tidak dipaparkan kepada staf lain; butang **Ambil No Belum Diagih** menggunakan RPC agihan atomik yang sedia ada. Klik lead yang dibenarkan untuk paparan terperinci serta butang `wa.me` yang membuka WhatsApp telefon dengan teks daripada templat intro/follow/price FARIS. Mengklik tidak bermaksud WhatsApp benar-benar dihantar; status contacted tidak diubah secara automatik.
+
+**Keselamatan & status:** `lead_hub_telegram_wa_drafts` ialah jadual sementara dengan RLS aktif dan hanya service role boleh akses; pergerakan keluar halaman membatalkan draf agar nama/nombor tidak bocor masuk ke borang kes dokumen. Fungsi `lead-hub-telegram` v28 ACTIVE. 19 ujian logik kod lulus dan fungsi live disemak. Belum ada ujian hujung-ke-hujung menggunakan klik butang sebenar dalam Telegram. Tiada lead pelanggan ditulis/WhatsApp dihantar semasa pembangunan.
