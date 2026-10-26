@@ -539,7 +539,16 @@ async function init(){
  if(!token&&!deviceToken){viewAuth();return}
  try{
   if(!token&&deviceToken)await renewTrustedBrowser();
-  const r=await call("me");user=r.user;await showApp();
+  const r=await call("me");user=r.user;
+  if(!deviceToken){
+   try{
+    const remembered=await call("remember_device");
+    if(remembered.device_token){
+     deviceToken=remembered.device_token;localStorage.setItem(DEVICE_KEY,deviceToken);
+    }
+   }catch(e){console.warn("Could not remember this browser:",e.message)}
+  }
+  await showApp();
  }catch(e){console.warn("Sesi:",e.message);viewAuth();}
 }
 document.addEventListener("DOMContentLoaded",init);
