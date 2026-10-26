@@ -233,3 +233,18 @@ Tujuan: sentiasa cuba memahami arahan dalam bahasa Melayu santai, bahasa campur,
 - Tiada mesej lama dipadam, tiada fail pelanggan diubah semasa pembangunan. Kes lama yang masih aktif akan menerima kad tunggal baharu pada **muat naik fail selepas penerbitan**.
 - Ujian modul: 50 fail → 3605 aksara (bawah 3900), status ✅/⏳/⚠️ betul, kad terhad pada satu ID kes. Ujian RPC PostgreSQL `touch → claim → finish` lulus dalam transaksi yang di-rollback, tanpa data ujian tertinggal. Kedua-dua Edge Functions dilaporkan ACTIVE dan telah disemak mengandungi mod kemas kini kad.
 - Ujian penghantaran fail baharu dalam Telegram pengguna belum dibuat; gunakan fail dummy dan semak hanya satu kad status dihantar serta dikemas kini selepas keputusan AI.
+
+## Telegram Customer Menu — New / Resume (26 October 2026)
+
+**Active** on Supabase Edge Function `lead-hub-telegram` v25.
+
+**Access:** Staff sends `/start` or `/menu` (typing `menu` also works). Once linked, the bot returns inline buttons **🆕 New Customer** and **📂 Resume Customer**. Buttons use `callback_query` which is already enabled in the current webhook.
+
+- **New:** starts existing guided new-customer-name input. Old active case and its files remain. After name entry, the new case is selected in `lead_hub_telegram_dialog.active_case_id`. Bot also offers Resume and Menu buttons after creation.
+- **Resume:** lists up to seven `state=collecting` customer cases per page, newest first, each with existing file count. Previous/Next pagination is supported without adding a separate bot message on each click.
+- **Select existing case:** uses exact UUID callback with strict Telegram user-to-FARIS account linking, `account_id`, `chat_id`, and `state=collecting` checks. Sets focus and clears previous conversational memory so customer cases do not leak context between customers.
+- **Navigation safety:** menu navigation cancels an unfinished name prompt; text `resume` is handled *before* trying to interpret it as the new customer's name. The existing deletion confirmation flow remains unchanged.
+- **Limitations:** only unfinished `collecting` cases appear; completed case records are not silently reopened. Telegram cannot automatically render a menu just from opening the app without user interaction—use `/start` or `menu`.
+- `navigation.mjs` contains pure button formatting/parsing; tests covered 12 validation scenarios and the final deployed Edge Function includes module and account-scoping checks. No live Telegram clicks or customer data were modified during verification.
+
+If the native Telegram slash-command list still shows older actions, an admin can use **Telegram Bot → Kemas Kini Menu Bot** to sync the `/new`, `/resume`, and `/menu` shortcuts.
