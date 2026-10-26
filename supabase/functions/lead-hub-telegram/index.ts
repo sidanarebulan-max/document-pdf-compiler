@@ -1,6 +1,6 @@
 import {parseNatural} from "./natural.mjs";
 import {interpretPdfRequest,isLikelyHumanName} from "./pdf-intents.mjs";
-import {mainMenu,resumeMenu,resumedMessage,parseNavCallback,PAGE_SIZE} from "./navigation.mjs";
+import {mainMenu,resumeMenu,resumedMessage,parseNavCallback,partyButtons,PAGE_SIZE} from "./navigation.mjs";
 import {touchCaseCard} from "./case-card.mjs";
 import {policyModelIntent} from "./intent-policy.mjs";
 import {createClient} from "npm:@supabase/supabase-js@2.57.4";
@@ -511,6 +511,7 @@ async function createCustomer(token:string,chat:number,id:number,account:any,raw
   "\n\nHantar sahaja fail PDF/JPG/PNG. Bot akan susun dalam folder pelanggan ini.\n"+
   "Kalau nak asingkan kategori, cakap 'ini IC', 'bank', 'gaji' dan sebagainya.",{
    reply_markup:{inline_keyboard:[
+    ...partyButtons(created.id),
     [{text:"📂 Resume Pelanggan Lain",callback_data:"faris_nav:resume:0"}],
     [{text:"🏠 Menu Utama",callback_data:"faris_nav:home"}]
    ]}
@@ -611,6 +612,41 @@ async function resumeCustomerById(token:string,chat:number,id:number,account:any
   .eq("telegram_user_id",id).eq("account_id",account.id);
  await rememberAction(id,account.id,chat,"new_case",c.id);
  await navReply(token,chat,resumedMessage(c,count||0),messageId);
+}
+
+async function selectDocumentSection(token:string,chat:number,id:number,account:any,caseId:string,party:string,messageId?:number){
+ const current=await currentCase(account.id,chat);
+ if(!current||current.id!==caseId){
+  await say(token,chat,"⚠️ Menu ini daripada kes pelanggan lama atau tiada kes aktif. Taip 'menu' dan pilih pelanggan yang betul dahulu.");
+  return;
+ }
+ if(!["HIRER","GUARANTOR","REBATE"].includes(party))return;
+ const {data:updated,error}=await db.from("lead_hub_telegram_cases")
+  .update({active_party:party,active_category:null})
+  .eq("id",caseId).eq("account_id",account.id)
+  .eq("chat_id",chat).eq("state","collecting")
+  .select("id,customer_name,active_party").maybeSingle();
+ if(error)throw error;
+ if(!updated){
+  await say(token,chat,"⚠️ Kes ini sudah tidak aktif. Pilih Resume Customer untuk semak.");
+  return;
+ }
+ const heading=party==="HIRER"?"👤 DOKUMEN PEMINJAM":
+  party==="GUARANTOR"?"➕ ADD GUARANTOR":"🧾 COP REBATE";
+ const description=party==="HIRER"?"Hantar IC, bank, slip gaji atau dokumen peminjam.":
+  party==="GUARANTOR"?"Hantar dokumen penjamin: IC, penyata bank, slip gaji dan dokumen lain yang berkaitan.":
+  "Hantar dokumen Cop Rebate dalam folder pelanggan ini. Pilih IC, lesen, surat kerja atau kategori dokumen yang sesuai.";
+ await navReply(token,chat,{
+  text:"✅ BAHAGIAN DOKUMEN AKTIF\n"+heading+
+   "\n👤 "+String(updated.customer_name).slice(0,90)+
+   "\n🆔 Kes "+String(updated.id).slice(0,8).toUpperCase()+
+   "\n\n"+description+
+   "\n\n📎 Semua fail seterusnya masuk bahagian ini. Dokumen bahagian lain kekal tersimpan.",
+  reply_markup:{inline_keyboard:[
+   ...partyButtons(updated.id),
+   [{text:"🏠 Menu Utama",callback_data:"faris_nav:home"}]
+  ]}
+ },messageId);
 }
 
 async function handleDoc(token:string,conf:any,chat:number,account:any,message:any){
@@ -1140,6 +1176,8 @@ async function processUpdate(update:any,conf:any,token:string){
     await showResumeCustomerMenu(token,chat,id,account,nav.page,messageId);
    else if(nav.kind==="open")
     await resumeCustomerById(token,chat,id,account,nav.caseId,messageId);
+   else if(nav.kind==="party")
+    await selectDocumentSection(token,chat,id,account,nav.caseId,nav.party,messageId);
    return;
   }
   if(action==="faris_delete_processing"){
