@@ -1,4 +1,5 @@
 import {parseNatural} from "./natural.mjs";
+import {interpretPdfRequest,isLikelyHumanName} from "./pdf-intents.mjs";
 import {mainMenu,resumeMenu,resumedMessage,parseNavCallback,PAGE_SIZE} from "./navigation.mjs";
 import {touchCaseCard} from "./case-card.mjs";
 import {policyModelIntent} from "./intent-policy.mjs";
@@ -189,7 +190,7 @@ function mergeIssueText(issues:MergeIssue[]){
     "⚠️ Struktur PDF tidak dapat dibaca atau tidak serasi"));
  return lines.join("\n\n")+(issues.length>12?"\n… dan "+(issues.length-12)+" fail lain.":"");
 }
-async function makeMergedPdf(caseRow:any,files:any[]){
+async function makeMergedPdf(caseRow:any,files:any[],allowPartial=false){
  const orderFor=(file:any)=>file.party==="REBATE"
   ?({IC_FRONT:1,IC:1,IC_BACK:2,LESEN:3,SURAT_KERJA:4,SIJIL_LAHIR:5,SIJIL_NIKAH:6,SIJIL:7,BANK:8,PAYSLIP:9,VSO:10,OTHER:11}[file.category as "OTHER"]||99)
   :(RANK[file.category]||99);
@@ -201,7 +202,7 @@ async function makeMergedPdf(caseRow:any,files:any[]){
   ((a.telegram_message_id??0)-(b.telegram_message_id??0))||
   a.created_at.localeCompare(b.created_at));
  const pdf=await PDFDocument.create();let lastParty="",pages=0;
- const issues:MergeIssue[]=[];
+ const issues:MergeIssue[]=[],mergedIds:string[]=[];
  for(const item of sorted){
   const number=Number(numbers.get(item.id)||0);
   const filename=String(item.original_name||"Dokumen tidak bernama");
@@ -227,6 +228,7 @@ async function makeMergedPdf(caseRow:any,files:any[]){
     const source=await PDFDocument.load(bytes,{updateMetadata:false});
     const copied=await pdf.copyPages(source,source.getPageIndices());
     for(const page of copied){pdf.addPage(page);pages++}
+    mergedIds.push(item.id);
    }catch(e){
     issues.push({number,filename,problem:reportPdfIssue(e)});
     console.warn("PDF merge unsupported document number",number,"cause",String(e).slice(0,95));
@@ -237,16 +239,17 @@ async function makeMergedPdf(caseRow:any,files:any[]){
     const page=pdf.addPage([595,842]),ratio=Math.min(555/image.width,802/image.height);
     page.drawImage(image,{x:(595-image.width*ratio)/2,y:(842-image.height*ratio)/2,width:image.width*ratio,height:image.height*ratio});
     pages++;
+    mergedIds.push(item.id);
    }catch(e){issues.push({number,filename,problem:"image"});}
   }
   if(pages>100)throw Error("Maksimum 100 muka surat setiap gabungan Telegram.");
  }
- if(issues.length){
+ if(issues.length&&!allowPartial){
   const e=new Error("Ada "+issues.length+" fail yang tidak boleh digabung.") as Error&{mergeIssues?:MergeIssue[]};
   e.mergeIssues=issues;throw e;
  }
- if(!pages)throw Error("Tiada dokumen untuk dijana.");
- return new Uint8Array(await pdf.save({useObjectStreams:true}));
+ if(!mergedIds.length)throw Error("Tiada fail yang boleh dibaca untuk dijana.");
+ return {bytes:new Uint8Array(await pdf.save({useObjectStreams:true})),issues,mergedIds};
 }
 async function telegramSendDocument(token:string,chat:number,bytes:Uint8Array,name:string,caption:string){
  if(bytes.byteLength>45*1024*1024)throw Error("PDF akhir melebihi 45MB, sila guna PDF Compiler web.");
@@ -482,7 +485,7 @@ async function beginNewCustomer(token:string,chat:number,id:number,account:any){
 }
 async function createCustomer(token:string,chat:number,id:number,account:any,raw:string){
  const name=String(raw||"").trim().replace(/\s+/g," ");
- if(!/^[\p{L}][\p{L}.'’\- ]{1,119}$/u.test(name) ||
+ if(!isLikelyHumanName(raw) ||
     /^(?:new|list|status|senarai|batal|cancel|mula|siap|yes|no)$/i.test(name)){
   await say(token,chat,"Nama belum jelas. Balas nama pelanggan, contoh 'Ahmad bin Ali', atau 'batal'.");return;
  }
@@ -1073,8 +1076,11 @@ async function processUpdate(update:any,conf:any,token:string){
   }
   const incoming=parseNatural(txt);
   // A name is free text, but do not silently treat operational commands as names.
-  if(incoming.kind==="chat"&&!txt.startsWith("/")){
+  if(incoming.kind==="chat"&&!txt.startsWith("/")&&isLikelyHumanName(txt)){
    await createCustomer(token,chat,id,account,txt);return;
+  }
+  if(incoming.kind==="chat"&&!isLikelyHumanName(txt)){
+   await say(token,chat,"Itu nampak seperti ayat atau soalan, bukan nama pelanggan. Siapa nama pelanggan? Contoh: Ahmad bin Ali. Taip batal untuk keluar.");return;
   }
  }
  if(/^\/(?:new|pelangganbaru|customerbaru)(?:@\w+)?$/i.test(txt)){
@@ -1327,7 +1333,7 @@ async function processUpdate(update:any,conf:any,token:string){
    try{
     const result=await makeMergedPdf(c,files);
     const clean=safePdfText(c.customer_name).replace(/\s+/g,"_").slice(0,50)||"CUSTOMER";
-    await telegramSendDocument(token,chat,result,clean+"_DOKUMEN_LENGKAP.pdf",
+    await telegramSendDocument(token,chat,result.bytes,clean+"_DOKUMEN_LENGKAP.pdf",
       "✅ DOKUMEN SIAP | "+c.customer_name+" | "+files.length+" fail. Sila semak sebelum serah.");
     await db.from("lead_hub_telegram_cases").update({
      state:"completed",completed_at:new Date().toISOString()
