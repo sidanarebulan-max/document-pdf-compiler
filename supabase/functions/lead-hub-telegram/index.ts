@@ -89,6 +89,9 @@ const TYPES=["VSO","IC","IC_FRONT","IC_BACK","LESEN","PAYSLIP","BANK","SURAT_KER
 const REBATE_TYPES=["VSO","IC","IC_FRONT","IC_BACK","LESEN","PAYSLIP","BANK","SURAT_KERJA","SIJIL_LAHIR","SIJIL_NIKAH","SIJIL","OTHER"];
 const RANK:{[k:string]:number}={VSO:1,IC:2,IC_FRONT:2,IC_BACK:2,LESEN:3,PAYSLIP:4,BANK:5,SURAT_KERJA:6,SIJIL_LAHIR:7,SIJIL_NIKAH:8,SIJIL:9,OTHER:10};
 const TELEGRAM_COMMAND_MENU=[
+ {command:"menu",description:"Menu utama: New atau Resume"},
+ {command:"new",description:"Pelanggan baharu"},
+ {command:"resume",description:"Sambung kes pelanggan lama"},
  {command:"pelanggan",description:"Buka kes pelanggan baharu"},
  {command:"ic",description:"Kumpul IC, banyak fail"},
  {command:"bank",description:"Kumpul penyata bank"},
@@ -104,8 +107,7 @@ const TELEGRAM_COMMAND_MENU=[
  {command:"senarai",description:"Semak dokumen pelanggan"},
  {command:"siap",description:"Hantar PDF siap susun"},
  {command:"buatvso",description:"Jana VSO DRAF dengan borang chat"},
- {command:"baru",description:"Semak lead WhatsApp"},
- {command:"menu",description:"Bantuan ringkas"}
+ {command:"baru",description:"Semak lead WhatsApp"}
 ];
 const DOC_COMMANDS:Record<string,string>={
  "/ic":"IC","/bank":"BANK","/gaji":"PAYSLIP","/lesen":"LESEN",
@@ -1038,11 +1040,9 @@ async function processUpdate(update:any,conf:any,token:string){
  if(/^\/start(\s|$)/i.test(txt)){
   const code=txt.split(/\s+/)[1];
   if(code)await handleLink(token,chat,id,code.trim().toUpperCase());
-  else{
-   const linkedStart=await linkedTelegramAccount(id);
-   if(linkedStart)await showCustomerMenu(token,chat,id,linkedStart.account);
-   else await say(token,chat,"Selamat datang ke FARIS LEAD HUB Telegram. Sambung akaun melalui website > Telegram Bot > Jana Kod Pautan.");
-  }
+  const linkedStart=await linkedTelegramAccount(id);
+  if(linkedStart)await showCustomerMenu(token,chat,id,linkedStart.account);
+  else if(!code)await say(token,chat,"Selamat datang ke FARIS LEAD HUB Telegram. Sambung akaun melalui website > Telegram Bot > Jana Kod Pautan.");
   return;
  }
  if(/^\/sambung\s+/i.test(txt)){await handleLink(token,chat,id,txt.split(/\s+/)[1]?.toUpperCase()||"");return}
