@@ -248,3 +248,18 @@ Tujuan: sentiasa cuba memahami arahan dalam bahasa Melayu santai, bahasa campur,
 - `navigation.mjs` contains pure button formatting/parsing; tests covered 12 validation scenarios and the final deployed Edge Function includes module and account-scoping checks. No live Telegram clicks or customer data were modified during verification.
 
 If the native Telegram slash-command list still shows older actions, an admin can use **Telegram Bot → Kemas Kini Menu Bot** to sync the `/new`, `/resume`, and `/menu` shortcuts.
+
+## Telegram v26 — PDF Separa, arahan natural dan pengesahan (26 Okt 2026)
+
+**Punca masalah gambar:** Bot memahami `siapkan pdf` tetapi penggabungan 7 fail gagal kerana 3 slip gaji PDF mempunyai sekatan atau kata laluan. Mesej `okay susun file yang boleh sahaja` tidak diberikan laluan khas, menyebabkan bot mengulangi proses gabung semua fail atau memberikan nasihat umum. Satu kes juga mempunyai nama pelanggan yang sebenarnya ayat soalan kerana aliran nama baharu terlalu longgar.
+
+**Pembaikan aktif (Edge `lead-hub-telegram` v26):**
+- Laluan jelas untuk `susun file yang boleh sahaja`, `gabung tanpa PDF berkunci`, `skip file yang rosak dan buat PDF`. Parser ringkas dalam `pdf-intents.mjs` berfungsi ketika AI offline / DeepSeek kredit tidak cukup.
+- Arahan `buang dulu kata laluan` kini memberi penerangan tepat: PDF berkunci perlukan akses/kata laluan yang sah; bot tidak boleh menghapus perlindungan tanpa kredensial. Pengguna disaran membuka/mengeksport semula dengan perisian dan kelulusan yang sesuai. **Jangan hantar kata laluan melalui Telegram**.
+- Untuk PDF separa, bot memeriksa semua fail dan memaparkan jumlah fail yang boleh dibaca serta yang dikecualikan, kemudian butang **Teruskan PDF separa** / **Batal**. Tanpa pengesahan tersebut, tiada PDF separa dihantar.
+- Pengesahan disimpan di `lead_hub_telegram_partial_merges` dengan RLS, skop `telegram_user_id`, `account_id`, `chat_id`, `case_id`, tag rawak, masa luput 10 minit dan ID semua fail (snapshot). Klik berulang diproses sekali melalui `state` atomik. Pemprosesan memeriksa semula keanggotaan fail dan senarai gagal sebelum menghantar PDF.
+- PDF separa dinamakan `_DOKUMEN_SEPARA.pdf` dengan **amaran tidak lengkap** dalam kapsyen. Dokumen asal **tidak dibuang**, dan `lead_hub_telegram_cases.state` kekal `collecting` (tidak ditandakan siap).
+- Arahan `/siap` untuk PDF lengkap masih memerlukan semua fail dibaca dan sekarang menawarkan butang **Susun fail yang boleh** apabila berdepan fail gagal. Penutup kategori (cover) tidak disisip untuk dokumen yang gagal disertakan.
+- Aliran New Customer kini mengesahkan input menyerupai nama sebenar, bukan soalan/perintah. Ini mencegah pendaftaran baharu menggunakan ayat perbualan sebagai nama; rekod lama yang tersalah nama **tidak diubah automatik**.
+
+**Pengesahan:** Edge Function v26 ACTIVE dan mengandungi modul `pdf-intents.mjs`. SQL menyemak jadual partial merge RLS aktif, tiada permintaan separa sintetik ditinggalkan, serta kes ujian asal masih mempunyai 7 fail dan status collecting. Ujian parser beberapa ayat pengguna lulus. Belum dilakukan ujian sebenar dengan muat naik PDF terkunci dan klik dalam Telegram; cuba pada kes dummy atau kes yang dibenarkan dan semak output sebelum urusan rasmi.
