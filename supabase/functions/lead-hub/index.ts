@@ -112,11 +112,46 @@ async function handler(req:Request):Promise<Response> {
       return error(req,failures>=5?"Terlalu banyak cubaan. Akaun dikunci 15 minit.":generic,401);
     }
     const token=randomHex(32);
+    const deviceToken=randomHex(32);
     const expires=new Date(Date.now()+30*24*60*60*1000).toISOString();
+    const deviceExpires=new Date(Date.now()+365*24*60*60*1000).toISOString();
+    const previousDevice=String(body.previous_device_token||"");
+    if(/^[a-f0-9]{64}$/.test(previousDevice)){
+      await db.from("lead_hub_trusted_devices").delete()
+        .eq("token_hash",await sha256(previousDevice)).eq("account_id",a.id);
+    }
     const {error:ie}=await db.from("lead_hub_sessions").insert({token_hash:await sha256(token),account_id:a.id,expires_at:expires});
     if(ie)throw ie;
+    const {error:de}=await db.from("lead_hub_trusted_devices").insert({
+      token_hash:await sha256(deviceToken),account_id:a.id,expires_at:deviceExpires
+    });
+    if(de)throw de;
     await db.from("lead_hub_accounts").update({failed_attempts:0,locked_until:null}).eq("id",a.id);
-    return response(req,{ok:true,token,expires_at:expires,user:profile(a)});
+    return response(req,{ok:true,token,expires_at:expires,device_token:deviceToken,
+      device_expires_at:deviceExpires,user:profile(a)});
+  }
+  if(action==="resume_device"){
+    const deviceToken=String(body.device_token||"").trim();
+    if(!/^[a-f0-9]{64}$/.test(deviceToken))return error(req,"Peranti belum dipercayai",401);
+    const hash=await sha256(deviceToken),now=new Date().toISOString();
+    const {data:device,error:de}=await db.from("lead_hub_trusted_devices")
+      .select("account_id").eq("token_hash",hash).is("revoked_at",null)
+      .gt("expires_at",now).maybeSingle();
+    if(de||!device)return error(req,"Sesi peranti telah tamat atau dibatalkan",401);
+    const {data:account,error:ae}=await db.from("lead_hub_accounts")
+      .select("id,staff_code,display_name,role,active").eq("id",device.account_id).maybeSingle();
+    if(ae||!account?.active)return error(req,"Akaun tidak aktif",401);
+    const token=randomHex(32),expires=new Date(Date.now()+30*24*60*60*1000).toISOString();
+    const deviceExpires=new Date(Date.now()+365*24*60*60*1000).toISOString();
+    const {error:ie}=await db.from("lead_hub_sessions").insert({
+      token_hash:await sha256(token),account_id:account.id,expires_at:expires
+    });
+    if(ie)throw ie;
+    const {error:renewErr}=await db.from("lead_hub_trusted_devices")
+      .update({last_used_at:now,expires_at:deviceExpires})
+      .eq("token_hash",hash).eq("account_id",account.id).is("revoked_at",null);
+    if(renewErr)throw renewErr;
+    return response(req,{ok:true,token,expires_at:expires,user:profile(account)});
   }
   const a=await requireAccount(req);
   if(!a)return error(req,"Sesi tamat atau akses tidak dibenarkan. Sila log masuk semula.",401);
@@ -169,6 +204,11 @@ async function handler(req:Request):Promise<Response> {
   if(action==="logout"){
     const token=String(req.headers.get("Authorization")||"").replace(/^Bearer\s+/i,"").trim();
     await db.from("lead_hub_sessions").update({revoked_at:new Date().toISOString()}).eq("token_hash",await sha256(token));
+    const deviceToken=String(body.device_token||"");
+    if(/^[a-f0-9]{64}$/.test(deviceToken)){
+      await db.from("lead_hub_trusted_devices").update({revoked_at:new Date().toISOString()})
+        .eq("token_hash",await sha256(deviceToken)).eq("account_id",a.id);
+    }
     return response(req,{ok:true});
   }
   if(action==="list"){
@@ -284,6 +324,7 @@ async function handler(req:Request):Promise<Response> {
     const {error}=await db.from("lead_hub_accounts").update({pass_salt:salt,pass_hash:await derive(passcode,salt),failed_attempts:0,locked_until:null}).eq("id",id);
     if(error)throw error;
     await db.from("lead_hub_sessions").delete().eq("account_id",id);
+    await db.from("lead_hub_trusted_devices").delete().eq("account_id",id);
     return response(req,{ok:true,passcode});
   }
   if(action==="set_staff_active"){
@@ -292,7 +333,10 @@ async function handler(req:Request):Promise<Response> {
     if(id===a.id)return error(req,"Tidak boleh ubah akaun sendiri",403);
     const {data,error}=await db.from("lead_hub_accounts").update({active}).eq("id",id).eq("role","staff").select("id");
     if(error)throw error;if(!data?.length)return error(req,"Staf tidak wujud",404);
-    if(!active)await db.from("lead_hub_sessions").delete().eq("account_id",id);
+    if(!active){
+      await db.from("lead_hub_sessions").delete().eq("account_id",id);
+      await db.from("lead_hub_trusted_devices").delete().eq("account_id",id);
+    }
     return response(req,{ok:true});
   }
   if(action==="import"){
