@@ -156,6 +156,16 @@ async function handler(req:Request):Promise<Response> {
   const a=await requireAccount(req);
   if(!a)return error(req,"Sesi tamat atau akses tidak dibenarkan. Sila log masuk semula.",401);
   if(action==="me")return response(req,{ok:true,user:profile(a)});
+  if(action==="remember_device"){
+    // Upgrade a valid already-authenticated browser without requesting a second passcode.
+    const deviceToken=randomHex(32);
+    const expires=new Date(Date.now()+365*24*60*60*1000).toISOString();
+    const {error:de}=await db.from("lead_hub_trusted_devices").insert({
+      token_hash:await sha256(deviceToken),account_id:a.id,expires_at:expires
+    });
+    if(de)throw de;
+    return response(req,{ok:true,device_token:deviceToken,device_expires_at:expires});
+  }
   if(action==="get_message_templates"){
     const {data,error}=await db.from("lead_hub_message_templates")
       .select("scope,account_id,template_key,body")
