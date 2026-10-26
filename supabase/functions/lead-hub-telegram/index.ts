@@ -1,4 +1,5 @@
 import {parseNatural} from "./natural.mjs";
+import {mainMenu,resumeMenu,resumedMessage,parseNavCallback,PAGE_SIZE} from "./navigation.mjs";
 import {touchCaseCard} from "./case-card.mjs";
 import {policyModelIntent} from "./intent-policy.mjs";
 import {createClient} from "npm:@supabase/supabase-js@2.57.4";
@@ -496,7 +497,12 @@ async function createCustomer(token:string,chat:number,id:number,account:any,raw
   caseSummary(created)+
   (existing?"\n📁 Folder "+existing.customer_name+" yang lama masih disimpan. Taip 'sambung kes "+existing.customer_name+"' untuk kembali.":"")+
   "\n\nHantar sahaja fail PDF/JPG/PNG. Bot akan susun dalam folder pelanggan ini.\n"+
-  "Kalau nak asingkan kategori, cakap 'ini IC', 'bank', 'gaji' dan sebagainya.");
+  "Kalau nak asingkan kategori, cakap 'ini IC', 'bank', 'gaji' dan sebagainya.",{
+   reply_markup:{inline_keyboard:[
+    [{text:"📂 Resume Pelanggan Lain",callback_data:"faris_nav:resume:0"}],
+    [{text:"🏠 Menu Utama",callback_data:"faris_nav:home"}]
+   ]}
+  });
 }
 async function switchCustomer(token:string,chat:number,id:number,account:any,name:string){
  const {data:cases,error}=await db.from("lead_hub_telegram_cases")
@@ -518,6 +524,83 @@ async function switchCustomer(token:string,chat:number,id:number,account:any,nam
  await say(token,chat,"✅ KEMBALI KE KES\n👤 "+matches[0].customer_name+
   "\nFolder ini aktif semula. Taip 'senarai' untuk semak dokumen.");
 }
+
+async function navReply(token:string,chat:number,view:any,messageId?:number){
+ if(messageId){
+  try{
+   await telegramCall(token,"editMessageText",{
+    chat_id:chat,message_id:messageId,text:view.text,reply_markup:view.reply_markup,
+    link_preview_options:{is_disabled:true}
+   });return;
+  }catch(e){
+   if(/message is not modified/i.test(String(e)))return;
+   console.warn("Telegram nav edit failed:",String(e).slice(0,120));
+  }
+ }
+ await say(token,chat,view.text,{reply_markup:view.reply_markup});
+}
+async function clearCustomerNamePrompt(id:number,chat:number,account:any){
+ const {error}=await db.from("lead_hub_telegram_dialog")
+  .update({pending_step:null,pending_until:null})
+  .eq("telegram_user_id",id).eq("account_id",account.id).eq("chat_id",chat);
+ if(error)throw error;
+}
+async function showCustomerMenu(token:string,chat:number,id:number,account:any,messageId?:number){
+ await clearCustomerNamePrompt(id,chat,account);
+ const c=await currentCase(account.id,chat);
+ await navReply(token,chat,mainMenu(c),messageId);
+}
+async function showResumeCustomerMenu(token:string,chat:number,id:number,account:any,
+ page:number=0,messageId?:number){
+ await clearCustomerNamePrompt(id,chat,account);
+ const safePage=Math.max(0,Math.min(999,Math.floor(Number(page)||0)));
+ const fetchPage=async(index:number)=>db.from("lead_hub_telegram_cases")
+  .select("id,customer_name,created_at",{count:"exact"})
+  .eq("account_id",account.id).eq("chat_id",chat).eq("state","collecting")
+  .order("created_at",{ascending:false}).order("id",{ascending:false})
+  .range(index*PAGE_SIZE,index*PAGE_SIZE+PAGE_SIZE-1);
+ let {data:cases,error,count}=await fetchPage(safePage);
+ if(error)throw error;
+ const maxPage=Math.max(0,Math.ceil((count||0)/PAGE_SIZE)-1);
+ const currentPage=Math.min(safePage,maxPage);
+ if(currentPage!==safePage){
+  const newPage=await fetchPage(currentPage);
+  if(newPage.error)throw newPage.error;
+  cases=newPage.data;
+  count=newPage.count;
+ }
+ const ids=(cases||[]).map((c:any)=>c.id);
+ const numbers:Record<string,number>={};
+ if(ids.length){
+  const {data:files,error:fe}=await db.from("lead_hub_telegram_files")
+   .select("case_id").in("case_id",ids);
+  if(fe)throw fe;
+  for(const x of files||[])numbers[x.case_id]=(numbers[x.case_id]||0)+1;
+ }
+ const c=await currentCase(account.id,chat);
+ const enriched=(cases||[]).map((x:any)=>({...x,file_count:numbers[x.id]||0}));
+ await navReply(token,chat,resumeMenu(enriched,currentPage,count||0,c?.id||null),messageId);
+}
+async function resumeCustomerById(token:string,chat:number,id:number,account:any,caseId:string,
+ messageId?:number){
+ const {data:c,error}=await db.from("lead_hub_telegram_cases").select("*")
+  .eq("id",caseId).eq("account_id",account.id).eq("chat_id",chat)
+  .eq("state","collecting").maybeSingle();
+ if(error)throw error;
+ if(!c){
+  await showResumeCustomerMenu(token,chat,id,account,0,messageId);
+  return;
+ }
+ const {count,error:countErr}=await db.from("lead_hub_telegram_files")
+  .select("id",{count:"exact",head:true}).eq("case_id",c.id);
+ if(countErr)throw countErr;
+ await setCustomerFocus(id,chat,account,c.id);
+ await db.from("lead_hub_telegram_chat_memory").delete()
+  .eq("telegram_user_id",id).eq("account_id",account.id);
+ await rememberAction(id,account.id,chat,"new_case",c.id);
+ await navReply(token,chat,resumedMessage(c,count||0),messageId);
+}
+
 async function handleDoc(token:string,conf:any,chat:number,account:any,message:any){
  const c=await currentCase(account.id,chat);
  if(!c){await say(token,chat,"📁 Belum ada folder pelanggan. Cakap 'buka folder nama Ahmad' dahulu, kemudian hantar PDF/JPG/PNG. Aku akan susun ikut pelanggan yang dipilih.");return}
@@ -878,6 +961,33 @@ async function processUpdate(update:any,conf:any,token:string){
  if(update.callback_query){
   const callback=update.callback_query;
   const action=String(callback.data||"");
+  const nav=parseNavCallback(action);
+  if(nav){
+   const chat=Number(callback.message?.chat?.id),id=Number(callback.from?.id),
+    messageId=Number(callback.message?.message_id);
+   if(!Number.isSafeInteger(chat)||!Number.isSafeInteger(id)||
+      callback.message?.chat?.type!=="private")return;
+   try{await telegramCall(token,"answerCallbackQuery",{
+    callback_query_id:callback.id,text:"Membuka menu FARIS..."
+   });}catch(e){console.warn("Nav acknowledge",String(e).slice(0,75))}
+   const linked=await linkedTelegramAccount(id);
+   if(!linked){
+    await say(token,chat,"⛔ Sila pautkan ID FARIS kepada Telegram melalui website dahulu.");
+    return;
+   }
+   const account=linked.account;
+   if(nav.kind==="home")await showCustomerMenu(token,chat,id,account,messageId);
+   else if(nav.kind==="new"){
+    try{await telegramCall(token,"editMessageReplyMarkup",{
+     chat_id:chat,message_id:messageId,reply_markup:{inline_keyboard:[]}
+    });}catch{/* old buttons are harmless */}
+    await beginNewCustomer(token,chat,id,account);
+   }else if(nav.kind==="resume")
+    await showResumeCustomerMenu(token,chat,id,account,nav.page,messageId);
+   else if(nav.kind==="open")
+    await resumeCustomerById(token,chat,id,account,nav.caseId,messageId);
+   return;
+  }
   if(action==="faris_delete_processing"){
    try{await telegramCall(token,"answerCallbackQuery",{
     callback_query_id:callback.id,text:"⏳ Sedang memproses. Notis akan muncul di sini."
@@ -928,7 +1038,11 @@ async function processUpdate(update:any,conf:any,token:string){
  if(/^\/start(\s|$)/i.test(txt)){
   const code=txt.split(/\s+/)[1];
   if(code)await handleLink(token,chat,id,code.trim().toUpperCase());
-  else await say(token,chat,"Selamat datang ke FARIS LEAD HUB Telegram. Sambung akaun melalui website > Telegram Bot > Jana Kod Pautan.");
+  else{
+   const linkedStart=await linkedTelegramAccount(id);
+   if(linkedStart)await showCustomerMenu(token,chat,id,linkedStart.account);
+   else await say(token,chat,"Selamat datang ke FARIS LEAD HUB Telegram. Sambung akaun melalui website > Telegram Bot > Jana Kod Pautan.");
+  }
   return;
  }
  if(/^\/sambung\s+/i.test(txt)){await handleLink(token,chat,id,txt.split(/\s+/)[1]?.toUpperCase()||"");return}
@@ -979,6 +1093,9 @@ async function processUpdate(update:any,conf:any,token:string){
  const initialIntent=parseNatural(txt,ctx);
  if(initialIntent.kind==="new_customer"){
   await beginNewCustomer(token,chat,id,account);return;
+ }
+ if(/^(?:resume|resum|continue|sambung(?: pelanggan)?|senarai pelanggan|list customer|customer lama)$/i.test(txt)){
+  await showResumeCustomerMenu(token,chat,id,account);return;
  }
  if(initialIntent.kind==="switch_customer"){
   await switchCustomer(token,chat,id,account,initialIntent.name);return;
@@ -1048,7 +1165,16 @@ async function processUpdate(update:any,conf:any,token:string){
   }
  }
  const [cmd,...rest]=routed.split(/\s+/),arg=routed.slice(cmd.length).trim(),command=cmd.split("@")[0].toLowerCase();
- if(command==="/menu"||command==="/help"){
+ if(command==="/menu"){
+  await showCustomerMenu(token,chat,id,account);return;
+ }
+ if(command==="/resume"||command==="/sambung"){
+  await showResumeCustomerMenu(token,chat,id,account);return;
+ }
+ if(command==="/new"){
+  await beginNewCustomer(token,chat,id,account);return;
+ }
+ if(command==="/help"){
   const c=await currentCase(account.id,chat);
   await say(token,chat,"👋 HAI! AKU PEMBANTU FARIS\n"+
    "Cakap dengan aku macam biasa, tak perlu letak / di depan. 😊\n"+
