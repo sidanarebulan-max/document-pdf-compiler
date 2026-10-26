@@ -1089,6 +1089,25 @@ async function processUpdate(update:any,conf:any,token:string){
  if(update.callback_query){
   const callback=update.callback_query;
   const action=String(callback.data||"");
+  if(action==="faris_partial:start"||/^faris_partial:(yes|no):[a-f0-9]{12}$/.test(action)){
+   const chat=Number(callback.message?.chat?.id),id=Number(callback.from?.id);
+   if(!Number.isSafeInteger(chat)||!Number.isSafeInteger(id)||callback.message?.chat?.type!=="private")return;
+   try{await telegramCall(token,"answerCallbackQuery",{
+    callback_query_id:callback.id,text:"✅ Arahan diterima"
+   })}catch(e){console.warn("Partial callback ack",String(e).slice(0,65))}
+   const linked=await linkedTelegramAccount(id);
+   if(!linked){await say(token,chat,"Sila pautkan akaun FARIS terlebih dahulu.");return}
+   if(action==="faris_partial:start"){
+    await beginPartialMerge(token,chat,id,linked.account);
+   }else{
+    const match=action.match(/^faris_partial:(yes|no):([a-f0-9]{12})$/);
+    await finishPartialMerge(token,chat,id,linked.account,match[2],match[1]==="yes");
+    try{await telegramCall(token,"editMessageReplyMarkup",{
+     chat_id:chat,message_id:callback.message.message_id,reply_markup:{inline_keyboard:[]}
+    })}catch{/* old button may remain, server nonce prevents repeated action */}
+   }
+   return;
+  }
   const nav=parseNavCallback(action);
   if(nav){
    const chat=Number(callback.message?.chat?.id),id=Number(callback.from?.id),
@@ -1225,6 +1244,21 @@ async function processUpdate(update:any,conf:any,token:string){
   const mapped=/^(senarai|list)$/i.test(teach[2])?"list":/^status$/i.test(teach[2])?"status":"help";
   await learnSafeIntent(teach[1],mapped,1);
   await say(token,chat,"✅ Bot faham pola ini sebagai "+mapped+". Pola baca-sahaja disimpan tanpa teks asal; tidak menukar model atau dokumen.");
+  return;
+ }
+ const pdfIntent=interpretPdfRequest(txt);
+ if(pdfIntent?.kind==="partial_merge"){
+  await beginPartialMerge(token,chat,id,account);return;
+ }
+ if(pdfIntent?.kind==="unlock_pdf_help"){
+  await say(token,chat,"🔒 PDF BERKUNCI\nAku tak boleh buang kata laluan PDF tanpa akses/kata laluan yang sah. "+
+   "Buka dengan kata laluan asal di peranti kau, kemudian Print → Save as PDF, dan hantar salinan yang telah dibuka. "+
+   "Jangan hantar kata laluan dalam chat.\n\nKalau nak terus susun dokumen yang boleh dibaca sahaja, "+
+   "tekan butang di bawah. Aku akan tunjuk fail yang dikecualikan dan minta pengesahan.",{
+    reply_markup:{inline_keyboard:[[
+     {text:"📄 Susun fail yang boleh sahaja",callback_data:"faris_partial:start"}
+    ]]}
+   });
   return;
  }
  const initialIntent=parseNatural(txt,ctx);
@@ -1447,11 +1481,12 @@ async function processUpdate(update:any,conf:any,token:string){
    }
    const progress=await say(token,chat,"⏳ MENYUSUN DOKUMEN\n"+caseSummary(c)+
     "\n📎 Jumlah: "+files.length+" fail\nBot sedang menyemak dan menyusun PDF.");
-   async function updateProgress(message:string){
+   async function updateProgress(message:string,replyMarkup?:any){
     try{await telegramCall(token,"editMessageText",{
      chat_id:chat,message_id:progress.message_id,text:message.slice(0,3850),
-     link_preview_options:{is_disabled:true}
-    });}catch(e){await say(token,chat,message.slice(0,3850))}
+     link_preview_options:{is_disabled:true},reply_markup:replyMarkup
+    });}catch(e){await say(token,chat,message.slice(0,3850),
+      replyMarkup?{reply_markup:replyMarkup}:{})}
    }
    try{
     const result=await makeMergedPdf(c,files);
@@ -1475,12 +1510,15 @@ async function processUpdate(update:any,conf:any,token:string){
      "✅ Semua dokumen asal kekal dalam sistem.\n"+
      "Buka fail bermasalah. Jika boleh dibaca, cuba Print → Save as PDF untuk menghasilkan salinan baharu. "+
      "Hantar salinan baharu, semak menggunakan 'senarai', kemudian minta padam fail lama dengan pengesahan. "+
-     "Selepas itu taip 'siapkan PDF' semula.":
+     "Selepas itu taip 'siapkan PDF' semula.\n\n"+
+     "ATAU tekan 'Susun yang boleh' untuk PDF separa tanpa dokumen bermasalah.":
      "⚠️ PDF BELUM DAPAT DISIAPKAN\n"+caseSummary(c)+
      "\nSebab: "+(/45MB|100 muka surat/i.test(String(e))?String(e):
       "Proses gabungan atau penghantaran Telegram tidak dapat disahkan. Semak chat dahulu sebelum mencuba semula.")+
      "\n\nSemua fail asal kekal. Jika masalah berulang, cuba PDF Compiler di website FARIS.";
-    await updateProgress(msg);
+    await updateProgress(msg,problems.length?{inline_keyboard:[[
+     {text:"📄 Susun fail yang boleh",callback_data:"faris_partial:start"}
+    ]]}:undefined);
    }
    return;
   }
