@@ -350,7 +350,7 @@ function renderLeads(){
  if(renderPmTabs())return;
  const pmView=isStaffPhone();
  const filtered=leads.filter(l=>
-  (!pmView||activePmTab==="sent"?Boolean(l.pm_confirmed_at):!l.pm_confirmed_at)&&
+  (!pmView||(activePmTab==="sent"?Boolean(l.pm_confirmed_at):!l.pm_confirmed_at))&&
   (!filter||l.stage===filter)&&(!search||
   [l.customer_name,l.phone_e164,l.model,l.notes].some(x=>String(x||"").toLowerCase().includes(search))));
  $("listMessage").textContent=`Memaparkan ${filtered.length} daripada ${leads.length} lead yang dibenarkan.`;
