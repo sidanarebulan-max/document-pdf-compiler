@@ -327,24 +327,8 @@ async function handler(req:Request):Promise<Response> {
     const notes=String(body.notes||"").slice(0,3000);
     const follow=body.follow_up_at?String(body.follow_up_at):null;
     if(follow&&!/^\d{4}-\d{2}-\d{2}$/.test(follow))return error(req,"Tarikh susulan tidak sah");
-    let beforeQuery=db.from("lead_hub_leads").select("stage").eq("id",id);
-    if(a.role!=="admin")beforeQuery=beforeQuery.eq("assigned_id",a.id);
-    const {data:before,error:beforeErr}=await beforeQuery.maybeSingle();
-    if(beforeErr)throw beforeErr;
-    if(!before)return error(req,"Lead bukan milik anda",403);
-    let q=db.from("lead_hub_leads").update({stage,notes,follow_up_at:follow,updated_at:new Date().toISOString()})
-      .eq("id",id).eq("stage",before.stage);
-    if(a.role!=="admin")q=q.eq("assigned_id",a.id);
-    const {data,error:updateError}=await q.select("id");
-    if(updateError)throw updateError;
-    if(!data?.length)return error(req,"Status berubah. Refresh dan cuba semula.",409);
-    if(before.stage!==stage){
-      const {error:logError}=await db.from("lead_hub_lead_activity").insert({
-       lead_id:id,actor_id:a.id,event_type:"status_updated",
-       stage_before:before.stage,stage_after:stage
-      });
-      if(logError)console.error("Status audit failed:",logError.message);
-    }
+    const {error:saveError}=await db.rpc("lead_hub_customer_save_whatsapp",{_actor:a.id,_lead:id,_stage:stage,_notes:notes,_follow:follow});
+    if(saveError){if(saveError.code==="42501")return error(req,"Lead bukan milik anda",403);throw saveError}
     return response(req,{ok:true});
   }
   if(action==="opened"){

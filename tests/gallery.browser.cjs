@@ -33,7 +33,7 @@ const initial=()=>['emas7_phev','emas7_ev','emas5'].map((model,i)=>({id:'0000000
   await page.goto('https://gallery.test/staff.html#gallery');
   await page.waitForFunction(()=>document.getElementById('galleryCountAll').textContent==='3');
   const nav=page.locator(mobile?'#mobileDock':'#workspaceNav');
-  assert.deepEqual(await nav.locator('button').evaluateAll(nodes=>nodes.map(n=>n.dataset.mobileNav||n.dataset.workspaceNav)),['home','gallery','whatsapp','docs','telegram','settings']);
+  assert.deepEqual(await nav.locator('button').evaluateAll(nodes=>nodes.map(n=>n.dataset.mobileNav||n.dataset.workspaceNav)),['home','gallery','whatsapp','customers','docs','telegram','settings']);
   assert.equal(await page.locator('.gallery-category').count(),3);assert.equal(await page.locator('.gallery-card').count(),3);
   assert.equal(await page.locator('#galleryUploadToggle').isVisible(),role==='admin');assert.equal(await page.locator('[data-gallery-edit]').count(),role==='admin'?3:0);
   await page.locator('[data-gallery-model="emas7_ev"]').click();await page.waitForFunction(()=>document.querySelectorAll('.gallery-card').length===1);assert.match(await page.locator('#galleryColumns').innerText(),/EV Harga/);

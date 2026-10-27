@@ -1,0 +1,68 @@
+const {chromium}=require('playwright');
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=','base64');
+const leadId='00000000-0000-4000-8000-000000000001',fileId='10000000-0000-4000-8000-000000000001',unlinkedId='10000000-0000-4000-8000-000000000002',uploadId='10000000-0000-4000-8000-000000000003';
+(async()=>{const browser=await chromium.launch({headless:true,executablePath:process.env.FARIS_TEST_CHROMIUM_PATH||undefined,args:['--no-sandbox','--disable-dev-shm-usage','--use-gl=angle','--use-angle=swiftshader','--disable-gpu-sandbox']});
+try{for(const role of ['staff','admin'])for(const mobile of [true,false]){
+ const user={id:'00000000-0000-4000-8000-000000000009',role,display_name:'Faris Test',staff_code:role==='admin'?'FARIS01':'SAZ0001'};
+ let revoked=false,tick=0,events=[],allFiles=[{id:fileId,customer_id:leadId,original_name:'IC-customer.png',mime_type:'image/png',byte_size:png.length,party:'HIRER',category:'IC',created_at:'2026-10-28T01:00:00Z'},{id:unlinkedId,customer_id:null,original_name:'Penyata-bank.png',mime_type:'image/png',byte_size:png.length,party:'HIRER',category:'BANK',created_at:'2026-10-28T01:00:00Z'}];
+ const customer={lead:{id:leadId,customer_name:'Customer Ujian',phone_e164:'60100000111',model:'e.MAS 5',source:'Browser Test',stage:'claimed',notes:'Catatan WhatsApp asal',consent_confirmed:true,assigned_id:user.id,follow_up_at:null,created_at:'2026-10-28T01:00:00Z',updated_at:'2026-10-28T01:00:00Z'},profile:{lead_id:leadId,sales_status:'new',variant:'',next_action:'',closure_reason:'',guarantor_required:false,booking_status:'none',booking_amount:null,selling_price:null,deposit:null,loan_amount:null,revision:0},staff:user,files:[],banks:[],checklist:[],notes:[]};
+ const ctx=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1400,height:1000},isMobile:mobile,hasTouch:mobile,acceptDownloads:true});await ctx.addInitScript(()=>localStorage.setItem('faris_lead_hub_session_v2','customer-fixture-session'));
+ const page=await ctx.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.route('**/*',async route=>{
+  const req=route.request(),url=new URL(req.url());
+  if(url.hostname==='customers.test'){
+   const f=url.pathname.slice(1);if(/^(staff\.html|staff\.css|staff-gallery\.css|staff-gallery\.js|staff-customers\.css|staff-customers\.js|staff-navigation\.js|staff-passcode\.js|telegram-hub\.js|inbox-client\.js|staff-inbox\.js)$/.test(f))return route.fulfill({contentType:f.endsWith('html')?'text/html':f.endsWith('css')?'text/css':'text/javascript',body:fs.readFileSync(path.join(process.cwd(),f))});
+  }
+  if(url.hostname==='files.test')return route.fulfill({contentType:'image/png',headers:{'Access-Control-Allow-Origin':'*'},body:png});
+  if(url.hostname.endsWith('.supabase.co')){
+   const headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization,content-type','Access-Control-Allow-Methods':'POST'};if(req.method()==='OPTIONS')return route.fulfill({status:204,headers});
+   const b=url.searchParams.has('action')?{action:url.searchParams.get('action')}:req.postDataJSON();let result;
+   if(url.pathname.endsWith('/lead-hub-customers')){
+    if(revoked&&b.action==='get')return route.fulfill({status:403,contentType:'application/json',headers,body:JSON.stringify({ok:false,error:'Profile access changed'})});
+    customer.files=allFiles.filter(f=>f.customer_id===leadId);
+    if(b.action==='list')result={ok:true,customers:[{...customer.lead,...customer.profile,id:leadId,staff_name:user.display_name,staff_code:user.staff_code,doc_count:customer.files.length}],total:1,next_offset:null,staff:[user],models:[{model:'e.MAS 5'}]};
+    else if(b.action==='get')result={ok:true,customer};
+    else if(b.action==='timeline')result={ok:true,events,next_offset:null};
+    else if(b.action==='unlinked_files')result={ok:true,files:allFiles.filter(f=>!f.customer_id),total:allFiles.filter(f=>!f.customer_id).length,next_offset:null};
+    else{
+     const d=b.data,before=structuredClone(customer.profile);tick++;
+     if(b.action==='save_profile'){Object.assign(customer.profile,d,{revision:customer.profile.revision+1});Object.assign(customer.lead,{customer_name:d.customer_name,model:d.model,follow_up_at:d.follow_up_at,updated_at:'2026-10-28T01:00:'+String(tick).padStart(2,'0')+'Z'})}
+     if(b.action==='add_note')customer.notes.unshift({id:'note-'+tick,actor_name:user.display_name,actor_code:user.staff_code,created_at:'2026-10-28T01:10:00Z',details:{note:d.note}});
+     if(b.action==='save_bank'){if(d.id)Object.assign(customer.banks.find(x=>x.id===d.id),d);else customer.banks.push({...d,id:'20000000-0000-4000-8000-000000000001'})}
+     if(b.action==='delete_bank')customer.banks=customer.banks.filter(x=>x.id!==d.id);
+     if(b.action==='checklist'){customer.checklist=customer.checklist.filter(x=>x.party!==d.party||x.category!==d.category);customer.checklist.push(d)}
+     if(b.action==='link_files')allFiles.filter(f=>d.ids.includes(f.id)).forEach(f=>Object.assign(f,{customer_id:leadId,party:d.party,category:d.category}));
+     if(b.action==='unlink_file')allFiles.find(f=>f.id===d.id).customer_id=null;
+     events.unshift({key:'event-'+tick,event_type:({save_profile:'profile_updated',add_note:'note_added',save_bank:'bank_updated',checklist:'checklist_updated',link_files:'documents_linked',unlink_file:'document_unlinked'})[b.action],actor_name:user.display_name,actor_code:user.staff_code,created_at:'2026-10-28T01:15:00Z',details:b.action==='save_profile'?{before,after:structuredClone(customer.profile)}:d});result={ok:true};
+    }
+   }else if(url.pathname.endsWith('/lead-hub-inbox')){
+    if(b.action==='receive'){allFiles.push({id:uploadId,customer_id:null,original_name:'Slip-gaji.png',mime_type:'image/png',byte_size:png.length,party:'HIRER',category:'AUTO',created_at:'2026-10-28T01:00:00Z'});result={ok:true,files:[{id:uploadId,name:'Slip-gaji.png'}]}}
+    else if(b.action==='download')result={ok:true,url:'https://files.test/test.png',file:allFiles.find(f=>f.id===b.id)};
+    else if(b.action==='list')result={ok:true,files:allFiles.filter(f=>b.state==='all'||(b.state==='inbox'?!f.customer_id:!!f.customer_id)),total:allFiles.length,next_offset:null,staff:[]};
+    else result={ok:true,user};
+   }else result=b.action==='me'?{ok:true,user}:b.action==='list'?{ok:true,leads:[customer.lead],history:[],assignment_history:[],my_pm:[],activity_log:[],staff:[user],available_count:0}:{ok:true,team:{},personal:{}};
+   return route.fulfill({contentType:'application/json',headers,body:JSON.stringify(result)});
+  }
+  return route.fulfill({contentType:'text/javascript',body:''});
+ });
+ await page.goto('https://customers.test/staff.html#customers');await page.locator('#customersList [data-customer-open="'+leadId+'"]').waitFor();
+ assert.equal(await page.locator('#customersStaff').isVisible(),role==='admin');
+ await page.locator('#customersList [data-customer-open]').click();await page.locator('#cpName').waitFor();assert.equal(await page.locator('#cpName').inputValue(),'Customer Ujian');assert.match(await page.locator('#customerLegacyNotes').innerText(),/Catatan WhatsApp asal/);
+ await page.locator('#cpStatus').selectOption('documents');await page.locator('#cpNext').fill('Minta penyata bank');await page.locator('#cpFollow').fill('2026-11-01');await page.locator('#cpVariant').fill('Premium');await page.locator('#cpGuarantor').check();await page.locator('#customerProfileForm [data-profile-save]').click();await page.waitForFunction(()=>document.getElementById('customerStatusBadge').textContent==='Mengumpul dokumen');assert.match(await page.locator('#customerNextAction').innerText(),/Minta penyata bank/);
+ await page.locator('[data-customer-tab="notes"]').click();await page.locator('#customerNote').fill('Customer mahu warna hijau <script>');await page.locator('#customerNoteSave').click();await page.getByText('Customer mahu warna hijau <script>',{exact:true}).waitFor();assert.equal(await page.locator('#customerNotes script').count(),0);
+ await page.locator('[data-customer-tab="banks"]').click();await page.locator('#cpDeposit').fill('5000');await page.locator('[data-customer-panel="banks"] [data-profile-save]').click();await page.waitForFunction(()=>!document.querySelector('[data-customer-panel="banks"] [data-profile-save]').disabled);
+ await page.locator('#cbName').fill('Bank Ujian');await page.locator('#cbStatus').selectOption('submitted');await page.locator('#cbAmount').fill('65000');await page.locator('#customerBankSave').click();await page.locator('[data-bank-edit]').waitFor();await page.locator('[data-bank-edit]').click();await page.locator('#cbStatus').selectOption('approved');await page.locator('#customerBankSave').click();await page.getByRole('heading',{name:'Bank Ujian · Diluluskan'}).waitFor();
+ await page.locator('[data-customer-tab="documents"]').click();assert.equal(await page.locator('.customer-checklist-group').count(),2);await page.locator('#cc-HIRER-IC').selectOption('received');await page.waitForFunction(()=>!document.getElementById('cc-HIRER-IC').disabled);
+ await page.locator('#customerDocCategory').selectOption('BANK');await page.locator('#customerPickInbox').click();await page.locator('[data-customer-inbox="'+unlinkedId+'"]').check();await page.locator('#customerInboxLink').click();await page.waitForFunction(()=>!document.getElementById('customerInboxDialog').open);assert.equal(await page.locator('.customer-file').count(),2);
+ await page.locator('[data-customer-preview="'+fileId+'"]').click();await page.locator('#customerPreviewDownload:not([disabled])').waitFor();const [download]=await Promise.all([page.waitForEvent('download'),page.locator('#customerPreviewDownload').click()]);assert.equal(download.suggestedFilename(),'IC-customer.png');await page.locator('#customerPreviewClose').click();
+ await page.locator('#customerDocCategory').selectOption('PAYSLIP');await page.locator('#customerUpload').setInputFiles({name:'Slip-gaji.png',mimeType:'image/png',buffer:png});await page.locator('[data-customer-preview="'+uploadId+'"]').waitFor();assert.equal(await page.locator('.customer-file').count(),3);
+ page.once('dialog',d=>d.accept());await page.locator('[data-customer-unlink="'+uploadId+'"]').click();await page.locator('[data-customer-preview="'+uploadId+'"]').waitFor({state:'detached'});
+ await page.locator('[data-customer-tab="history"]').click();await page.locator('.customer-history-item').first().waitFor();assert.match(await page.locator('#customerHistory').innerText(),/Profil dikemas kini/);assert.match(await page.locator('#customerHistory').innerText(),/Nota ditambah/);assert.match(await page.locator('#customerHistory').innerText(),/Faris Test/);
+ await page.locator('[data-customer-tab="summary"]').click();if(mobile)await page.locator('[data-theme-choice="light"]').click();await page.screenshot({path:'/tmp/faris-customers-'+role+(mobile?'-phone':'-desktop')+'.png',fullPage:true});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+ // Start a link from the existing Inbox rather than creating a duplicate upload.
+ const nav=page.locator(mobile?'#mobileDock':'#workspaceNav');await nav.locator('[data-'+(mobile?'mobile':'workspace')+'-nav="docs"]').click();await page.locator('[data-inbox-id="'+uploadId+'"]').check();await page.locator('#inboxLinkProfile').click();await page.locator('[data-customer-link-target]').waitFor();await page.locator('[data-customer-link-target]').click();await page.locator('[data-customer-preview="'+uploadId+'"]').waitFor();assert.equal(await page.locator('.customer-file').count(),3);
+ await page.locator('[data-customer-file="'+fileId+'"]').check();await page.locator('[data-customer-file="'+unlinkedId+'"]').check();await page.locator('#customerOpenCompiler').click();await page.waitForURL('**/?tool=COMPILER&origin=staff&inbox=1');const handoff=await page.evaluate(()=>JSON.parse(sessionStorage.getItem('faris_inbox_compiler_v1')));assert.deepEqual(handoff.ids,[fileId,unlinkedId]);assert.equal(handoff.account_id,user.id);
+ await page.goto('https://customers.test/staff.html#customers');await page.locator('#customersList [data-customer-open]').click();await page.locator('#cpName').waitFor();revoked=true;await page.locator('#customersRefresh').click();await page.waitForFunction(()=>document.getElementById('customerDetail').classList.contains('hide')&&document.getElementById('cpName').value==='');revoked=false;await page.locator('#customersRefresh').click();await page.locator('#customersList [data-customer-open]').click();await page.locator('#cpName').waitFor();await page.locator('#signoutBtn').click();await page.waitForFunction(()=>document.getElementById('customerFiles').children.length===0);assert.equal(await page.locator('#cpName').inputValue(),'');assert.equal(await page.locator('#customerPreview').isVisible(),false);assert.deepEqual(errors,[]);
+ console.log('PASS '+role+'/'+(mobile?'phone light':'desktop dark')+': profile/status/follow-up, notes, banks, checklist, upload/link/unlink/preview/download, Inbox handoff, Compiler IDs, timeline, access-revocation cleanup, logout cleanup and no overflow/errors');await ctx.close();
+}}finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});

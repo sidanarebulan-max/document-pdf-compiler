@@ -1,6 +1,6 @@
 (()=>{
 "use strict";
-const pages=new Set(["home","gallery","whatsapp","docs","telegram","settings"]);
+const pages=new Set(["home","gallery","whatsapp","customers","docs","telegram","settings"]);
 let account=null,current="whatsapp";
 const $=id=>document.getElementById(id);
 function show(page,{scroll=true,updateHash=true}={}){
@@ -13,7 +13,7 @@ function show(page,{scroll=true,updateHash=true}={}){
  });
  document.querySelectorAll("[data-workspace-nav],[data-mobile-nav]").forEach(button=>{
   const selected=(button.dataset.workspaceNav||button.dataset.mobileNav)===page;
-  if(selected)button.setAttribute("aria-current","page");
+  if(selected){button.setAttribute("aria-current","page");if(button.dataset.mobileNav)button.scrollIntoView({block:"nearest",inline:"nearest"})}
   else button.removeAttribute("aria-current");
  });
  if(updateHash&&location.hash!=="#"+page)history.replaceState(null,"","#"+page);
@@ -21,6 +21,7 @@ function show(page,{scroll=true,updateHash=true}={}){
   $("telegramPanel").classList.remove("hide");
   window.FARIS_TG?.onShow?.();
  }
+ if(page==="customers")window.FARIS_CUSTOMERS?.onShow?.();
  if(page==="gallery")window.FARIS_GALLERY?.onShow?.();
  if(page==="docs")window.FARIS_INBOX?.onShow?.();
  if(scroll)$("workspace-"+page)?.scrollIntoView({behavior:"instant",block:"start"});

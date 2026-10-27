@@ -7,11 +7,12 @@ const cats={HIRER:["AUTO","VSO","IC","LESEN","PAYSLIP","BANK","OTHER"],GUARANTOR
 function notice(message,error=false){const node=$("inboxNotice");node.textContent=message;node.classList.remove("hide");node.classList.toggle("error",error)}
 function selection(){
  $("inboxSelectedCount").textContent=selected.size+" fail dipilih";
- for(const id of ["inboxSaveAssignment","inboxOpenCompiler"])$(id).disabled=busy||!selected.size;
+ const linked=rows.some(x=>selected.has(x.id)&&x.customer_id);
+ for(const id of ["inboxSaveAssignment","inboxOpenCompiler","inboxLinkProfile"])$(id).disabled=busy||!selected.size||linked;
  $("inboxSelectAll").checked=rows.length>0&&rows.every(x=>selected.has(x.id));
 }
 function render(){
- $("inboxList").innerHTML=rows.length?rows.map(row=>'<article class="inbox-file"><label class="inbox-file-choice"><input type="checkbox" data-inbox-id="'+esc(row.id)+'" '+(selected.has(row.id)?"checked":"")+'><span><b>'+esc(row.original_name)+'</b><small>'+esc((row.byte_size/1048576).toFixed(2)+" MB · "+new Date(row.created_at).toLocaleString("ms-MY"))+'</small><small>'+esc(row.source==="ios_shortcut"?"Dari Share iPhone":"Muat naik melalui web")+' · '+esc(row.state==="assigned"?"Sudah disusun":"Belum diagih")+'</small>'+(row.customer_name?'<small>Pelanggan: '+esc(row.customer_name)+' · '+esc(row.party)+' / '+esc(row.category)+'</small>':"")+'</span></label><button type="button" class="secondary" data-inbox-download="'+esc(row.id)+'">Muat turun</button></article>').join(""):'<div class="empty">Belum ada fail dalam paparan ini. Muat naik dokumen atau gunakan Share iPhone.</div>';
+ $("inboxList").innerHTML=rows.length?rows.map(row=>'<article class="inbox-file"><label class="inbox-file-choice"><input type="checkbox" data-inbox-id="'+esc(row.id)+'" '+(selected.has(row.id)?"checked":"")+'><span><b>'+esc(row.original_name)+'</b><small>'+esc((row.byte_size/1048576).toFixed(2)+" MB · "+new Date(row.created_at).toLocaleString("ms-MY"))+'</small><small>'+esc(row.source==="ios_shortcut"?"Dari Share iPhone":"Muat naik melalui web")+' · '+esc(row.state==="assigned"?"Sudah disusun":"Belum diagih")+'</small>'+(row.customer_name?'<small>Pelanggan: '+esc(row.customer_name)+' · '+esc(row.party)+' / '+esc(row.category)+'</small>':"")+(row.customer_id?'<small>Dipautkan ke Profil Pelanggan</small>':"")+'</span></label>'+(row.customer_id?'<button type="button" class="secondary" data-customer-open="'+esc(row.customer_id)+'">Lihat Profil</button>':"")+'<button type="button" class="secondary" data-inbox-download="'+esc(row.id)+'">Muat turun</button></article>').join(""):'<div class="empty">Belum ada fail dalam paparan ini. Muat naik dokumen atau gunakan Share iPhone.</div>';
  $("inboxLoadMore").classList.toggle("hide",next===null);selection();
 }
 async function refresh(append=false){
@@ -84,6 +85,7 @@ function wire(){
   button.disabled=true;
   try{const d=await api().file(button.dataset.inboxDownload),url=URL.createObjectURL(d.file),link=document.createElement("a");link.href=url;link.download=d.file.name;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000)}catch(err){notice(err.message,true)}finally{button.disabled=false}
  });
+ $("inboxLinkProfile").addEventListener("click",()=>{if(selected.size)window.FARIS_CUSTOMERS?.linkFromInbox({ids:[...selected],party:$("inboxParty").value,category:$("inboxCategory").value})});
  $("inboxAssignmentForm").addEventListener("submit",e=>{e.preventDefault();assign(false)});
  $("inboxOpenCompiler").addEventListener("click",()=>assign(true));
  $("inboxIphoneGuide").addEventListener("toggle",()=>{if($("inboxIphoneGuide").open&&user)keyStatus()});

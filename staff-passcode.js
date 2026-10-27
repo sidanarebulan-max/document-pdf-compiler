@@ -29,6 +29,7 @@ function viewAuth(){
  window.FARIS_NAV?.onLogout?.();
  window.FARIS_INBOX?.onLogout?.();
  window.FARIS_GALLERY?.onLogout?.();
+ window.FARIS_CUSTOMERS?.onLogout?.();
  window.FARIS_TG?.onLogout?.();
 }
 function credentials(id,passcode){
@@ -117,6 +118,7 @@ async function showApp(){
  window.FARIS_TG?.onLogin?.(user);
  window.FARIS_INBOX?.onLogin?.(user);
  window.FARIS_GALLERY?.onLogin?.(user);
+ window.FARIS_CUSTOMERS?.onLogin?.(user);
  window.FARIS_NAV?.onLogin?.(user);
  await reload();
 }
@@ -425,6 +427,7 @@ function renderLeads(){
         '<p class="pm-confirmed-note">✅ Dah PM · '+esc(pmTime(l.pm_confirmed_at))+'</p>':
         '<button class="pm-confirm-button" type="button" data-confirm-pm="'+esc(l.id)+'">✓ Tandakan Dah PM</button>'}
       <div class="leadwork">
+        <button class="secondary" type="button" data-customer-open="${esc(l.id)}">♙ Lihat Profil</button>
         <button class="secondary" type="button" data-workspace-doc="${esc(l.id)}">📑 Urus Dokumen</button>
         <button class="secondary" type="button" data-workspace-vso="${esc(l.id)}">🚘 Buat VSO</button>
       </div>

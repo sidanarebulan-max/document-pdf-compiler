@@ -6,7 +6,7 @@ if(!KEY)throw Error("Server configuration missing");
 const db=createClient(URL,KEY,{auth:{persistSession:false,autoRefreshToken:false}});
 const BUCKET="lead-hub-inbox-private";
 const ORIGINS=new Set(["https://document-pdf-compiler.vercel.app","https://document-pdf-compiler-makanaman.vercel.app","https://document-pdf-compiler-git-main-makanaman.vercel.app"]);
-const fields="id,owner_id,uploaded_by,original_name,mime_type,byte_size,source,state,customer_name,customer_phone,party,category,created_at,updated_at";
+const fields="customer_id,id,owner_id,uploaded_by,original_name,mime_type,byte_size,source,state,customer_name,customer_phone,party,category,created_at,updated_at";
 const hex=(bytes:Uint8Array)=>Array.from(bytes,x=>x.toString(16).padStart(2,"0")).join("");
 const hash=async(s:string|Uint8Array)=>hex(new Uint8Array(await crypto.subtle.digest("SHA-256",typeof s==="string"?new TextEncoder().encode(s):s)));
 function json(req:Request,value:unknown,status=200){
@@ -77,8 +77,8 @@ async function handler(req:Request){
  if(body.action==="me")return json(req,{ok:true,user:{id:a.id,role:a.role,display_name:a.display_name,staff_code:a.staff_code}});
  if(body.action==="list"){
   const offset=Math.max(0,Math.min(100000,Number(body.offset)||0));
-  let query=db.from("lead_hub_inbox_files").select(fields,{count:"exact"}).neq("state","uploading").order("created_at",{ascending:false}).order("id");
-  if(a.role!=="admin"||body.team!==true)query=query.eq("owner_id",a.id);
+  let query=db.rpc("lead_hub_inbox_visible",{_actor:a.id},{count:"exact"}).select(fields).neq("state","uploading").order("created_at",{ascending:false}).order("id");
+  if(a.role==="admin"&&body.team!==true)query=query.eq("owner_id",a.id);
   if(["inbox","assigned"].includes(body.state))query=query.eq("state",body.state);
   const search=String(body.search||"").trim().slice(0,100);
   if(search)query=query.ilike("original_name","%"+search.replace(/[\\%_]/g,"\\$&")+"%");
@@ -89,7 +89,7 @@ async function handler(req:Request){
  }
  if(body.action==="download"){
   if(!isId(body.id))return json(req,{ok:false,error:"Fail tidak sah."},400);
-  const {data:file,error}=await owned(db.from("lead_hub_inbox_files").select(fields+",storage_path").eq("id",body.id).neq("state","uploading"),a).maybeSingle();
+  const {data:file,error}=await db.rpc("lead_hub_inbox_visible",{_actor:a.id}).select(fields+",storage_path").eq("id",body.id).neq("state","uploading").maybeSingle();
   if(error)throw error;if(!file)return json(req,{ok:false,error:"Fail tidak ditemui atau bukan milik anda."},404);
   const {data,error:signedError}=await db.storage.from(BUCKET).createSignedUrl(file.storage_path,60,{download:file.original_name});
   if(signedError)throw signedError;
@@ -98,7 +98,7 @@ async function handler(req:Request){
  }
  if(body.action==="delete"){
   if(!isId(body.id)||body.confirmed!==true)return json(req,{ok:false,error:"Sahkan pemadaman fail dahulu."},400);
-  const {data:removed,error}=await owned(db.from("lead_hub_inbox_files").delete().eq("id",body.id).neq("state","uploading"),a).select("*").maybeSingle();
+  const {data:removed,error}=await owned(db.from("lead_hub_inbox_files").delete().eq("id",body.id).is("customer_id",null).neq("state","uploading"),a).select("*").maybeSingle();
   if(error)throw error;if(!removed)return json(req,{ok:false,error:"Fail tidak ditemui atau bukan milik anda."},404);
   const {error:storageError}=await db.storage.from(BUCKET).remove([removed.storage_path]);
   if(storageError){await db.from("lead_hub_inbox_files").insert(removed);throw storageError}
