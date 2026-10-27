@@ -1,6 +1,6 @@
 (()=>{
 "use strict";
-const pages=new Set(["home","whatsapp","docs","telegram","settings"]);
+const pages=new Set(["home","gallery","whatsapp","docs","telegram","settings"]);
 let account=null,current="whatsapp";
 const $=id=>document.getElementById(id);
 function show(page,{scroll=true,updateHash=true}={}){
@@ -21,6 +21,7 @@ function show(page,{scroll=true,updateHash=true}={}){
   $("telegramPanel").classList.remove("hide");
   window.FARIS_TG?.onShow?.();
  }
+ if(page==="gallery")window.FARIS_GALLERY?.onShow?.();
  if(page==="docs")window.FARIS_INBOX?.onShow?.();
  if(scroll)$("workspace-"+page)?.scrollIntoView({behavior:"instant",block:"start"});
  return true;

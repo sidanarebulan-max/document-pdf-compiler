@@ -28,6 +28,7 @@ function viewAuth(){
  $("adminCredentialsShortcut").classList.add("hide");
  window.FARIS_NAV?.onLogout?.();
  window.FARIS_INBOX?.onLogout?.();
+ window.FARIS_GALLERY?.onLogout?.();
  window.FARIS_TG?.onLogout?.();
 }
 function credentials(id,passcode){
@@ -115,6 +116,7 @@ async function showApp(){
  $("claimBtn").classList.toggle("hide",user.role==="admin");
  window.FARIS_TG?.onLogin?.(user);
  window.FARIS_INBOX?.onLogin?.(user);
+ window.FARIS_GALLERY?.onLogin?.(user);
  window.FARIS_NAV?.onLogin?.(user);
  await reload();
 }

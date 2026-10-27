@@ -29,7 +29,7 @@ async function send(action,payload={},file=null,retried=false){
  const d=await r.json().catch(()=>null);if(!r.ok||!d?.ok)throw Error(d?.error||"Fail Masuk tidak dapat dihubungi. Cuba lagi.");
  return d;
 }
-window.FARIS_INBOX_CLIENT={request:send,upload:file=>send("receive",{},file),
+window.FARIS_INBOX_CLIENT={request:send,renewSession:renew,upload:file=>send("receive",{},file),
  async file(id){
   const d=await send("download",{id});
   const r=await fetch(d.url,{cache:"no-store"});
