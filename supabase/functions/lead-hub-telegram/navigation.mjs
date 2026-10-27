@@ -34,10 +34,15 @@ export function mainMenu(activeCase){
  return {
   text:"🏠 FARIS R+PROTON • MENU UTAMA\n"+
    (activeCase?"📂 Kes dokumen: "+String(activeCase.customer_name||"").slice(0,75)+"\n":"")+
-   "\nPilih halaman kerja. Dokumen dan nombor WhatsApp diurus berasingan.",
+   "\nPilih halaman kerja.\n"+
+   "📁 Dokumen dan 📲 WhatsApp diurus dalam chat ini.\n"+
+   "🖼 Gallery, 👥 Profil Pelanggan dan 📥 Fail Masuk dibuka di website FARIS. Log masuk jika diminta.",
   reply_markup:{inline_keyboard:[
    [{text:"📁 Dokumen",callback_data:"faris_nav:docs"},
-    {text:"📲 WhatsApp",callback_data:"faris_nav:wa"}]
+    {text:"📲 WhatsApp",callback_data:"faris_nav:wa"}],
+   [{text:"🖼 Gallery ↗",url:"https://document-pdf-compiler.vercel.app/staff.html#gallery"},
+    {text:"👥 Profil Pelanggan ↗",url:"https://document-pdf-compiler.vercel.app/staff.html#customers"}],
+   [{text:"📥 Fail Masuk ↗",url:"https://document-pdf-compiler.vercel.app/staff.html#docs"}]
   ]}
  };
 }

@@ -319,6 +319,13 @@ If the native Telegram slash-command list still shows older actions, an admin ca
 
 **Keselamatan & status:** `lead_hub_telegram_wa_drafts` ialah jadual sementara dengan RLS aktif dan hanya service role boleh akses; pergerakan keluar halaman membatalkan draf agar nama/nombor tidak bocor masuk ke borang kes dokumen. Fungsi `lead-hub-telegram` v28 ACTIVE. 19 ujian logik kod lulus dan fungsi live disemak. Belum ada ujian hujung-ke-hujung menggunakan klik butang sebenar dalam Telegram. Tiada lead pelanggan ditulis/WhatsApp dihantar semasa pembangunan.
 
+## 28 Oct 2026 — Pautan tab website dalam menu Telegram
+
+- Menu utama bot (`/menu`, `menu` atau `/start` selepas akaun dipautkan) mempunyai butang **Gallery**, **Profil Pelanggan** dan **Fail Masuk**.
+- Butang URL membuka `staff.html#gallery`, `staff.html#customers` dan `staff.html#docs` di website FARIS. Login website dan had akses akaun sedia ada masih diperlukan; pautan tidak membawa token, passcode atau data pelanggan.
+- Butang **Dokumen** dan **WhatsApp** masih menggunakan aliran chat sedia ada. Pautan ini tidak memindahkan folder Telegram ke profil atau menambah fungsi simpan PDF Telegram ke profil secara automatik.
+- Menu lama dalam sejarah chat tidak berubah sendiri. Hantar `/menu` atau tekan **Menu Utama** untuk paparan baharu.
+
 ## 28 Oct 2026 — Gallery bahan jualan bersama
 
 - Susunan menu: Utama → Gallery → WhatsApp → Dokumen → Telegram → Staf & Akses.
