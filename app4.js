@@ -1,3 +1,6 @@
+  function compilerProfileStamp(){
+    return JSON.stringify([$('#compileScope').value,$('#customerName').value,$('#customerPhone').value,partyNames,items.map(x=>[x.id,x.party,x.category,x.date,x.order])]);
+  }
   async function renderPreviewPage(){
     if(!finalPreviewPdf) return;
     const host=$('#preview');
@@ -133,6 +136,8 @@
     return;
   }
   clearError();
+  window.FARIS_GENERATED?.clear('compiler');
+  const profileStamp=compilerProfileStamp();
   $('#generateBtn').disabled=true;
   $('#downloadBtn').disabled=true;
   $('#openBtn').disabled=true;
@@ -171,6 +176,7 @@
     finalBlob=new Blob([bytes],{type:'application/pdf'});
     finalUrl=URL.createObjectURL(finalBlob);
     lastGeneratedMode=scope;
+    window.FARIS_GENERATED?.publish('compiler',{blob:finalBlob,name:safeFilename(),party:scope==='REBATE_ONLY'?'REBATE':!hirerDocs.length&&guarantorDocs.length&&!rebateDocs.length?'GUARANTOR':!hirerDocs.length&&!guarantorDocs.length?'REBATE':'HIRER',category:'OTHER',valid:()=>profileStamp===compilerProfileStamp()});
     $('#downloadBtn').disabled=false;
     $('#openBtn').disabled=false;
     $('#driveSaveBtn').disabled=false;
@@ -219,6 +225,7 @@
       partyNames[activeParty]='';
       $('#partyName').value='';
       finalBlob=null;
+      window.FARIS_GENERATED?.clear('compiler');
       finalPreviewPdf=null;
       clearError();
       if(finalUrl) URL.revokeObjectURL(finalUrl);

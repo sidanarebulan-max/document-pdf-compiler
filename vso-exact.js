@@ -239,6 +239,8 @@
     if(d.kind==="PLAIN"&&d.loan>d.otr){showStatus("Loan tidak boleh melebihi OTR asal bagi VSO tanpa markup.");return null;}
     if(d.net<=0){showStatus("Jumlah pinjaman tidak menghasilkan harga bersih positif.");return null;}
     if(buildBusy)return null;
+    window.FARIS_GENERATED?.clear("vso");
+    const profileTemplate=blankImage,profileStamp=JSON.stringify([controlledFields.map(id=>E(id)?.value),mode()]);
     buildBusy=true;
     const buttons=[E("vsoDownload"),E("vsoDownloadBottom"),E("vsoToCompiler")];
     buttons.forEach(x=>x.disabled=true);
@@ -252,6 +254,7 @@
       const bytes=await pdf.save({useObjectStreams:true});
       const blob=new Blob([bytes],{type:"application/pdf"});
       const fname=(d.customer.toUpperCase().replace(/[^A-Z0-9]+/g,"_").slice(0,37)||"CUSTOMER")+"_"+d.variant.id+"_"+(d.kind==="MARKUP"?"MARKUP_90":"TANPA_MARKUP")+"_VSO_DRAF.pdf";
+      window.FARIS_GENERATED?.publish("vso",{blob,name:fname,party:"HIRER",category:"VSO",valid:()=>profileTemplate===blankImage&&profileStamp===JSON.stringify([controlledFields.map(id=>E(id)?.value),mode()])});
       showStatus("✓ PDF VSO DRAF siap dijana daripada template asal.",true);
       return {blob,fname};
     }catch(err){showStatus("Gagal menjana PDF: "+err.message);return null;}
