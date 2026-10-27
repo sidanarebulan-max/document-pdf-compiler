@@ -15,7 +15,7 @@
  </script>
  <title>FARIS LEAD HUB — ID & Passcode Staf</title>
  <meta name="description" content="Portal staf Proton: masuk menggunakan ID dan passcode, ambil nombor pelanggan, buka WhatsApp dalam telefon.">
- <link rel="stylesheet" href="/staff.css?v=inbox-v36-20261026">
+ <link rel="stylesheet" href="/staff.css?v=shared-pm-v37-20261027">
  <style>
   .credential{border:1px solid #405e98;background:linear-gradient(135deg,#101d38,#1d3156);border-radius:14px;padding:16px;margin-top:10px}
   .credential strong{display:block;color:#96baff;font-size:10px;letter-spacing:1.5px}
@@ -329,16 +329,18 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
    <select id="stageFilter"><option value="">Semua status</option><option value="new">Belum diambil</option><option value="claimed">Sudah diambil</option><option value="contacted">Dihubungi</option><option value="follow_up">Follow-up</option><option value="interested">Berminat</option><option value="booked">Booking</option><option value="not_interested">Tidak berminat</option></select>
    <select id="messageTemplate"><option value="intro">Skrip: Pengenalan</option><option value="follow">Skrip: Follow-up</option><option value="price">Skrip: Harga / Loan</option></select>
   </div>
-  <div class="pm-tabs" id="staffPmTabs" role="tablist" aria-label="Senarai WhatsApp staf">
-   <button type="button" class="pm-tab" role="tab" data-pm-tab="pending" aria-selected="true" aria-controls="leadList">⏳ Belum PM <span id="pmPendingCount" class="pm-count">0</span></button>
-   <button type="button" class="pm-tab" role="tab" data-pm-tab="sent" aria-selected="false" aria-controls="leadList">✅ Dah PM <span id="pmSentCount" class="pm-count">0</span></button>
-   <button type="button" class="pm-tab" role="tab" data-pm-tab="history" aria-selected="false" aria-controls="pmHistoryList">🕓 Sejarah <span id="pmHistoryCount" class="pm-count">0</span></button>
+  <div class="pm-tabs" id="staffPmTabs" role="tablist" aria-label="Urusan WhatsApp">
+   <button type="button" class="pm-tab" role="tab" data-pm-tab="pending" aria-selected="true" aria-controls="leadList"><span>⏳ <span id="pmPendingLabel">Belum PM</span></span><span id="pmPendingCount" class="pm-count">0</span></button>
+   <button type="button" class="pm-tab" role="tab" data-pm-tab="sent" aria-selected="false" aria-controls="leadList"><span>✅ Dah PM</span><span id="pmSentCount" class="pm-count">0</span></button>
+   <button type="button" class="pm-tab" role="tab" data-pm-tab="history" aria-selected="false" aria-controls="pmHistoryList"><span>☏ Sejarah Nombor</span><span id="pmHistoryCount" class="pm-count">0</span></button>
+   <button type="button" class="pm-tab" role="tab" data-pm-tab="log" aria-selected="false" aria-controls="pmActivityList"><span>🕓 Log Aktiviti</span><span id="pmActivityCount" class="pm-count">0</span></button>
   </div>
-  <p id="pmTabHint" class="small muted pm-tab-hint">Belum PM / Dah PM ialah tugasan anda. Sejarah menunjukkan siapa yang claim atau menerima agihan nombor dalam pasukan. Buka WhatsApp sahaja belum bermaksud mesej dihantar.</p>
+  <p id="pmTabHint" class="small muted pm-tab-hint">Sejarah Nombor ialah senarai pelanggan yang boleh di-PM oleh staf lain. Log Aktiviti merekod siapa yang claim, buka WhatsApp dan sahkan PM. Buka WhatsApp sahaja belum bermaksud mesej dihantar.</p>
   <p class="muted small" id="listMessage"></p>
   <p class="small muted" id="queueCount" aria-live="polite"></p>
   <div class="lead-list" id="leadList" aria-live="polite"></div>
-  <div class="pm-history-list hide" id="pmHistoryList" role="tabpanel" aria-live="polite" aria-label="Sejarah WhatsApp staf"></div>
+  <div class="pm-history-list hide" id="pmHistoryList" role="tabpanel" aria-live="polite" aria-label="Sejarah Nombor"></div>
+  <div class="pm-history-list hide" id="pmActivityList" role="tabpanel" aria-live="polite" aria-label="Log Aktiviti WhatsApp"></div>
  </section><section id="whatsappAdminPanel" class="panel hide" data-admin-only><div class="panelhead"><div><h2>Tambah & Import Nombor</h2><p class="muted">Masukkan nombor pelanggan dan agihkan kepada staf aktif.</p></div></div><div class="admin-grid"><section class="innerpanel">
     <h3>Tambah satu nombor pelanggan</h3>
     <form id="addLeadForm">
@@ -604,7 +606,7 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
 <script src="/inbox-client.js?v=inbox-v36-20261026"></script>
 <script src="/staff-inbox.js?v=inbox-v36-20261026"></script>
 <script src="/staff-navigation.js?v=inbox-v36-20261026"></script>
-<script src="/staff-passcode.js?v=inbox-v36-20261026"></script>
+<script src="/staff-passcode.js?v=shared-pm-v37-20261027"></script>
 
 <script src="/telegram-hub.js?v=inbox-v36-20261026"></script>
 </body></html>

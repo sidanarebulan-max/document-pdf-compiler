@@ -78,18 +78,30 @@ async function listLeads(a:Account) {
   return found;
 }
 async function listAssignmentHistory() {
-  // Shared, read-only team history authorized by the owner. Working leads and
-  // private notes remain scoped to the assigned account in listLeads().
+  // Basic shared-number data is team-visible. Working notes remain owner-only.
   const found=[];
   for(let offset=0;;offset+=500){
     const {data,error}=await db.from("lead_hub_assignment_history")
-      .select("id,lead_id,assignee_name,assignee_code,event_type,assigned_at,recorded_at,lead:lead_hub_leads!lead_id(customer_name,phone_e164,model)")
+      .select("id,lead_id,assignee_name,assignee_code,event_type,assigned_at,recorded_at,lead:lead_hub_leads!lead_id(id,customer_name,phone_e164,model,consent_confirmed,assigned_id,stage)")
       .order("recorded_at",{ascending:false}).order("id",{ascending:false})
       .range(offset,offset+499);
     if(error)throw error;
     found.push(...data);if(data.length<500)break;
   }
   return found;
+}
+async function myConfirmedContacts(a:Account){
+  const found=new Map();
+  for(let offset=0;;offset+=500){
+    const {data,error}=await db.from("lead_hub_lead_activity")
+      .select("lead_id,created_at,lead:lead_hub_leads!lead_id(id,customer_name,phone_e164,model,consent_confirmed,assigned_id,stage)")
+      .eq("actor_id",a.id).eq("event_type","pm_confirmed")
+      .order("created_at",{ascending:false}).order("id",{ascending:false}).range(offset,offset+499);
+    if(error)throw error;
+    for(const event of data||[]){if(event.lead&&!found.has(event.lead_id))found.set(event.lead_id,{...event.lead,pm_confirmed_at:event.created_at,shared_history:true})}
+    if(data.length<500)break;
+  }
+  return [...found.values()];
 }
 async function handler(req:Request):Promise<Response> {
   const origin=req.headers.get("origin");
@@ -238,6 +250,7 @@ async function handler(req:Request):Promise<Response> {
   if(action==="list"){
     const leads=await listLeads(a);
     const assignment_history=await listAssignmentHistory();
+    const my_pm=await myConfirmedContacts(a);
     const validIds=new Set(leads.map((x:any)=>x.id));
     let historyQuery=db.from("lead_hub_lead_activity")
       .select("id,lead_id,actor_id,event_type,stage_before,stage_after,created_at")
@@ -247,15 +260,32 @@ async function handler(req:Request):Promise<Response> {
     if(activityErr)throw activityErr;
     // Detailed PM activity stays scoped; the separate assignment history is shared.
     const history=(activity||[]).filter((ev:any)=>validIds.has(ev.lead_id)).slice(0,100);
+    const {data:activity_log,error:logError}=await db.from("lead_hub_lead_activity")
+      .select("id,lead_id,actor_id,actor_name,actor_code,event_type,stage_before,stage_after,created_at,actor:lead_hub_accounts!actor_id(display_name,staff_code),lead:lead_hub_leads!lead_id(id,customer_name,phone_e164,model)")
+      .order("created_at",{ascending:false}).order("id",{ascending:false}).limit(250);
+    if(logError)throw logError;
     if(a.role!=="admin"){
       const {count,error}=await db.from("lead_hub_leads").select("id",{head:true,count:"exact"})
         .is("assigned_id",null).eq("stage","new").eq("consent_confirmed",true);
       if(error)throw error;
-      return response(req,{ok:true,leads,history,assignment_history,staff:[profile(a)],available_count:count||0});
+      return response(req,{ok:true,leads,history,assignment_history,my_pm,activity_log,staff:[profile(a)],available_count:count||0});
     }
     const {data:staff,error}=await db.from("lead_hub_accounts").select("id,staff_code,display_name,role,active,created_at").order("created_at",{ascending:true});
     if(error)throw error;
-    return response(req,{ok:true,leads,history,assignment_history,staff,available_count:leads.filter(x=>!x.assigned_id&&x.stage==="new").length});
+    return response(req,{ok:true,leads,history,assignment_history,my_pm,activity_log,staff,available_count:leads.filter(x=>!x.assigned_id&&x.stage==="new").length});
+  }
+  if(action==="open_shared"||action==="confirm_shared_pm"){
+    const id=String(body.lead_id||""),operation=String(body.operation_id||"");
+    if(!/^[a-f0-9-]{36}$/i.test(id)||!/^[a-f0-9-]{36}$/i.test(operation))return error(req,"Rekod atau operasi tidak sah",400);
+    const {data:lead,error:lookupError}=await db.from("lead_hub_leads").select("id,consent_confirmed").eq("id",id).maybeSingle();
+    if(lookupError)throw lookupError;
+    const {data:shared,error:shareError}=await db.from("lead_hub_assignment_history").select("id").eq("lead_id",id).limit(1);
+    if(shareError)throw shareError;
+    if(!lead||!shared?.length)return error(req,"Nombor tiada dalam Sejarah Nombor",403);
+    if(!lead.consent_confirmed)return error(req,"Kebenaran pelanggan belum disahkan",400);
+    const {data,error:contactError}=await db.rpc("lead_hub_contact_shared",{_actor:a.id,_lead:id,_event:action==="open_shared"?"whatsapp_opened":"pm_confirmed",_operation:operation});
+    if(contactError)throw contactError;
+    return response(req,{ok:true,...data});
   }
   if(action==="claim"){
     if(a.role!=="staff")return error(req,"Hanya staf boleh mengambil lead",403);
@@ -305,8 +335,8 @@ async function handler(req:Request):Promise<Response> {
     let q=db.from("lead_hub_leads").update({stage,notes,follow_up_at:follow,updated_at:new Date().toISOString()})
       .eq("id",id).eq("stage",before.stage);
     if(a.role!=="admin")q=q.eq("assigned_id",a.id);
-    const {data,error}=await q.select("id");
-    if(error)throw error;
+    const {data,error:updateError}=await q.select("id");
+    if(updateError)throw updateError;
     if(!data?.length)return error(req,"Status berubah. Refresh dan cuba semula.",409);
     if(before.stage!==stage){
       const {error:logError}=await db.from("lead_hub_lead_activity").insert({

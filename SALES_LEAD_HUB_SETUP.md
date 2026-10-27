@@ -1,5 +1,16 @@
 # FARIS LEAD HUB — Panduan ID Staf & Passcode
 
+## Sejarah Nombor berasingan daripada Log Aktiviti (27 Oktober 2026)
+
+- Ruang WhatsApp mempunyai 4 tab: **Belum PM** (admin: **Semua Nombor**), **Dah PM**, **Sejarah Nombor**, **Log Aktiviti**. Tab tersedia pada telefon dan desktop, termasuk admin.
+- **Sejarah Nombor** memaparkan satu kad bagi setiap nombor yang pernah diambil/diagihkan, tanpa menduplikasi kad untuk setiap peristiwa. Kad menunjukkan nama, nombor, model dan staf penerima claim/agihan terakhir. Semua staf aktif boleh membuka WhatsApp dan mengesahkan PM pada nombor ini apabila kebenaran pelanggan masih sah.
+- **Log Aktiviti** memaparkan claim/agihan serta aktiviti PM pasukan dalam garis masa berasingan. Peristiwa PM menunjukkan nama/ID pengirim sebenar dan masa. Nama/ID aktor disimpan sebagai snapshot pada aktiviti baharu; rekod lama diisi daripada akaun yang diketahui. Log bukan senarai untuk menghubungi pelanggan.
+- **Dah PM** pengirim merangkumi PM yang disahkan melalui Sejarah Nombor walaupun lead itu ditugaskan kepada orang lain. Claim, pemilik tugasan dan status kerja pemilik tidak berubah apabila staf lain menghubungi nombor. Bagi pemilik sendiri, pengesahan PM mengemas kini status PM tugasan seperti biasa.
+- Endpoint `open_shared` dan `confirm_shared_pm` memperoleh actor daripada sesi server, memerlukan rekod dalam sejarah + consent, dan menggunakan RPC invoker `lead_hub_contact_shared`. UUID operasi mengelakkan rekod berganda apabila permintaan sama diulang. Tiada penghantaran WhatsApp automatik; staf masih menekan Send dalam WhatsApp dan mengesahkan penghantaran secara manual.
+- Akses ini tidak membenarkan staf lain menyunting nota, status atau agihan asal. Data senarai/log pasukan mengecualikan nota peribadi dan semua data passcode/sesi. Log PM memaparkan 250 aktiviti terkini; sejarah nombor dan senarai PM sendiri dimuatkan berhalaman tanpa had 250 itu.
+- Source skema: `supabase/shared-history-contact.sql`. Backend `lead-hub` v13 ACTIVE. Ujian SQL rollback mengesahkan idempotensi, snapshot, consent, sejarah dan pemilikan. Ujian HTTP sebenar mengesahkan actor SAZ0001 walaupun payload cuba menggunakan actor lain, claim kekal AIMAN01, log 2 peristiwa sahaja selepas retry, nota tidak didedahkan dan edit nota staff lain ditolak. Dua lead sintetik dibuang dan sesi ujian dinyahaktifkan; tiada mesej WhatsApp dihantar.
+- Pengesahan: 6 unit sejarah/log + 3 unit fail masuk lulus; 2 senario pelayar PM bersama telefon/desktop dan 4 senario regresi ruang kerja admin/staf lulus. Skrip: `tests/shared-pm.browser.cjs`, `tests/shared-pm-live.py`, `tests/staff-history.test.cjs`.
+
 ## Fail Masuk dan Share iPhone (26 Oktober 2026)
 
 - **Dokumen → Fail Masuk:** simpan PDF, JPG/PNG/WebP/HEIC/HEIF, DOCX, XLSX/XLS dan TXT dahulu tanpa memilih pelanggan. Had 20 MB per fail. Fail asal disimpan dalam bucket peribadi `lead-hub-inbox-private` dan metadata `lead_hub_inbox_files`, bukan dalam localStorage atau query URL.
@@ -26,8 +37,8 @@
 
 ## Sejarah claim / agihan pasukan (26 Oktober 2026)
 
-- Tab **Sejarah** staf memaparkan rekod claim dan agihan semua staf, termasuk apabila akaun sendiri mempunyai 0 lead. Nama pelanggan, nombor, model, nama serta ID staf penerima dipaparkan secara baca sahaja. Nama/ID staf juga boleh dicari.
-- **Belum PM / Dah PM** dan tindakan simpan/buka WhatsApp kekal mengikut pemilik tugasan. Nota peribadi dan aktiviti PM staf lain tidak dikongsi melalui sejarah pasukan.
+- Tab asal **Sejarah** kini dipisahkan kepada **Sejarah Nombor** dan **Log Aktiviti** seperti kemas kini 27 Oktober di atas. Nama/ID staf penerima boleh dicari; nombor dengan consent boleh di-PM oleh staf lain.
+- Penyuntingan nota/status kekal mengikut pemilik tugasan. Log PM pasukan hanya berkongsi metadata peristiwa asas, tanpa kandungan mesej atau nota peribadi.
 - `lead_hub_assignment_history` menyimpan snapshot nama/ID staf; trigger `lead_hub_assignment_audit` meliputi tambah lead, agihan website, claim atomik dan Telegram. Sejarah lama kekal selepas pertukaran/pembatalan agihan. Rekod asal lead yang dipadam masih mengikut dasar cascade sedia ada.
 - Agihan sedia ada dimasukkan sebagai `legacy_assignment` dengan masa claim tidak diketahui. Jangan gunakan `updated_at` sebagai masa claim lama.
 - Skema sumber: `supabase/assignment-history.sql`. RLS aktif, tiada akses terus anon/authenticated; Edge Function `lead-hub` mengesahkan sesi sebelum mengembalikan sejarah pasukan.

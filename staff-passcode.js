@@ -16,7 +16,7 @@ const normalizePhone=value=>{
  if(p.startsWith("0"))p="6"+p;else if(p.startsWith("1"))p="60"+p;
  return /^601\d{8,9}$/.test(p)?p:null;
 };
-let token=localStorage.getItem(SESSION_KEY)||"",deviceToken=localStorage.getItem(DEVICE_KEY)||"",user=null,leads=[],staff=[],busy=false,availableCount=0,expandedLeadId=null,history=[],assignmentHistory=[],activePmTab="pending";
+let token=localStorage.getItem(SESSION_KEY)||"",deviceToken=localStorage.getItem(DEVICE_KEY)||"",user=null,leads=[],staff=[],busy=false,availableCount=0,expandedLeadId=null,history=[],assignmentHistory=[],myPm=[],activePmTab="pending";
 let renewalPromise=null;
 let messageTemplates={team:{},personal:{}},editorDirty=false;
 function notice(id,text,error=false){
@@ -69,7 +69,7 @@ async function call(action,payload={},requiresSession=true,retried=false){
   response=await fetch(API,{method:"POST",mode:"cors",headers:{
    "Content-Type":"application/json",
    ...(requiresSession&&token?{"Authorization":"Bearer "+token}:{})
-  },body:JSON.stringify({action,...payload}),cache:"no-store"});
+  },body:JSON.stringify({action,...payload}),cache:"no-store",keepalive:["open_shared","opened"].includes(action)});
  }catch(_){throw new Error("Tidak dapat sambung ke server. Semak internet atau cuba muat semula.");}
  const result=await response.json().catch(()=>null);
  if(!result)throw new Error("Respons server tidak sah ("+response.status+")");
@@ -133,7 +133,7 @@ async function reload(){
    const templates=await call("get_message_templates");
    messageTemplates={team:templates.team||{},personal:templates.personal||{}};
   }catch(e){console.warn("Tetapan mesej tidak dapat dikemas kini:",e.message)}
-  leads=r.leads||[];history=r.history||[];assignmentHistory=r.assignment_history||[];staff=r.staff||[];availableCount=Number(r.available_count)||0;
+  leads=r.leads||[];history=r.activity_log||r.history||[];myPm=r.my_pm||[];assignmentHistory=r.assignment_history||[];staff=r.staff||[];availableCount=Number(r.available_count)||0;
   metrics();renderLeads();renderRoster();
   if(!editorDirty)syncMessageEditor();
   $("lastRefresh").textContent="Dikemas kini: "+new Date().toLocaleTimeString("ms-MY",{hour:"2-digit",minute:"2-digit"});
@@ -263,81 +263,97 @@ function openWorkspace(tool,leadId=null){
  const mode=tool==="COMPILER"?"COMPILER":"VSO";
  window.location.assign("/?tool="+mode+"&origin=staff");
 }
-function isStaffPmView(){
- return user?.role==="staff";
+function isStaffPmView(){return Boolean(user)}
+let numberCacheSource=null,numberCache=[],numberById=new Map(),pmCacheSource=null,pmById=new Map();
+function personalPm(){if(pmCacheSource!==myPm){pmCacheSource=myPm;pmById=new Map(myPm.map(x=>[x.id,x]))}return pmById}
+function historyNumbers(){
+ if(numberCacheSource===assignmentHistory)return numberCache;
+ const found=new Map();
+ const records=[...assignmentHistory].sort((a,b)=>Date.parse(b.recorded_at||b.assigned_at)-Date.parse(a.recorded_at||a.assigned_at));
+ for(const record of records){
+  if(!record.lead)continue;
+  const id=record.lead_id;
+  if(!found.has(id))found.set(id,{...record.lead,id,shared_history:true,
+   claim_name:record.assignee_name,claim_code:record.assignee_code,claim_search:[]});
+  found.get(id).claim_search.push(record.assignee_name,record.assignee_code);
+ }
+ numberCacheSource=assignmentHistory;numberById=found;numberCache=[...found.values()];return numberCache;
+}
+function sentNumbers(){
+ const result=new Map(myPm.map(x=>[x.id,{...x,shared_history:true}]));
+ for(const lead of leads){if(lead.pm_confirmed_at)result.set(lead.id,lead)}
+ return [...result.values()];
 }
 function pmEventHistory(){
- const current=new Map(leads.map(x=>[x.id,x]));
- const entries=history.filter(e=>current.has(e.lead_id)).map(e=>({
-  ...e,customer:current.get(e.lead_id),
-  at:e.created_at
- }));
- const loggedOpened=new Set(entries.filter(x=>x.event_type==="whatsapp_opened").map(x=>x.lead_id));
- for(const lead of leads){
-  if(lead.last_opened_at&&!loggedOpened.has(lead.id)){
-   entries.push({lead_id:lead.id,event_type:"legacy_opened",at:lead.last_opened_at,customer:lead});
-  }
- }
- // Do not filter the shared claim log by current ownership. A staff member
- // with zero working leads still needs to see who has taken each number.
+ const current=new Map([...historyNumbers(),...leads].map(x=>[x.id,x]));
+ const entries=history.map(e=>({...e,customer:e.lead||current.get(e.lead_id),at:e.created_at})).filter(e=>e.customer);
  for(const record of assignmentHistory){
-  entries.push({...record,customer:record.lead,event_type:record.event_type,
-   at:record.assigned_at,sortAt:record.assigned_at||record.recorded_at});
+  entries.push({...record,customer:record.lead,at:record.assigned_at,sortAt:record.assigned_at||record.recorded_at});
  }
  return entries.sort((a,b)=>Date.parse(b.sortAt||b.at)-Date.parse(a.sortAt||a.at));
 }
 function pmTime(value){
  if(!value)return "Masa belum diketahui";
  const d=new Date(value);
- return Number.isNaN(d.getTime())?"Masa tidak diketahui":
-  d.toLocaleString("ms-MY",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
+ return Number.isNaN(d.getTime())?"Masa tidak diketahui":d.toLocaleString("ms-MY",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
+}
+function sharedNumberCard(number){
+ historyNumbers();const claim=numberById.get(number.id)||number;
+ const confirmed=personalPm().get(number.id);
+ return '<article class="lead shared-number-card" data-history-number="'+esc(number.id)+'">'+
+  '<div class="lead-primary"><strong class="lead-customer">'+esc(number.customer_name)+'</strong><span class="lead-phone">+'+esc(number.phone_e164)+'</span><span class="lead-secondary">'+esc(number.model||"Belum pasti")+'</span></div>'+
+  '<p class="shared-claim-note">Claim / agihan terakhir: <b>'+esc(claim.claim_name||"Staf")+' ('+esc(claim.claim_code||"ID tidak tersedia")+')</b></p>'+
+  (confirmed?'<p class="small muted">PM anda terakhir: '+esc(pmTime(confirmed.pm_confirmed_at))+'</p>':"")+
+  (number.consent_confirmed?'<div class="shared-number-actions"><a class="wa" data-history-open="'+esc(number.id)+'" href="'+esc(waUrl(number))+'" target="_blank" rel="noopener noreferrer">✆ WhatsApp ↗</a><button type="button" class="secondary" data-history-confirm="'+esc(number.id)+'">✓ '+(confirmed?"Tandakan PM Baharu":"Tandakan Dah PM")+'</button></div>':'<p class="small attention">Kebenaran untuk menghubungi pelanggan belum disahkan.</p>')+
+  '</article>';
 }
 function renderPmTabs(){
-  const visible=isStaffPmView(),nav=$("staffPmTabs"),hint=$("pmTabHint");
- nav?.classList.toggle("pm-active",visible);
- hint?.classList.toggle("pm-active",visible);
- if(!visible){$("leadList").classList.remove("hide");$("pmHistoryList").classList.add("hide");return false}
- const pending=leads.filter(x=>!x.pm_confirmed_at).length;
- const sent=leads.length-pending;
- const events=pmEventHistory();
- $("pmPendingCount").textContent=String(pending);
- $("pmSentCount").textContent=String(sent);
- $("pmHistoryCount").textContent=String(events.length);
- nav.querySelectorAll("[data-pm-tab]").forEach(btn=>{
-  const active=btn.dataset.pmTab===activePmTab;
-  btn.setAttribute("aria-selected",String(active));
-  btn.tabIndex=active?0:-1;
+ const visible=isStaffPmView(),nav=$("staffPmTabs"),hint=$("pmTabHint");
+ nav?.classList.toggle("pm-active",visible);hint?.classList.toggle("pm-active",visible);
+ const numbers=historyNumbers(),events=pmEventHistory();
+ $("pmPendingLabel").textContent=user?.role==="admin"?"Semua Nombor":"Belum PM";
+ $("pmPendingCount").textContent=String(user?.role==="admin"?leads.length:leads.filter(x=>!x.pm_confirmed_at).length);
+ $("pmSentCount").textContent=String(sentNumbers().length);
+ $("pmHistoryCount").textContent=String(numbers.length);
+ $("pmActivityCount").textContent=String(events.length);
+ nav?.querySelectorAll("[data-pm-tab]").forEach(btn=>{
+  const active=btn.dataset.pmTab===activePmTab;btn.setAttribute("aria-selected",String(active));btn.tabIndex=active?0:-1;
  });
- const showingHistory=activePmTab==="history";
+ const showingHistory=visible&&activePmTab==="history",showingLog=visible&&activePmTab==="log";
  $("pmHistoryList").classList.toggle("hide",!showingHistory);
- $("leadList").classList.toggle("hide",showingHistory);
+ $("pmActivityList").classList.toggle("hide",!showingLog);
+ $("leadList").classList.toggle("hide",showingHistory||showingLog);
+ $("stageFilter").classList.toggle("hide",showingLog);$("messageTemplate").classList.toggle("hide",showingLog);
+ $("leadSearch").parentElement?.classList.toggle("log-filter",showingLog);
+ $("queueCount").classList.toggle("hide",showingHistory||showingLog);
+ const search=$("leadSearch").value.trim().toLowerCase(),filter=$("stageFilter").value;
  if(showingHistory){
-  const search=$("leadSearch").value.trim().toLowerCase();
-  const shown=events.filter(e=>!search||[
-   e.customer?.customer_name,e.customer?.phone_e164,e.customer?.model,e.assignee_name,e.assignee_code
-  ].some(x=>String(x||"").toLowerCase().includes(search)));
-  const label={
-   whatsapp_opened:"WhatsApp dibuka (belum semestinya dihantar)",
-   pm_confirmed:"Staf sahkan mesej telah dihantar",
-   status_updated:"Status pelanggan dikemas kini",
-   legacy_opened:"Rekod lama: WhatsApp pernah dibuka",
-   claimed:"Diambil / claim oleh",
-   assigned:"Diagihkan kepada",
-   legacy_assignment:"Rekod lama — nombor dipegang oleh"
-  };
-  $("listMessage").textContent=shown.length+" rekod sejarah. Claim / agihan semua staf dipaparkan di sini.";
-  $("pmHistoryList").innerHTML=shown.length?shown.map(e=>
-   '<article class="pm-history-card"><div class="pm-history-icon" aria-hidden="true">'+
-   (e.assignee_name?"👤":e.event_type==="pm_confirmed"?"✓":e.event_type==="status_updated"?"↻":"↗")+
-   '</div><div class="pm-history-content"><strong>'+esc(e.customer?.customer_name||"Pelanggan")+
-   '</strong><p>'+esc([e.customer?.phone_e164,e.customer?.model].filter(Boolean).join(" · "))+
-   '</p><p>'+esc(label[e.event_type]||"Aktiviti")+
-   (e.assignee_name?' <b>'+esc(e.assignee_name)+' ('+esc(e.assignee_code)+')</b>':"")+
-   (e.event_type==="status_updated"&&e.stage_after?" · "+esc(STATUSES[e.stage_after]||e.stage_after):"")+
-   '</p><time>'+esc(e.event_type==="legacy_assignment"?"Masa claim asal tidak direkodkan":pmTime(e.at))+'</time></div></article>'
-  ).join(""):'<div class="empty">Belum ada rekod claim, agihan atau aktiviti WhatsApp.</div>';
+  const shown=numbers.filter(x=>(!filter||x.stage===filter)&&(!search||[x.customer_name,x.phone_e164,x.model,...x.claim_search].some(v=>String(v||"").toLowerCase().includes(search))));
+  $("listMessage").textContent=shown.length+" daripada "+numbers.length+" nombor dalam sejarah. Setiap nombor dipaparkan sekali; semua staf boleh PM nombor yang mempunyai kebenaran.";
+  $("pmHistoryList").innerHTML=shown.length?shown.map(sharedNumberCard).join(""):'<div class="empty">Belum ada nombor dalam Sejarah Nombor untuk carian ini.</div>';
  }
- return showingHistory;
+ if(showingLog){
+  const shown=events.filter(e=>!search||[e.customer?.customer_name,e.customer?.phone_e164,e.customer?.model,e.actor_name,e.actor_code,e.actor?.display_name,e.actor?.staff_code,e.assignee_name,e.assignee_code].some(v=>String(v||"").toLowerCase().includes(search)));
+  const labels={whatsapp_opened:"WhatsApp dibuka — belum bermaksud mesej dihantar",pm_confirmed:"Mesej disahkan sudah PM",status_updated:"Status dikemas kini",claimed:"Nombor diambil / claim",assigned:"Nombor diagihkan",legacy_assignment:"Rekod agihan lama"};
+  $("listMessage").textContent=shown.length+" rekod log terkini: claim, agihan, buka WhatsApp dan pengesahan PM. Senarai nombor berada dalam Sejarah Nombor.";
+  $("pmActivityList").innerHTML=shown.length?shown.map(e=>{
+   const name=e.assignee_name||e.actor_name||e.actor?.display_name||(e.actor_id===user?.id?user.display_name:"Staf"),code=e.assignee_code||e.actor_code||e.actor?.staff_code||(e.actor_id===user?.id?user.staff_code:"");
+   return '<article class="pm-history-card"><div class="pm-history-icon" aria-hidden="true">'+(e.event_type==="pm_confirmed"?"✓":"↻")+'</div><div class="pm-history-content"><strong>'+esc(e.customer?.customer_name||"Pelanggan")+'</strong><p>'+esc(e.customer?.phone_e164||"")+' · '+esc(labels[e.event_type]||"Aktiviti")+'</p><p>'+(e.assignee_name?'Staf penerima: ':'Oleh: ')+'<b>'+esc(name)+(code?' ('+esc(code)+')':"")+'</b></p><time>'+esc(e.event_type==="legacy_assignment"?"Masa claim asal tidak direkodkan":pmTime(e.at))+'</time></div></article>';
+  }).join(""):'<div class="empty">Belum ada log aktiviti untuk carian ini.</div>';
+ }
+ return showingHistory||showingLog;
+}
+async function confirmHistoryPm(id,button){
+ const number=historyNumbers().find(x=>x.id===id)||myPm.find(x=>x.id===id);
+ if(!number?.consent_confirmed)return notice("appNotice","Kebenaran pelanggan belum disahkan.",true);
+ if(!window.confirm("Sahkan anda sudah menghantar mesej WhatsApp kepada "+number.customer_name+"?"))return;
+ button.disabled=true;
+ button.dataset.operationId||=crypto.randomUUID();
+ try{
+  await call("confirm_shared_pm",{lead_id:id,operation_id:button.dataset.operationId});
+  notice("appNotice","PM anda disahkan dan direkodkan dalam Log Aktiviti. Claim / agihan nombor dikekalkan.");
+  await reload();
+ }catch(e){notice("appNotice",e.message,true)}finally{button.disabled=false}
 }
 async function confirmSentPm(leadId,button){
  const lead=leads.find(x=>x.id===leadId);
@@ -349,7 +365,7 @@ async function confirmSentPm(leadId,button){
  button.disabled=true;
  try{
   await call("confirm_pm",{lead_id:leadId});
-  notice("appNotice","✅ PM disahkan dan direkodkan dalam Sejarah.");
+  notice("appNotice","✅ PM disahkan dan direkodkan dalam Log Aktiviti.");
   activePmTab="sent";await reload();
  }catch(e){notice("appNotice","Tidak berjaya merekod PM: "+e.message,true);button.disabled=false}
 }
@@ -357,11 +373,12 @@ function renderLeads(){
  const search=$("leadSearch").value.trim().toLowerCase(),filter=$("stageFilter").value;
  if(renderPmTabs())return;
  const pmView=isStaffPmView();
- const filtered=leads.filter(l=>
-  (!pmView||(activePmTab==="sent"?Boolean(l.pm_confirmed_at):!l.pm_confirmed_at))&&
+ const list=pmView&&activePmTab==="sent"?sentNumbers():leads;
+ const filtered=list.filter(l=>
+  (!pmView||(activePmTab==="sent"?Boolean(l.pm_confirmed_at):user?.role==="admin"||!l.pm_confirmed_at))&&
   (!filter||l.stage===filter)&&(!search||
   [l.customer_name,l.phone_e164,l.model,l.notes].some(x=>String(x||"").toLowerCase().includes(search))));
- $("listMessage").textContent=`Memaparkan ${filtered.length} daripada ${leads.length} lead yang dibenarkan.`;
+ $("listMessage").textContent=`Memaparkan ${filtered.length} daripada ${list.length} lead yang dibenarkan.`;
  if(!filtered.length){
   $("leadList").innerHTML='<div class="empty">'+(pmView?
    (activePmTab==="sent"?"Belum ada nombor yang disahkan sudah PM.":"Tiada nombor yang belum PM."):
@@ -369,6 +386,7 @@ function renderLeads(){
   return;
  }
  $("leadList").innerHTML=filtered.map(l=>{
+  if(l.shared_history&&!leads.some(x=>x.id===l.id))return sharedNumberCard(l);
   const open=expandedLeadId===l.id;
   const options=Object.entries(STATUSES).map(([k,v])=>`<option value="${k}" ${k===l.stage?"selected":""}>${esc(v)}</option>`).join("");
   const assigned=staff.find(s=>s.id===l.assigned_id);
@@ -638,6 +656,12 @@ function wireEvents(){
  $("staffRoster").addEventListener("click",e=>{
   const reset=e.target.closest("[data-reset]");if(reset){resetStaff(reset.dataset.reset);return}
   const toggle=e.target.closest("[data-toggle]");if(toggle)toggleStaff(toggle.dataset.toggle,toggle.dataset.active==="1");
+ });
+ $("leadSection").addEventListener("click",e=>{
+  const confirmed=e.target.closest("[data-history-confirm]");
+  if(confirmed){confirmHistoryPm(confirmed.dataset.historyConfirm,confirmed);return}
+  const opened=e.target.closest("[data-history-open]");
+  if(opened){call("open_shared",{lead_id:opened.dataset.historyOpen,operation_id:crypto.randomUUID()}).catch(err=>notice("appNotice","Log buka WhatsApp tidak berjaya: "+err.message,true))}
  });
  $("leadList").addEventListener("click",e=>{
   const exp=e.target.closest("[data-expand]");
