@@ -353,6 +353,14 @@ If the native Telegram slash-command list still shows older actions, an admin ca
 - Telegram `makeVSO` menggunakan formula yang sama. Langkah terakhir wizard menerima **AUTO**; nilai PLAIN/MARKUP daripada wizard lama masih diterima dan menggunakan formula automatik yang sama. PDF Telegram memaparkan Anchor dan had 90%. Status DRAF sedia ada dikekalkan.
 - Ujian: contoh pengguna, tepat pada had, +1 sen, loan melebihi Anchor, lima varian, caj tidak berubah, input tidak sah, PDF Telegram sebenar untuk AUTO/PLAIN/MARKUP; browser staf/admin × telefon/desktop menyemak UI dan angka yang dilukis pada canvas templat asal serta kesamaan byte PDF download/simpan ke profil.
 
+## 29 Oct 2026 — Tambah PHEV Prime dan PHEV Premium
+
+- Senarai VSO website dan wizard Telegram kini mempunyai tujuh varian. Dua tambahan: **Proton e.MAS 7 PHEV Prime — 2026** (`EMAS7_PHEV_PRIME_2026`) dan **Proton e.MAS 7 PHEV Premium — 2026** (`EMAS7_PHEV_PREMIUM_2026`).
+- Rujukan pengguna: `VSO - PHEV PRIME.pdf` dan `VSO - PHEV Premium.pdf`. Prime: Anchor RM113,611, Net RM109,430, jumlah caj RM4,181, insurans RM3,811. Premium: Anchor RM127,995, Net RM123,430, jumlah caj RM4,565, insurans RM4,195.
+- Kedua-dua PDF mempunyai plate RM50, registration RM150, road tax RM120, ownership claim RM50, accessory/GST 0 dan Inspection & Handling kosong. Tidak menyalin caj handling RM200 daripada Premium Plus. Formula Anchor 90% sedia ada digunakan dengan harga setiap varian.
+- Handoff model pelanggan membezakan PHEV Prime, Premium dan Premium Plus secara tepat; model PHEV yang tiada varian masih memerlukan pilihan manual. Template kosong berpusat sedia ada digunakan; PDF rujukan berisi data customer tidak diterbitkan.
+- Ujian mengesahkan harga/caj tujuh varian antara website dan bot, pemadanan model, harga pada/bawah/atas had, PDF Telegram, serta dropdown dan penjanaan PDF template asal kedua-dua varian dalam browser staf/admin × telefon/desktop.
+
 ## 28 Oct 2026 — Gallery bahan jualan bersama
 
 - Susunan menu: Utama → Gallery → WhatsApp → Dokumen → Telegram → Staf & Akses.

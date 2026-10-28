@@ -152,6 +152,8 @@ const VARIANTS:{[k:string]:{label:string;base:number;fees:number;year:string}}={
  EMAS5_PREMIUM_2026:{label:"e.MAS 5 Premium",base:75800,fees:3708,year:"2026"},
  EMAS7_PREMIUM_2026:{label:"e.MAS 7 Premium",base:123400,fees:4228,year:"2026"},
  EMAS7_PREMIUM_PLUS_2026:{label:"e.MAS 7 Premium Plus",base:129659,fees:4487,year:"2026"},
+ EMAS7_PHEV_PRIME_2026:{label:"e.MAS 7 PHEV Prime",base:113611,fees:4181,year:"2026"},
+ EMAS7_PHEV_PREMIUM_2026:{label:"e.MAS 7 PHEV Premium",base:127995,fees:4565,year:"2026"},
  EMAS7_PHEV_PREMIUM_PLUS_2026:{label:"e.MAS 7 PHEV Premium Plus",base:134159,fees:4929,year:"2026"}
 };
 function categoryByName(name:string,party:string){

@@ -1,6 +1,6 @@
 (function(){
 "use strict";
-// Source: supplied VSO.zip, stripped of customer details. Prices are document examples, not verified live quotes.
+// Source: supplied VSO.zip and subsequent PHEV reference PDFs, stripped of customer details. Prices are document examples, not verified live quotes.
 const list = Object.freeze([
   {
     "id": "EMAS5_PRIME_2026",
@@ -77,6 +77,44 @@ const list = Object.freeze([
       "gst": null
     },
     "source": "VS0 -  eMAS 7 Premium Plus.pdf"
+  },
+  {
+    "id": "EMAS7_PHEV_PRIME_2026",
+    "display": "Proton e.MAS 7 PHEV Prime — 2026",
+    "model": "e.Mas 7 PHEV Prime",
+    "year": 2026,
+    "baseOtr": 113611,
+    "baseNet": 109430,
+    "fees": {
+      "handling": null,
+      "plate": 50,
+      "registration": 150,
+      "roadTax": 120,
+      "claim": 50,
+      "insurance": 3811,
+      "accessory": 0,
+      "gst": 0
+    },
+    "source": "VSO - PHEV PRIME.pdf"
+  },
+  {
+    "id": "EMAS7_PHEV_PREMIUM_2026",
+    "display": "Proton e.MAS 7 PHEV Premium — 2026",
+    "model": "e.Mas 7 PHEV Premium",
+    "year": 2026,
+    "baseOtr": 127995,
+    "baseNet": 123430,
+    "fees": {
+      "handling": null,
+      "plate": 50,
+      "registration": 150,
+      "roadTax": 120,
+      "claim": 50,
+      "insurance": 4195,
+      "accessory": 0,
+      "gst": 0
+    },
+    "source": "VSO - PHEV Premium.pdf"
   },
   {
     "id": "EMAS7_PHEV_PREMIUM_PLUS_2026",

@@ -27,7 +27,7 @@
   const workspace=document.createElement('section');workspace.id='vsoWorkspace';
   root.parentNode.insertBefore(workspace,root);
   workspace.innerHTML=`
-   <div class="vsoIntro"><div><div class="vsoEyebrow">VEHICLE SALES ORDER</div><h1>VSO Format Asal</h1><p>Format PDF asal dikekalkan. Hanya isi butiran pelanggan, kenderaan dan pinjaman. Semak dokumen A4 sebelum muat turun atau hantar ke Compiler.</p></div><div class="vsoVersion">5 varian · e.MAS 5 & e.MAS 7</div></div>
+   <div class="vsoIntro"><div><div class="vsoEyebrow">VEHICLE SALES ORDER</div><h1>VSO Format Asal</h1><p>Format PDF asal dikekalkan. Hanya isi butiran pelanggan, kenderaan dan pinjaman. Semak dokumen A4 sebelum muat turun atau hantar ke Compiler.</p></div><div class="vsoVersion">${variants.list.length} varian · e.MAS 5 & e.MAS 7</div></div>
    <div class="vsoGrid">
     <aside class="vsoFormPanel">
      <div class="vsoSectionHead"><b>1. Formula harga VSO</b><span>Automatik</span></div>

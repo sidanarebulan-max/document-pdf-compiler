@@ -51,7 +51,10 @@ function variantId(label){
  const is5=/e\s*mas\s*5/.test(s);
  const is7=/e\s*mas\s*7/.test(s);
  if(is7&&/(phev|hybrid|plug\s*in)/.test(s)){
-  return /premium\s*plus/.test(s)?"EMAS7_PHEV_PREMIUM_PLUS_2026":null;
+  if(/premium\s*plus/.test(s))return "EMAS7_PHEV_PREMIUM_PLUS_2026";
+  if(/\bprime\b/.test(s))return "EMAS7_PHEV_PRIME_2026";
+  if(/\bpremium\b/.test(s))return "EMAS7_PHEV_PREMIUM_2026";
+  return null;
  }
  if(is5){
   if(/\bprime\b/.test(s))return "EMAS5_PRIME_2026";

@@ -64,6 +64,16 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);if(role==='staff')await page.locator('#vsoExactCanvas').screenshot({path:'/tmp/faris-vso-anchor-'+(mobile?'phone':'desktop')+'.png'});
   await page.locator('#vsoSaveProfile:not([disabled])').waitFor();await page.locator('#vsoSaveProfile').click();await page.locator('[data-generated-target]').waitFor();await page.locator('[data-generated-target]').click();await page.locator('#generatedProfileOpen').waitFor();assert.equal(uploads.length,2);assert.equal(links.at(-1).data.category,'VSO');assert.equal(links.at(-1).data.party,'HIRER');assert.equal((await PDFDocument.load(uploads[1].bytes)).getPageCount(),1);assert.deepEqual(fs.readFileSync(await download.path()),uploads[1].bytes,'saved VSO matches downloaded generation');
   await page.locator('#generatedProfileClose').click();await page.locator('#vsoColor').fill('Biru');assert.equal(await page.locator('#vsoSaveProfile').isDisabled(),true);assert.deepEqual(errors,[]);
+  assert.equal(await page.locator('#vsoModel option').count(),7);
+  await page.locator('.vsoFixedDetails summary').click();
+  for(const [id,anchor,net,fees,insurance,model] of [['EMAS7_PHEV_PRIME_2026','113,611.00','109,430.00','4,181.00','3,811.00','e.Mas 7 PHEV Prime'],['EMAS7_PHEV_PREMIUM_2026','127,995.00','123,430.00','4,565.00','4,195.00','e.Mas 7 PHEV Premium']]){
+   await page.locator('#vsoModel').selectOption(id);await page.locator('#vsoColor').fill('Silver');await page.locator('#vsoLoan').fill('80000');
+   assert.equal(await page.locator('#vsoAnchor').innerText(),'RM '+anchor);assert.equal(await page.locator('#vsoOtr').innerText(),'RM '+anchor);assert.equal(await page.locator('#vsoNet').innerText(),'RM '+net);assert.equal(await page.locator('#vsoCharges').innerText(),'RM '+fees);assert.ok((await page.locator('#vsoFixedBreakdown').innerText()).includes('RM '+insurance));
+   await page.evaluate(()=>window.__vsoDraw=[]);const [variantPdf]=await Promise.all([page.waitForEvent('download'),page.locator('#vsoDownload').click()]);assert.equal((await PDFDocument.load(fs.readFileSync(await variantPdf.path()))).getPageCount(),1);
+   const drawn=await page.evaluate(()=>window.__vsoDraw);for(const value of [model,anchor,net,insurance])assert.ok(drawn.includes(value),'new variant PDF paints '+value);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+   if(role==='staff'&&!mobile)await page.locator('#vsoExactCanvas').screenshot({path:'/tmp/faris-'+id+'.png'});
+  }
+  assert.deepEqual(errors,[]);
   console.log('PASS '+role+'/'+(mobile?'phone':'desktop')+': real 2-page compilation and original VSO generation → profile picker/search/pagination → PDF upload/link; retry uses same bytes/file/operation; stale input protection and no duplicate save');await ctx.close();
  }}finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exitCode=1});
