@@ -7,7 +7,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   const user={id:'10000000-0000-4000-8000-000000000001',display_name:'Test Staff',staff_code:'TEST01',role};
   const target={id:'20000000-0000-4000-8000-000000000001',customer_name:'Customer Ujian',phone_e164:'60100000888',model:'e.MAS 5',staff_name:'Test Staff'};
   const ctx=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1400,height:1000},isMobile:mobile,hasTouch:mobile,acceptDownloads:true});await ctx.addInitScript(()=>localStorage.setItem('faris_lead_hub_session_v2','generated-fixture-session'));
-  await ctx.addInitScript(()=>{window.__vsoDraw=[];const draw=CanvasRenderingContext2D.prototype.fillText;CanvasRenderingContext2D.prototype.fillText=function(...args){if(this.canvas.id==='vsoExactCanvas')window.__vsoDraw.push(String(args[0]));return draw.apply(this,args)}});
+
   const page=await ctx.newPage(),errors=[];let uploads=[],links=[],failLink=true;page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/*',async route=>{
    const req=route.request(),u=new URL(req.url());
@@ -58,9 +58,10 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
    await page.locator('#vsoLoan').fill(loan);assert.equal(await page.locator('#vsoOtr').innerText(),'RM '+otr);assert.equal(await page.locator('#vsoNet').innerText(),'RM '+net);assert.equal(await page.locator('#vsoAnchor').innerText(),'RM 75,800.00');assert.equal(await page.locator('#vsoLoanLimit').innerText(),'RM 68,220.00');
   }
   const [aboveAnchor]=await Promise.all([page.waitForEvent('download'),page.locator('#vsoDownload').click()]);assert.equal((await PDFDocument.load(fs.readFileSync(await aboveAnchor.path()))).getPageCount(),1,'loan above original anchor generates automatically');
-  await page.locator('#vsoLoan').fill('72800');await page.evaluate(()=>window.__vsoDraw=[]);
+  await page.locator('#vsoLoan').fill('72800');
   const [download]=await Promise.all([page.waitForEvent('download'),page.locator('#vsoDownload').click()]);assert.equal(download.suggestedFilename(),'Customer VSO Test - VSO DRAF.pdf');
-  const painted=await page.evaluate(()=>window.__vsoDraw);for(const text of ['RM 72,800.00','80,888.89','77,180.89'])assert.ok(painted.includes(text),'original PDF canvas paints '+text);
+  const readPdf=async file=>page.evaluate(async raw=>{const doc=await pdfjsLib.getDocument({data:new Uint8Array(raw)}).promise;try{return (await (await doc.getPage(1)).getTextContent()).items.map(x=>x.str).join(' ')}finally{await doc.destroy()}},[...fs.readFileSync(file)]);
+  const painted=await readPdf(await download.path());for(const text of ['RM 72,800.00','80,888.89','77,180.89'])assert.ok(painted.includes(text),'native Word PDF contains '+text);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);if(role==='staff')await page.locator('#vsoExactCanvas').screenshot({path:'/tmp/faris-vso-anchor-'+(mobile?'phone':'desktop')+'.png'});
   await page.locator('#vsoSaveProfile:not([disabled])').waitFor();await page.locator('#vsoSaveProfile').click();await page.locator('[data-generated-target]').waitFor();await page.locator('[data-generated-target]').click();await page.locator('#generatedProfileOpen').waitFor();assert.equal(uploads.length,2);assert.equal(links.at(-1).data.category,'VSO');assert.equal(links.at(-1).data.party,'HIRER');assert.equal((await PDFDocument.load(uploads[1].bytes)).getPageCount(),1);assert.deepEqual(fs.readFileSync(await download.path()),uploads[1].bytes,'saved VSO matches downloaded generation');
   await page.locator('#generatedProfileClose').click();await page.locator('#vsoColor').fill('Biru');assert.equal(await page.locator('#vsoSaveProfile').isDisabled(),true);assert.deepEqual(errors,[]);
@@ -69,8 +70,8 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   for(const [id,anchor,net,fees,insurance,model] of [['EMAS7_PHEV_PRIME_2026','113,611.00','109,430.00','4,181.00','3,811.00','e.Mas 7 PHEV Prime'],['EMAS7_PHEV_PREMIUM_2026','127,995.00','123,430.00','4,565.00','4,195.00','e.Mas 7 PHEV Premium']]){
    await page.locator('#vsoModel').selectOption(id);await page.locator('#vsoColor').fill('Silver');await page.locator('#vsoLoan').fill('80000');
    assert.equal(await page.locator('#vsoAnchor').innerText(),'RM '+anchor);assert.equal(await page.locator('#vsoOtr').innerText(),'RM '+anchor);assert.equal(await page.locator('#vsoNet').innerText(),'RM '+net);assert.equal(await page.locator('#vsoCharges').innerText(),'RM '+fees);assert.ok((await page.locator('#vsoFixedBreakdown').innerText()).includes('RM '+insurance));
-   await page.evaluate(()=>window.__vsoDraw=[]);const [variantPdf]=await Promise.all([page.waitForEvent('download'),page.locator('#vsoDownload').click()]);assert.equal((await PDFDocument.load(fs.readFileSync(await variantPdf.path()))).getPageCount(),1);
-   const drawn=await page.evaluate(()=>window.__vsoDraw);for(const value of [model,anchor,net,insurance])assert.ok(drawn.includes(value),'new variant PDF paints '+value);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+   const [variantPdf]=await Promise.all([page.waitForEvent('download'),page.locator('#vsoDownload').click()]);assert.equal((await PDFDocument.load(fs.readFileSync(await variantPdf.path()))).getPageCount(),1);
+   const drawn=await readPdf(await variantPdf.path());for(const value of [model,anchor,net,insurance])assert.ok(drawn.includes(value),'new variant native PDF contains '+value);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
    if(role==='staff'&&!mobile)await page.locator('#vsoExactCanvas').screenshot({path:'/tmp/faris-'+id+'.png'});
   }
   assert.deepEqual(errors,[]);

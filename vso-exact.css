@@ -18,3 +18,5 @@
 .vsoExactPanel.vso-template-loaded .vsoExactChange{display:inline-flex}
 .vsoExactPanel.vso-template-loaded{border-color:#276f68;background:linear-gradient(140deg,#112c35,#0f1b30)}
 .vsoExactPanel.vso-template-loaded .vsoExactPill{background:#184b43;color:#b5ffe7}
+.vsoExactWord{display:inline-flex;margin:0 0 10px;color:#b5e7ff;font-size:11px;text-decoration:underline;text-underline-offset:3px}
+#vsoExactPlaceholder[hidden],#vsoExactCanvas[hidden]{display:none}

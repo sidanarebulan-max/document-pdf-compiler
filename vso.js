@@ -27,7 +27,7 @@
   const workspace=document.createElement('section');workspace.id='vsoWorkspace';
   root.parentNode.insertBefore(workspace,root);
   workspace.innerHTML=`
-   <div class="vsoIntro"><div><div class="vsoEyebrow">VEHICLE SALES ORDER</div><h1>VSO Format Asal</h1><p>Format PDF asal dikekalkan. Hanya isi butiran pelanggan, kenderaan dan pinjaman. Semak dokumen A4 sebelum muat turun atau hantar ke Compiler.</p></div><div class="vsoVersion">${variants.list.length} varian · e.MAS 5 & e.MAS 7</div></div>
+   <div class="vsoIntro"><div><div class="vsoEyebrow">VEHICLE SALES ORDER</div><h1>VSO Format Asal</h1><p>Susun atur Word asal dikekalkan. Hanya isi butiran pelanggan, kenderaan dan pinjaman. Semak dokumen A4 sebelum muat turun atau hantar ke Compiler.</p></div><div class="vsoVersion">${variants.list.length} varian · e.MAS 5 & e.MAS 7</div></div>
    <div class="vsoGrid">
     <aside class="vsoFormPanel">
      <div class="vsoSectionHead"><b>1. Formula harga VSO</b><span>Automatik</span></div>
@@ -219,43 +219,12 @@
     return '';
   }
   async function makePdf(){
-    if(busy)return null;
     const v=read(),problem=validate(v);
     E('vsoError').hidden=true;
-    if(problem){E('vsoError').textContent=problem;E('vsoError').hidden=false;E('vsoError').scrollIntoView({block:'nearest'});return null;}
-    if(lastBuild)return {blob:lastBuild,name:lastFilename};
-    busy=true;
-    [E('vsoDownload'),E('vsoDownloadBottom'),E('vsoToCompiler')].forEach(b=>b.disabled=true);
-    E('vsoDownload').textContent='Menjana PDF...';
-    let holder;
-    try{
-      if(!window.html2canvas||!window.PDFLib)throw new Error('Pustaka PDF belum dimuatkan. Cuba segar semula halaman.');
-      // Clone the full-size A4 sheet: screen preview is scaled for mobile.
-      holder=document.createElement('div');
-      holder.style.cssText='position:fixed;left:-12000px;top:0;width:794px;height:1123px;overflow:hidden;background:white;z-index:-1;';
-      const sheet=E('vsoSheet').cloneNode(true);
-      sheet.style.transform='none';sheet.style.position='relative';sheet.style.margin='0';
-      holder.appendChild(sheet);document.body.appendChild(holder);
-      const canvas=await window.html2canvas(sheet,{backgroundColor:'#ffffff',scale:1.75,useCORS:false,logging:false,windowWidth:1050});
-      const png=canvas.toDataURL('image/jpeg',0.90);
-      const pdf=await window.PDFLib.PDFDocument.create();
-      const image=await pdf.embedJpg(png);
-      const page=pdf.addPage([595.28,841.89]);
-      page.drawImage(image,{x:0,y:0,width:595.28,height:841.89});
-      const bytes=await pdf.save({useObjectStreams:true});
-      lastBuild=new Blob([bytes],{type:'application/pdf'});
-      lastFilename=(cleanOutputName(v.name)||'Customer')+' - VSO DRAF.pdf';
-      return {blob:lastBuild,name:lastFilename};
-    }catch(err){
-      E('vsoError').textContent='Gagal jana PDF: '+err.message;
-      E('vsoError').hidden=false;
-      return null;
-    }finally{
-      if(holder)holder.remove();
-      busy=false;
-      [E('vsoDownload'),E('vsoDownloadBottom'),E('vsoToCompiler')].forEach(b=>b.disabled=false);
-      E('vsoDownload').textContent='Jana & Download PDF';
-    }
+    if(problem){E('vsoError').textContent=problem;E('vsoError').hidden=false;return null;}
+    if(!window.FARIS_VSO_GENERATOR){E('vsoError').textContent='Enjin templat Word belum sedia. Segar semula halaman.';E('vsoError').hidden=false;return null;}
+    const out=await window.FARIS_VSO_GENERATOR.create();
+    return out?{blob:out.blob,name:out.fname}:null;
   }
   async function download(){
     const out=await makePdf();if(!out)return;
