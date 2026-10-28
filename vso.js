@@ -17,10 +17,11 @@
   };
   const nav=document.createElement('div');nav.id='mainWorkspaceNav';
   nav.innerHTML=`
-   <div class="hubBrand"><span class="hubEmblem">P</span><div><strong>Proton Document Center</strong><small>Vehicle Sales Order &amp; PDF Compiler</small></div></div>
+   <div class="hubBrand"><span class="hubEmblem">P</span><div><strong>Proton Document Center</strong><small>VSO · PDF Compiler · Application Form</small></div></div>
    <div class="hubSwitch" role="tablist" aria-label="Bahagian utama">
     <button type="button" class="hubTab active" data-main="VSO" role="tab" aria-selected="true">01 <b>VSO Generator</b></button>
     <button type="button" class="hubTab" data-main="COMPILER" role="tab" aria-selected="false">02 <b>PDF Compiler</b></button>
+    <button type="button" class="hubTab" data-main="APPLICATION" role="tab" aria-selected="false">03 <b>Application Form</b></button>
    </div>`;
   root.parentNode.insertBefore(nav,root);
   const workspace=document.createElement('section');workspace.id='vsoWorkspace';
@@ -195,9 +196,11 @@
     frame.style.height=(1123*previewScale)+'px';
   }
   function switchMain(target){
-    active=target==='COMPILER'?'COMPILER':'VSO';
+    active=['COMPILER','APPLICATION'].includes(target)?target:'VSO';
     workspace.style.display=active==='VSO'?'':'none';
     root.style.display=active==='COMPILER'?'':'none';
+    const application=E('applicationWorkspace');
+    if(application)application.hidden=active!=='APPLICATION';
     nav.querySelectorAll('[data-main]').forEach(b=>{
       const on=b.dataset.main===active;b.classList.toggle('active',on);b.setAttribute('aria-selected',String(on));
     });
@@ -301,7 +304,7 @@
       return {loan:r.loan,otr:r.otr,charges:r.feeTotal,net:r.net,baseOtr:r.baseOtr,mode:kind,variant:r.variant.model};
     },
     variants:variants.list.map(v=>({id:v.id,model:v.model,otr:v.baseOtr,net:v.baseNet})),
-    openVso:()=>switchMain('VSO'),openCompiler:()=>switchMain('COMPILER')
+    openVso:()=>switchMain('VSO'),openCompiler:()=>switchMain('COMPILER'),openApplication:()=>switchMain('APPLICATION')
   };
   updatePreview();switchMain('VSO');
 })();

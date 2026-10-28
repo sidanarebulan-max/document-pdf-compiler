@@ -13,3 +13,5 @@
 .vsoFixedDetails{border:1px solid #294576;border-radius:10px;background:#0a1933;overflow:hidden}
 .vsoFixedDetails summary{color:#b6cdf0;font-size:11px;padding:11px 12px;cursor:pointer;font-weight:700}
 #vsoFixedBreakdown{padding:0 12px 12px;display:grid;gap:7px}.vsoChargeRow,.vsoChargeTotal{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;font-size:10.5px}.vsoChargeRow span{color:#9bb5db}.vsoChargeRow b{color:#edf5ff;white-space:nowrap}.vsoChargeTotal{padding-top:10px;border-top:1px solid #30527d;color:#fff;font-weight:800;font-size:12px}
+/* Three document tools stay within the phone viewport. */
+@media(max-width:780px){.hubSwitch{box-sizing:border-box;overflow-x:auto}.hubTab{flex:1 0 auto;padding:10px 8px}.hubTab b{font-size:11px}}

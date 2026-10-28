@@ -13,7 +13,7 @@
    if(!window.matchMedia("(max-width:900px) and (pointer:coarse)").matches)return;
    const params=new URLSearchParams(location.search);
    const isStaffWorkspace=params.get("origin")==="staff"&&
-     ["VSO","COMPILER"].includes(params.get("tool")||"");
+     ["VSO","COMPILER","APPLICATION"].includes(params.get("tool")||"");
    const leadUrl="/staff.html";
    if(!isStaffWorkspace){location.replace(leadUrl);return;}
    document.documentElement.style.visibility="hidden";
@@ -42,10 +42,11 @@
    }).catch(()=>location.replace(leadUrl));
   })();
   </script>
-  <title>Proton Document Center — Original VSO Template & PDF Compiler</title>
+  <title>Proton Document Center — VSO, PDF Compiler & Application Form</title>
   <meta name="description" content="Jana VSO Proton, pilih tanpa markup atau markup 90%, pratonton PDF dan gabungkan dokumen Hirer, Guarantor serta COP Rebate." />
   <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="vso.css?v=variants-20261022">
+  <link rel="stylesheet" href="vso.css?v=application-v42-20261028">
+  <link rel="stylesheet" href="application-form.css?v=application-v42-20261028">
   <link rel="stylesheet" href="vso-exact.css?v=20261021-vso-locked4">
   <link rel="stylesheet" href="/generated-profile.css?v=generated-profile-v40-20261028">
 </head>
@@ -215,11 +216,13 @@
 <script src="app4.js?v=readable-output-v41-20261028"></script>
 <script src="app5.js"></script>
 <script src="vso-variants.js?v=variants-20261022"></script>
-<script src="vso.js?v=variants-20261022"></script>
+<script src="vso.js?v=application-v42-20261028"></script>
 <script src="vso-exact.js?v=readable-output-v41-20261028"></script>
-<script src="staff-handoff.js?v=inbox-v36-20261026"></script>
+<script src="application-form-core.js?v=application-v42-20261028"></script>
+<script src="application-form.js?v=application-v42-20261028"></script>
+<script src="staff-handoff.js?v=application-v42-20261028"></script>
 <script src="inbox-client.js?v=inbox-v36-20261026"></script>
 <script src="compiler-inbox.js?v=inbox-v36-20261026"></script>
-<script src="generated-profile.js?v=generated-profile-v40-20261028"></script>
+<script src="generated-profile.js?v=application-v42-20261028"></script>
 </body>
 </html>

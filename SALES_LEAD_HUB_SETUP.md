@@ -335,6 +335,16 @@ If the native Telegram slash-command list still shows older actions, an admin ca
 - Migration: `supabase/telegram-output-name.sql` menambah pilihan nama kes dan jenis prompt tanpa mengubah RLS/akses. Fail sedia ada tidak dinamakan semula. Menu slash `/namafail` boleh disegerakkan melalui **Kemas Kini Menu Bot**; butang dokumen dan arahan teks berfungsi terus.
 - Pengesahan: ujian nama/Unicode/nama laluan/prompt tamat/batal/folder bertukar; browser staf/admin × telefon/desktop menjana PDF sebenar, menyemak nama download dan nama/bytes yang disimpan ke profil sama, serta VSO tanpa `_`.
 
+## 28 Oct 2026 — Application Form Generator
+
+- Tab ketiga di Document Center: **VSO Generator → PDF Compiler → Application Form**. Dokumen di Lead Hub turut mempunyai kad **Application Form**; telefon menyokong entry `/?tool=APPLICATION&origin=staff` melalui pengesahan staf sedia ada.
+- Paste borang berlabel daripada Word, kemudian **Baca Maklumat**. Parser tempatan mempunyai 37 medan dalam lima konteks: pemohon, pekerjaan, pasangan, rujukan dan pembiayaan. Tajuk bahagian memisahkan label berulang seperti Nama, I/C No, Jawatan dan No HP. Baris alamat bersambung, label dengan kolon/tab dan label/nilai pada baris berasingan disokong.
+- Semua medan boleh disemak/diedit. Medan kosong kekal kosong; label tidak dikenali serta nilai bertentangan dilaporkan, tidak diteka. Membaca customer baharu menggantikan seluruh set medan supaya butiran pasangan/customer lama tidak tertinggal. Mengubah teks sumber memerlukan **Baca Maklumat** semula sebelum jana.
+- PDF menggunakan ukuran A4, font Canva Sans, saiz teks, baseline, susunan dan pecahan dua halaman daripada contoh pengguna. Tajuk/emoji sahaja disalin sebagai aset; data customer contoh dan metadata PDF asal tidak diterbitkan. Teks badan PDF kekal boleh dipilih/cari. Teks panjang dibalut dan halaman sambungan ditambah apabila perlu; aksara yang tidak disokong font dihentikan dengan penjelasan sebelum output.
+- Hasil menyokong pratonton PDF sebenar, **Download PDF**, **Hantar ke Compiler** (HIRER/OTHER) dan pemilih **Simpan ke Profil Pelanggan** (HIRER/OTHER). Nama lalai `<nama> - Application Form.pdf`, atau isi nama output sendiri tanpa `_`. Fail asal dan byte yang dijana dikekalkan ketika dihantar ke Compiler/profil.
+- Teks paste dan medan tidak disimpan dalam localStorage atau dihantar untuk bacaan AI. Hanya tindakan simpan ke profil menggunakan API Inbox/Customer sedia ada dengan sesi dan kawalan aksesnya. Tiada schema atau Edge Function baharu diperlukan.
+- Aset font dan fontkit versi 1.1.1 disediakan dari origin website sendiri; sumber dalam `assets/application-form/README.md`. Ujian merangkumi parser, label berulang, Word table, alamat panjang, halaman sambungan, font, UI telefon/desktop, byte PDF download/simpan yang sama, import Compiler, perubahan input serta navigasi tiga tab. Regresi workspaces dan VSO/Compiler→profil turut dijalankan.
+
 ## 28 Oct 2026 — Gallery bahan jualan bersama
 
 - Susunan menu: Utama → Gallery → WhatsApp → Dokumen → Telegram → Staf & Akses.

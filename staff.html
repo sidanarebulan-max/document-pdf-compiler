@@ -87,7 +87,7 @@
   .tg-routing h3{margin:0 0 10px}
   .tg-routing select{width:100%}
   @media(max-width:850px){.tg-provider-grid{grid-template-columns:1fr}}
-  .workflow-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .workflow-links{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
   .workflow-action{display:flex;justify-content:space-between;align-items:center;text-align:left;gap:12px;padding:15px!important;border:1px solid #36517c!important;min-height:72px}
   .workflow-action span:nth-child(2){flex:1}.workflow-action b{display:block;font-size:13px}.workflow-action small{display:block;color:#94b0d6;font-size:11px;margin-top:5px}
   .workflow-icon{font-size:23px}.leadwork{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:9px}
@@ -448,6 +448,7 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
   <div class="workflow-links">
    <button class="secondary workflow-action" id="openGenericDocs" type="button"><span class="workflow-icon">📑</span><span><b>Document Compiler</b><small>Hirer · Guarantor · COP Rebate</small></span><span aria-hidden="true">↗</span></button>
    <button class="secondary workflow-action" id="openGenericVso" type="button"><span class="workflow-icon">🚘</span><span><b>VSO Generator</b><small>Buat dan semak dokumen jualan</small></span><span aria-hidden="true">↗</span></button>
+   <button class="secondary workflow-action" id="openGenericApplication" type="button"><span class="workflow-icon">📝</span><span><b>Application Form</b><small>Paste dari Word dan jana borang</small></span><span aria-hidden="true">↗</span></button>
   </div>
  </section><section class="panel" id="documentInbox" aria-labelledby="inboxTitle">
  <div class="panelhead"><div><h2 id="inboxTitle">Fail Masuk</h2><p class="muted">Simpan dokumen dan bahan dahulu. Pilih pelanggan, bahagian dan kategori apabila sudah bersedia.</p></div><div class="workspace-actions"><button id="inboxUploadButton" type="button" class="primary">+ Muat Naik Fail</button><button id="inboxRefresh" type="button" class="secondary">Refresh Fail</button></div></div>
@@ -640,7 +641,7 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
 <script src="/staff-customers.js?v=generated-profile-v40-20261028"></script>
 <script src="/staff-inbox.js?v=customers-v39-20261028"></script>
 <script src="/staff-navigation.js?v=customers-v39-20261028"></script>
-<script src="/staff-passcode.js?v=customers-v39-20261028"></script>
+<script src="/staff-passcode.js?v=application-v42-20261028-customers-v39-20261028"></script>
 
 <script src="/telegram-hub.js?v=inbox-v36-20261026"></script>
 </body></html>

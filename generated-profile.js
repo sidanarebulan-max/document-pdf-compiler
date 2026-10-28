@@ -3,7 +3,7 @@
 const SESSION='faris_lead_hub_session_v2',API='https://qagsczjxzshjxmmxvkbq.supabase.co/functions/v1/lead-hub-customers';
 const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const results=new Map();let current=null,identity=null,rows=[],next=null,seq=0,epoch=0,busy=false;
-const buttons={compiler:'compilerSaveProfile',vso:'vsoSaveProfile'};
+const buttons={compiler:'compilerSaveProfile',vso:'vsoSaveProfile',application:'applicationSaveProfile'};
 const dialog=document.createElement('dialog');dialog.id='generatedProfileDialog';dialog.className='generated-profile-dialog';dialog.setAttribute('aria-labelledby','generatedProfileTitle');
 dialog.innerHTML='<div class="generated-profile-head"><h2 id="generatedProfileTitle">Simpan ke Profil Pelanggan</h2><button type="button" class="btn" id="generatedProfileClose" aria-label="Tutup pemilih customer">✕</button></div><div id="generatedProfileFile" class="generated-profile-file"></div><p class="generated-profile-hint">Cari customer, kemudian tekan “Simpan ke Profil Ini”. Fail asal yang dijana akan disimpan dalam Dokumen customer tersebut.</p><form id="generatedProfileSearchForm" class="generated-profile-search"><input type="search" id="generatedProfileSearch" maxlength="100" placeholder="Cari nama atau nombor telefon…" aria-label="Cari customer"><button class="btn primary" type="submit">Cari</button></form><p id="generatedProfileStatus" role="status" aria-live="polite"></p><div id="generatedProfileList"></div><button type="button" class="btn" id="generatedProfileMore" hidden>Muat lagi customer</button><a id="generatedProfileOpen" hidden>Buka Profil Pelanggan →</a>';
 document.body.append(dialog);
@@ -37,7 +37,7 @@ async function open(source){
  const r=results.get(source);if(!r||busy)return;
  if(!r.valid()){results.delete(source);controls();alert('Maklumat atau dokumen telah berubah. Jana PDF semula sebelum simpan ke profil.');return}
  current=r;identity=null;rows=[];next=null;epoch++;seq++;const generation=epoch;
- $('generatedProfileFile').textContent=r.name+' · '+(r.blob.size/1048576).toFixed(2)+' MB\n'+(r.source==='vso'?'VSO DRAF · Pemohon / VSO':r.party==='REBATE'?'PDF gabungan · COP Rebate / Lain-lain':r.party==='GUARANTOR'?'Dokumen lengkap · Penjamin':'Dokumen lengkap · Pemohon (termasuk bahagian penjamin jika digabung)');
+ $('generatedProfileFile').textContent=r.name+' · '+(r.blob.size/1048576).toFixed(2)+' MB\n'+(r.source==='application'?'Application Form · Pemohon / Lain-lain':r.source==='vso'?'VSO DRAF · Pemohon / VSO':r.party==='REBATE'?'PDF gabungan · COP Rebate / Lain-lain':r.party==='GUARANTOR'?'Dokumen lengkap · Penjamin':'Dokumen lengkap · Pemohon (termasuk bahagian penjamin jika digabung)');
  $('generatedProfileSearch').value='';$('generatedProfileList').innerHTML='';$('generatedProfileMore').hidden=true;$('generatedProfileOpen').hidden=true;$('generatedProfileOpen').removeAttribute('href');status('Menyemak akaun…');dialog.showModal();
  if(r.blob.size>20*1048576){status('PDF ini melebihi had simpanan 20 MB. Kecilkan PDF atau jana dalam beberapa bahagian sebelum simpan.',true);return}
  try{
@@ -65,8 +65,9 @@ async function save(target){
  }catch(e){if(generation===epoch)status(e.message+(snapshot.uploaded?' PDF yang sudah diupload kekal disimpan; tekan profil yang sama untuk cuba pautkan semula.':''),true)}
  finally{busy=false;controls()}
 }
-function addButton(source,anchor,label){if(!anchor)return;const b=document.createElement('button');b.type='button';b.className=source==='vso'?'vsoSecondary':'btn good';b.id=buttons[source];b.textContent=label;b.disabled=true;b.addEventListener('click',()=>open(source));anchor.insertAdjacentElement('afterend',b)}
+function addButton(source,anchor,label){if(!anchor)return;const b=document.createElement('button');b.type='button';b.className=source==='compiler'?'btn good':'vsoSecondary';b.id=buttons[source];b.textContent=label;b.disabled=true;b.addEventListener('click',()=>open(source));anchor.insertAdjacentElement('afterend',b)}
 addButton('compiler',$('downloadBtn'),'Simpan ke Profil Pelanggan');addButton('vso',$('vsoToCompiler'),'Simpan VSO ke Profil Pelanggan');
+addButton('application',$('applicationToCompiler'),'Simpan ke Profil Pelanggan');
 $('generatedProfileClose').addEventListener('click',()=>dialog.close());dialog.addEventListener('cancel',e=>{if(busy)e.preventDefault()});dialog.addEventListener('close',()=>{epoch++;seq++;current=null;identity=null;rows=[];$('generatedProfileList').innerHTML='';$('generatedProfileFile').textContent='';$('generatedProfileSearch').value='';$('generatedProfileOpen').hidden=true;$('generatedProfileOpen').removeAttribute('href')});
 $('generatedProfileSearchForm').addEventListener('submit',e=>{e.preventDefault();load()});$('generatedProfileMore').addEventListener('click',()=>load(true));$('generatedProfileList').addEventListener('click',e=>{const b=e.target.closest('[data-generated-target]');if(b)save(b.dataset.generatedTarget)});
 // Update availability when source forms change; the frozen PDF remains tied to its generation inputs.

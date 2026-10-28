@@ -4,7 +4,7 @@ const key="faris_lead_handoff_v1";
 const params=new URLSearchParams(location.search);
 const origin=params.get("origin");
 const tool=params.get("tool");
-if(origin!=="staff"||!["COMPILER","VSO"].includes(tool))return;
+if(origin!=="staff"||!["COMPILER","VSO","APPLICATION"].includes(tool))return;
 const $=id=>document.getElementById(id);
 const templateIds=()=>Array.from($("vsoModel")?.options||[]).map(o=>o.value);
 const HANDOFF_TTL=10*60*1000;
@@ -29,7 +29,7 @@ const detail=document.createElement("div");
 detail.style.cssText="display:grid;gap:4px;line-height:1.45;min-width:210px";
 const title=document.createElement("strong");
 title.style.fontSize="14px";
-title.textContent=tool==="VSO"?"🚘 Ruang Kerja Staf — Buat VSO":"📑 Ruang Kerja Staf — Urus Dokumen";
+title.textContent=tool==="VSO"?"🚘 Ruang Kerja Staf — Buat VSO":tool==="APPLICATION"?"📝 Ruang Kerja Staf — Application Form":"📑 Ruang Kerja Staf — Urus Dokumen";
 const info=document.createElement("span");
 info.style.cssText="font-size:12px;color:#bdd0ed;overflow-wrap:anywhere";
 info.textContent=lead?"Pelanggan: "+lead.name+" · +"+lead.phone+" · "+(lead.model||"Model belum pasti"):"Tiada pelanggan dipilih. Isi butiran pelanggan secara manual.";
@@ -77,6 +77,10 @@ function prefill(){
  }
  if(lead){
   const localPhone=lead.phone.startsWith("60")?"0"+lead.phone.slice(2):lead.phone;
+  if(tool==="APPLICATION"){
+   window.FARIS_APPLICATION?.prefill({...lead,phone:localPhone});
+   window.VSO_CENTER.openApplication();return;
+  }
   put("customerName",lead.name);
   put("customerPhone",localPhone);
   put("vsoCustomer",lead.name);
@@ -115,7 +119,8 @@ function prefill(){
    select.addEventListener("change",enforce);
   }
  }
- if(tool==="COMPILER")window.VSO_CENTER.openCompiler();
+ if(tool==="APPLICATION")window.VSO_CENTER.openApplication();
+ else if(tool==="COMPILER")window.VSO_CENTER.openCompiler();
  else window.VSO_CENTER.openVso();
 }
 prefill();

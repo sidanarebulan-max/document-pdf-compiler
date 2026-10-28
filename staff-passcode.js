@@ -264,7 +264,7 @@ function openWorkspace(tool,leadId=null){
     staff_code:user.staff_code,account_id:user.id,created_at:Date.now()
   }));
  }
- const mode=tool==="COMPILER"?"COMPILER":"VSO";
+ const mode=["COMPILER","APPLICATION"].includes(tool)?tool:"VSO";
  window.location.assign("/?tool="+mode+"&origin=staff");
 }
 function isStaffPmView(){return Boolean(user)}
@@ -650,6 +650,7 @@ function wireEvents(){
  $("claimBtn").addEventListener("click",claim);
  $("openGenericDocs").addEventListener("click",()=>openWorkspace("COMPILER"));
  $("openGenericVso").addEventListener("click",()=>openWorkspace("VSO"));
+ $("openGenericApplication").addEventListener("click",()=>openWorkspace("APPLICATION"));
  $("createStaffForm").addEventListener("submit",createStaff);
  $("adminPassForm").addEventListener("submit",changeAdminPass);
  $("addLeadForm").addEventListener("submit",addLead);
