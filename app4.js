@@ -1,5 +1,5 @@
   function compilerProfileStamp(){
-    return JSON.stringify([$('#compileScope').value,$('#customerName').value,$('#customerPhone').value,partyNames,items.map(x=>[x.id,x.party,x.category,x.date,x.order])]);
+    return JSON.stringify([$('#compileScope').value,$('#customerName').value,$('#customerPhone').value,$('#outputName').value,partyNames,items.map(x=>[x.id,x.party,x.category,x.date,x.order])]);
   }
   async function renderPreviewPage(){
     if(!finalPreviewPdf) return;
@@ -27,10 +27,22 @@
     return finalPreviewPdf.numPages;
   }
 
-  function safeFilename(){
-    const raw=$('#customerName').value.trim()||partyNames.HIRER||partyNames.GUARANTOR||partyNames.REBATE||'FINAL';
-    const suffix=lastGeneratedMode==='REBATE_ONLY'?'_COP_REBATE.pdf':lastGeneratedMode==='STANDARD'?'_DOCUMENT.pdf':'_DOKUMEN_LENGKAP.pdf';
-    return (raw.toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'')||'FINAL')+suffix;
+  function cleanOutputName(value){
+    let name=String(value||'').normalize('NFC').replace(/_/g,' ')
+      .replace(/[\u0000-\u001f\u007f<>:"/\\|?*\u202a-\u202e\u2066-\u2069]/g,' ')
+      .replace(/\s+/g,' ').trim().replace(/(?:\.pdf)+$/i,'').replace(/^[.\s]+|[.\s]+$/g,'').slice(0,120).trim();
+    if(/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(name))name='Fail '+name;
+    return name;
+  }
+  function safeFilename(mode=lastGeneratedMode){
+    const custom=cleanOutputName($('#outputName').value);
+    if(custom)return custom+'.pdf';
+    const raw=cleanOutputName($('#customerName').value.trim()||partyNames.HIRER||partyNames.GUARANTOR||partyNames.REBATE);
+    const label=mode==='REBATE_ONLY'?'Cop Rebate':'Document';
+    return (raw?raw+' - ':'')+label+'.pdf';
+  }
+  function updateOutputNamePreview(){
+    $('#outputNamePreview').textContent='Nama fail: '+safeFilename($('#compileScope').value);
   }
 
   function cleanPdfText(text){
@@ -207,7 +219,9 @@
     btn.onclick=()=>switchParty(btn.dataset.party);
   });
 
-  $('#partyName').oninput=e=>{ partyNames[activeParty]=e.target.value; };
+  $('#partyName').oninput=e=>{ partyNames[activeParty]=e.target.value;updateOutputNamePreview(); };
+  $('#outputName').addEventListener('input',updateOutputNamePreview);
+  $('#customerName').addEventListener('input',updateOutputNamePreview);
 
   $('#dropZone').onclick=()=>$('#fileInput').click();
   $('#fileInput').onchange=e=>addFiles(e.target.files);
@@ -240,7 +254,7 @@
     }
   };
 
-  $('#compileScope').onchange=renderChecklist;
+  $('#compileScope').onchange=()=>{renderChecklist();updateOutputNamePreview()};
   $('#generateBtn').onclick=generate;
   $('#downloadBtn').onclick=()=>{
     if(!finalBlob)return;
@@ -254,3 +268,4 @@
   $('#openBtn').onclick=()=>{ if(finalUrl) window.open(finalUrl,'_blank','noopener'); };
 
   switchParty('HIRER');
+  updateOutputNamePreview();

@@ -1,6 +1,7 @@
 import {parseNatural} from "./natural.mjs";
 import {interpretPdfRequest,isLikelyHumanName} from "./pdf-intents.mjs";
-import {mainMenu,documentMenu,whatsappMenu,availableNumbersMenu,resumeMenu,resumedMessage,parseNavCallback,partyButtons,PAGE_SIZE} from "./navigation.mjs";
+import {mainMenu,documentMenu,whatsappMenu,availableNumbersMenu,resumeMenu,resumedMessage,parseNavCallback,partyButtons,outputNameButtons,PAGE_SIZE} from "./navigation.mjs";
+import {cleanOutputName,caseOutputFilename} from "./output-name.mjs";
 import {touchCaseCard} from "./case-card.mjs";
 import {policyModelIntent} from "./intent-policy.mjs";
 import {createClient} from "npm:@supabase/supabase-js@2.57.4";
@@ -93,6 +94,7 @@ const TELEGRAM_COMMAND_MENU=[
  {command:"menu",description:"Menu utama FARIS"},
  {command:"whatsapp",description:"WhatsApp: tambah no dan no tersedia"},
  {command:"dokumen",description:"Dokumen: New atau Resume"},
+ {command:"namafail",description:"Tukar nama fail PDF untuk kes aktif"},
  {command:"new",description:"Pelanggan baharu"},
  {command:"resume",description:"Sambung kes pelanggan lama"},
  {command:"pelanggan",description:"Buka kes pelanggan baharu"},
@@ -429,8 +431,8 @@ async function handleWizard(token:string,chat:number,telegramId:number,account:a
  }else{
   try{
    const bytes=await makeVSO(payload,account.display_name);
-   const name=safePdfText(payload.name).replace(/\s+/g,"_").slice(0,38)||"PELANGGAN";
-   await telegramSendDocument(token,chat,bytes,name+"_VSO_DRAF.pdf","✅ VSO DRAF siap. Sila semak butiran, harga dan pengesahan pengedar.");
+   const name=(cleanOutputName(payload.name)||"Pelanggan")+" - VSO DRAF.pdf";
+   await telegramSendDocument(token,chat,bytes,name,"✅ VSO DRAF siap. Sila semak butiran, harga dan pengesahan pengedar.");
    // Attach VSO draft to the active collection so /siap can include it first.
    const activeCase=await currentCase(account.id,chat);
    const cleanName=(v:string)=>v.toLowerCase().replace(/[^a-z0-9]+/g,"").trim();
@@ -440,7 +442,7 @@ async function handleWizard(token:string,chat:number,telegramId:number,account:a
        .upload(path,bytes,{contentType:"application/pdf",upsert:false});
      if(!storageError){
        const {error:insertError}=await db.from("lead_hub_telegram_files").insert({
-         id:fileId,case_id:activeCase.id,storage_path:path,original_name:name+"_VSO_DRAF.pdf",
+         id:fileId,case_id:activeCase.id,storage_path:path,original_name:name,
          mime_type:"application/pdf",party:"HIRER",category:"VSO",confidence:1,
          needs_review:false,classification_method:"VSO_GENERATOR"
        });
@@ -515,6 +517,7 @@ async function createCustomer(token:string,chat:number,id:number,account:any,raw
   "Kalau nak asingkan kategori, cakap 'ini IC', 'bank', 'gaji' dan sebagainya.",{
    reply_markup:{inline_keyboard:[
     ...partyButtons(created.id),
+    ...outputNameButtons(created.id),
     [{text:"📂 Resume Pelanggan Lain",callback_data:"faris_nav:resume:0"}],
     [{text:"🏠 Menu Utama",callback_data:"faris_nav:home"}]
    ]}
@@ -577,6 +580,40 @@ async function showDocumentMenu(token:string,chat:number,id:number,account:any,m
  await clearCustomerNamePrompt(id,chat,account);
  await clearWhatsAppDraft(id,chat,account);
  await navReply(token,chat,documentMenu(await currentCase(account.id,chat)),messageId);
+}
+async function beginOutputName(token:string,chat:number,id:number,account:any,caseId?:string){
+ const c=await currentCase(account.id,chat);
+ if(!c||caseId&&caseId!==c.id){
+  await say(token,chat,"Kes ini bukan kes aktif. Buka Dokumen dan pilih folder yang betul dahulu.");return;
+ }
+ await clearWhatsAppDraft(id,chat,account);
+ await setCustomerFocus(id,chat,account,c.id,"output_name");
+ await say(token,chat,"✏️ NAMA FAIL OUTPUT\n👤 "+c.customer_name+
+  "\nSekarang: "+caseOutputFilename(c)+
+  "\n\nBalas nama fail yang kau mahu, contoh:\nNor Farah - Document"+
+  "\n\n.pdf ditambah automatik. Simbol _ ditukar kepada ruang."+
+  "\nTaip 'asal' untuk nama automatik atau 'batal' untuk keluar.",{
+   reply_markup:{inline_keyboard:[[{text:"📁 Kembali ke Dokumen",callback_data:"faris_nav:docs"}]]}
+  });
+}
+async function saveOutputName(token:string,chat:number,id:number,account:any,caseId:string,raw:string){
+ const c=await currentCase(account.id,chat);
+ if(!c||c.id!==caseId){
+  await clearCustomerNamePrompt(id,chat,account);
+  await say(token,chat,"Folder aktif sudah berubah. Buka Nama Output PDF pada folder yang betul semula.");return;
+ }
+ const reset=/^asal$/i.test(raw.trim()),name=cleanOutputName(raw);
+ if(!reset&&(!name||raw.length>160)){
+  await say(token,chat,"Nama fail tidak sah atau terlalu panjang. Masukkan nama ringkas (maksimum 120 aksara), contoh Nor Farah - Document.");return;
+ }
+ const {data:saved,error}=await db.from("lead_hub_telegram_cases").update({output_name:reset?null:name})
+  .eq("id",caseId).eq("account_id",account.id).eq("chat_id",chat).eq("state","collecting")
+  .select("id,customer_name,output_name,active_party").maybeSingle();
+ if(error)throw error;
+ if(!saved){await clearCustomerNamePrompt(id,chat,account);await say(token,chat,"Kes tidak lagi aktif. Buka Dokumen semula.");return;}
+ await clearCustomerNamePrompt(id,chat,account);
+ await say(token,chat,"✅ Nama output disimpan: "+caseOutputFilename(saved)+
+  "\nTaip 'siapkan PDF' apabila dokumen sudah lengkap.",{reply_markup:documentMenu(saved).reply_markup});
 }
 async function showWhatsAppMenu(token:string,chat:number,id:number,account:any,messageId?:number){
  await clearCustomerNamePrompt(id,chat,account);
@@ -1300,10 +1337,9 @@ async function finishPartialMerge(token:string,chat:number,id:number,account:any
   const skipped=result.issues.map((x:any)=>files[x.number-1]?.id).filter(Boolean);
   if(JSON.stringify(skipped)!==JSON.stringify(claim.skipped_ids))
    throw Error("Status fail telah berubah. Perlu pengesahan baharu");
-  const clean=safePdfText(c.customer_name).replace(/\s+/g,"_").slice(0,44)||"CUSTOMER";
   const caption="⚠️ PDF SEPARA — "+result.mergedIds.length+"/"+files.length+
    " fail; "+result.issues.length+" fail tidak disertakan. Sila semak dan lengkapkan sebelum urusan rasmi.";
-  await telegramSendDocument(token,chat,result.bytes,clean+"_DOKUMEN_SEPARA.pdf",caption);
+  await telegramSendDocument(token,chat,result.bytes,caseOutputFilename(c,true),caption);
   await db.from("lead_hub_telegram_partial_merges").update({state:"completed"})
    .eq("telegram_user_id",id).eq("request_tag",tag).eq("state","processing");
   await say(token,chat,"✅ PDF SEPARA DIHANTAR\n"+
@@ -1362,6 +1398,7 @@ async function processUpdate(update:any,conf:any,token:string){
    const account=linked.account;
    if(nav.kind==="home")await showCustomerMenu(token,chat,id,account,messageId);
    else if(nav.kind==="docs")await showDocumentMenu(token,chat,id,account,messageId);
+   else if(nav.kind==="filename")await beginOutputName(token,chat,id,account,nav.caseId);
    else if(nav.kind==="wa")await showWhatsAppMenu(token,chat,id,account,messageId);
    else if(nav.kind==="wa_add")await beginWhatsAppAdd(token,chat,id,account,messageId);
    else if(nav.kind==="wa_list")await showAvailableNumbers(token,chat,id,account,nav.page,messageId);
@@ -1455,10 +1492,26 @@ async function processUpdate(update:any,conf:any,token:string){
  if(/^(?:dokumen|document|documents|\/dokumen)$/i.test(txt)){
   await showDocumentMenu(token,chat,id,account);return;
  }
+ if(/^(?:nama fail|nama output|\/namafail(?:@\w+)?)$/i.test(txt)){
+  await beginOutputName(token,chat,id,account);return;
+ }
  if(await handleWhatsAppDraft(token,chat,id,account,txt))return;
  const {data:dialog}=await db.from("lead_hub_telegram_dialog")
-  .select("pending_step,pending_until").eq("telegram_user_id",id)
+  .select("pending_step,pending_until,active_case_id").eq("telegram_user_id",id)
   .eq("account_id",account.id).eq("chat_id",chat).maybeSingle();
+ if(dialog?.pending_step==="output_name"){
+  if(!dialog.pending_until||Date.parse(dialog.pending_until)<=Date.now()){
+   await clearCustomerNamePrompt(id,chat,account);
+   await say(token,chat,"Pilihan nama output sudah tamat. Tekan Nama Output PDF atau taip /namafail semula.");return;
+  }
+  if(/^(?:batal|cancel|tak jadi|xjadi|stop|\/batal)$/i.test(txt)){
+   await clearCustomerNamePrompt(id,chat,account);
+   await say(token,chat,"✅ Batal tukar nama output. Nama sebelum ini dikekalkan.");return;
+  }
+  // Slash commands are operations, never filenames. Clear the prompt before routing them.
+  if(txt.startsWith('/')||parseNatural(txt).kind!=="chat")await clearCustomerNamePrompt(id,chat,account);
+  else{await saveOutputName(token,chat,id,account,dialog.active_case_id,txt);return;}
+ }
  if(dialog?.pending_step==="customer_name"&&dialog.pending_until&&
     Date.parse(dialog.pending_until)>Date.now()){
   if(/^(?:batal|cancel|tak jadi|xjadi|stop)$/i.test(txt)){
@@ -1608,6 +1661,7 @@ async function processUpdate(update:any,conf:any,token:string){
    "👤 'new' → aku tanya nama pelanggan\n"+
    "📁 'sambung kes Haris' → kembali ke kes lama\n"+
    "📁 'buka folder nama Ahmad'\n"+
+   "✏️ '/namafail' → pilih nama output, contoh Nor Farah - Document\n"+
    "📎 'ini IC' → hantar banyak fail\n"+
    "🧾 'aku nak masuk slip gaji'\n"+
    "📋 'berapa fail dah masuk?'\n"+
@@ -1744,8 +1798,7 @@ async function processUpdate(update:any,conf:any,token:string){
    }
    try{
     const result=await makeMergedPdf(c,files);
-    const clean=safePdfText(c.customer_name).replace(/\s+/g,"_").slice(0,50)||"CUSTOMER";
-    await telegramSendDocument(token,chat,result.bytes,clean+"_DOKUMEN_LENGKAP.pdf",
+    await telegramSendDocument(token,chat,result.bytes,caseOutputFilename(c),
       "✅ DOKUMEN SIAP | "+c.customer_name+" | "+files.length+" fail. Sila semak sebelum serah.");
     await db.from("lead_hub_telegram_cases").update({
      state:"completed",completed_at:new Date().toISOString()

@@ -1,4 +1,5 @@
 // FARIS Telegram navigation — pure helpers (no private data or network calls).
+import {caseOutputFilename} from './output-name.mjs';
 export const PAGE_SIZE=7;
 export const CALLBACK_PREFIX="faris_nav:";
 export function parseNavCallback(value){
@@ -13,6 +14,8 @@ export function parseNavCallback(value){
  const waDetail=v.match(/^faris_nav:wa:open:([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/i);
  if(waDetail)return {kind:"wa_open",leadId:waDetail[1].toLowerCase()};
  if(v==="faris_nav:new")return {kind:"new"};
+ const filename=v.match(/^faris_nav:filename:([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/i);
+ if(filename)return {kind:"filename",caseId:filename[1].toLowerCase()};
  const section=v.match(/^faris_nav:party:([hgr]):([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/i);
  if(section)return {kind:"party",party:({h:"HIRER",g:"GUARANTOR",r:"REBATE"})[section[1].toLowerCase()],caseId:section[2].toLowerCase()};
  const pg=v.match(/^faris_nav:resume:(\d{1,3})$/);
@@ -29,6 +32,10 @@ export function partyButtons(caseId){
   [{text:"➕ Add Guarantor",callback_data:"faris_nav:party:g:"+caseId}],
   [{text:"🧾 Cop Rebate",callback_data:"faris_nav:party:r:"+caseId}]
  ];
+}
+export function outputNameButtons(caseId){
+ if(!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(String(caseId||'')))return [];
+ return [[{text:'✏️ Nama Output PDF',callback_data:'faris_nav:filename:'+caseId}]];
 }
 export function mainMenu(activeCase){
  return {
@@ -51,11 +58,12 @@ export function documentMenu(activeCase){
   text:"📁 FARIS • DOKUMEN\n"+
    (activeCase?"👤 Kes aktif: "+String(activeCase.customer_name||"").slice(0,80)+"\n":"📂 Tiada kes aktif.\n")+
    "\nBuka pelanggan baharu atau sambung folder lama."+
-   (activeCase?"\nPilih bahagian untuk fail seterusnya.":""),
+   (activeCase?"\nPilih bahagian untuk fail seterusnya.\n📄 Output: "+caseOutputFilename(activeCase):""),
   reply_markup:{inline_keyboard:[
    [{text:"🆕 New Customer",callback_data:"faris_nav:new"},
     {text:"📂 Resume Customer",callback_data:"faris_nav:resume:0"}],
    ...partyButtons(activeCase?.id),
+   ...outputNameButtons(activeCase?.id),
    [{text:"🏠 Menu Utama",callback_data:"faris_nav:home"}]
   ]}
  };
@@ -131,6 +139,7 @@ export function resumedMessage(c,files){
   "\n\nKes ini kini aktif. Hantar fail baharu, taip 'senarai' atau 'siapkan PDF'.",
   reply_markup:{inline_keyboard:[
    ...partyButtons(c.id),
+   ...outputNameButtons(c.id),
    [{text:"📂 Resume Pelanggan Lain",callback_data:"faris_nav:resume:0"}],
    [{text:"🏠 Menu Utama",callback_data:"faris_nav:home"}]
   ]}

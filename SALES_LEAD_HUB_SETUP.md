@@ -326,6 +326,15 @@ If the native Telegram slash-command list still shows older actions, an admin ca
 - Butang **Dokumen** dan **WhatsApp** masih menggunakan aliran chat sedia ada. Pautan ini tidak memindahkan folder Telegram ke profil atau menambah fungsi simpan PDF Telegram ke profil secara automatik.
 - Menu lama dalam sejarah chat tidak berubah sendiri. Hantar `/menu` atau tekan **Menu Utama** untuk paparan baharu.
 
+## 28 Oct 2026 — Nama output mudah dicari
+
+- Compiler menyediakan medan **Nama fail output** dan pratonton nama sebelum jana. Contoh `Nor Farah - Document` menghasilkan `Nor Farah - Document.pdf` pada Download, Google Drive dan Simpan ke Profil Pelanggan.
+- Medan kosong menggunakan nama customer/pihak diikuti ` - Document.pdf`; COP Rebate sahaja menggunakan ` - Cop Rebate.pdf`. Huruf besar/kecil dan aksara nama dikekalkan, `_` ditukar kepada ruang, karakter laluan/kawalan dibuang, `.pdf` tidak diduakan. Mengubah nama selepas menjana memerlukan jana semula sebelum simpan ke profil supaya metadata tidak tersalah nama.
+- Telegram: buka **Dokumen → Nama Output PDF**, atau taip `/namafail`, kemudian balas nama pilihan. Nama disimpan dalam `lead_hub_telegram_cases.output_name` untuk kes itu sahaja. `asal` mengembalikan nama automatik; `batal` mengekalkan nama sebelumnya. Prompt tamat dalam 15 minit dan menyemak akaun, chat, kes aktif serta state sebelum simpan.
+- Nama gabungan Telegram lalai ialah `<nama customer> - Document.pdf`. PDF separa sentiasa menambah ` - Separa.pdf` walaupun ada nama pilihan. VSO web/Telegram menggunakan `<nama customer> - VSO DRAF.pdf` supaya status DRAF kekal jelas.
+- Migration: `supabase/telegram-output-name.sql` menambah pilihan nama kes dan jenis prompt tanpa mengubah RLS/akses. Fail sedia ada tidak dinamakan semula. Menu slash `/namafail` boleh disegerakkan melalui **Kemas Kini Menu Bot**; butang dokumen dan arahan teks berfungsi terus.
+- Pengesahan: ujian nama/Unicode/nama laluan/prompt tamat/batal/folder bertukar; browser staf/admin × telefon/desktop menjana PDF sebenar, menyemak nama download dan nama/bytes yang disimpan ke profil sama, serta VSO tanpa `_`.
+
 ## 28 Oct 2026 — Gallery bahan jualan bersama
 
 - Susunan menu: Utama → Gallery → WhatsApp → Dokumen → Telegram → Staf & Akses.

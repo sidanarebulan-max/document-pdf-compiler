@@ -314,6 +314,7 @@
   }
 
   function render(){
+    if(typeof updateOutputNamePreview==='function')updateOutputNamePreview();
     const current=partyItems().sort((a,b)=>a.order-b.order);
     const hirerCount=partyItems('HIRER').length;
     const guarantorCount=partyItems('GUARANTOR').length;

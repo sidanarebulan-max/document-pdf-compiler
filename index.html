@@ -95,7 +95,7 @@
         </div>
 
         <div class="field">
-          <label>Nama customer / nama output <span class="optional">Optional</span></label>
+          <label for="customerName">Nama customer <span class="optional">Optional</span></label>
           <input id="customerName" placeholder="Contoh: CLARICE GABRIEL" />
         </div>
 
@@ -175,6 +175,13 @@
         </div>
         <div class="checklist" id="checklist"></div>
 
+        <div class="field">
+          <label for="outputName">Nama fail output <span class="optional">Optional</span></label>
+          <input id="outputName" maxlength="120" placeholder="Contoh: Nor Farah - Document" aria-describedby="outputNameHint outputNamePreview" />
+          <div class="small" id="outputNameHint">Isi sebelum jana PDF. Jika kosong, nama customer digunakan. Simbol _ ditukar kepada ruang; .pdf ditambah automatik.</div>
+          <div class="small" id="outputNamePreview" aria-live="polite"></div>
+        </div>
+
         <div class="toolbar" style="margin:12px 0">
           <button class="btn primary" id="generateBtn">Merge & Generate Final PDF</button>
           <button class="btn good" id="downloadBtn" disabled>Download PDF</button>
@@ -203,13 +210,13 @@
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
 <script src="app1.js"></script>
-<script src="app2.js?v=inbox-v36-20261026"></script>
+<script src="app2.js?v=readable-output-v41-20261028"></script>
 <script src="app3.js"></script>
-<script src="app4.js?v=generated-profile-v40-20261028"></script>
+<script src="app4.js?v=readable-output-v41-20261028"></script>
 <script src="app5.js"></script>
 <script src="vso-variants.js?v=variants-20261022"></script>
 <script src="vso.js?v=variants-20261022"></script>
-<script src="vso-exact.js?v=generated-profile-v40-20261028"></script>
+<script src="vso-exact.js?v=readable-output-v41-20261028"></script>
 <script src="staff-handoff.js?v=inbox-v36-20261026"></script>
 <script src="inbox-client.js?v=inbox-v36-20261026"></script>
 <script src="compiler-inbox.js?v=inbox-v36-20261026"></script>

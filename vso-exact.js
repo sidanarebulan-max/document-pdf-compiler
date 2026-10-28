@@ -253,7 +253,7 @@
       page.drawImage(image,{x:0,y:0,width:sample.width,height:sample.height});
       const bytes=await pdf.save({useObjectStreams:true});
       const blob=new Blob([bytes],{type:"application/pdf"});
-      const fname=(d.customer.toUpperCase().replace(/[^A-Z0-9]+/g,"_").slice(0,37)||"CUSTOMER")+"_"+d.variant.id+"_"+(d.kind==="MARKUP"?"MARKUP_90":"TANPA_MARKUP")+"_VSO_DRAF.pdf";
+      const fname=(cleanOutputName(d.customer)||"Customer")+" - VSO DRAF.pdf";
       window.FARIS_GENERATED?.publish("vso",{blob,name:fname,party:"HIRER",category:"VSO",valid:()=>profileTemplate===blankImage&&profileStamp===JSON.stringify([controlledFields.map(id=>E(id)?.value),mode()])});
       showStatus("✓ PDF VSO DRAF siap dijana daripada template asal.",true);
       return {blob,fname};
