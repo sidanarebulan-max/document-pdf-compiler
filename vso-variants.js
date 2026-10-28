@@ -101,9 +101,13 @@ const list = Object.freeze([
 const byId=Object.fromEntries(list.map(v=>[v.id,v]));
 const get=id=>byId[id]||byId.EMAS5_PREMIUM_2026;
 const charges=v=>Object.entries(v.fees).reduce((total,[key,num])=>total+(key==="gst"||!Number.isFinite(num)?0:num),0);
-const calculate=(amount,kind="PLAIN",variantId="EMAS5_PREMIUM_2026")=>{
- const v=get(variantId),loan=Number(amount),otr=kind==="MARKUP"?Math.round(loan/.9/10)*10:v.baseOtr,feeTotal=charges(v);
- return {variant:v,loan,otr,net:otr-feeTotal,feeTotal,baseOtr:v.baseOtr,baseNet:v.baseNet,kind};
+const calculate=(amount,kind="AUTO",variantId="EMAS5_PREMIUM_2026")=>{
+ const v=get(variantId),loan=Number(amount),loanCents=Math.round(loan*100),anchorCents=Math.round(v.baseOtr*100),feeTotal=charges(v);
+ const valid=Number.isSafeInteger(loanCents)&&loanCents>=0&&Number.isSafeInteger(loanCents*10);
+ const adjusted=valid&&loanCents*10>anchorCents*9;
+ const otrCents=valid?(adjusted?Math.round(loanCents*10/9):anchorCents):NaN;
+ const otr=otrCents/100,net=(otrCents-Math.round(feeTotal*100))/100;
+ return {variant:v,loan,otr,net,feeTotal,baseOtr:v.baseOtr,baseNet:v.baseNet,anchorPrice:v.baseOtr,loanLimit:anchorCents*9/1000,adjusted,kind};
 };
 window.VSO_VARIANTS=Object.freeze({list,get,charges,calculate});
 })();

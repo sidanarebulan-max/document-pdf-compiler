@@ -377,10 +377,11 @@ async function makeVSO(details:any,advisor:string){
  const item=VARIANTS[details.variant];if(!item)throw Error("Varian tidak dalam senarai VSO yang disokong.");
  const loan=Number(details.loan);if(!Number.isFinite(loan)||loan<=0)throw Error("Jumlah pinjaman tidak sah");
  const mode=String(details.mode).toUpperCase();
- if(!["PLAIN","MARKUP"].includes(mode))throw Error("Jenis VSO mesti PLAIN atau MARKUP");
- const otr=mode==="MARKUP"?Math.round(loan/0.9/10)*10:item.base;
- if(mode==="PLAIN"&&loan>otr)throw Error("Pinjaman melebihi harga OTR untuk mod tanpa markup");
- const net=otr-item.fees;if(net<=0)throw Error("Harga bersih tidak sah");
+ if(!["AUTO","PLAIN","MARKUP"].includes(mode))throw Error("Jenis VSO mesti AUTO");
+ const loanCents=Math.round(loan*100),anchorCents=Math.round(item.base*100);
+ if(!Number.isSafeInteger(loanCents*10))throw Error("Jumlah pinjaman tidak sah");
+ const loanLimit=anchorCents*9/1000,otrCents=loanCents*10>anchorCents*9?Math.round(loanCents*10/9):anchorCents;
+ const otr=otrCents/100,net=(otrCents-Math.round(item.fees*100))/100;if(net<=0)throw Error("Harga bersih tidak sah");
  const doc=await PDFDocument.create(),page=doc.addPage([595,842]);
  const font=await doc.embedFont(StandardFonts.Helvetica),bold=await doc.embedFont(StandardFonts.HelveticaBold);
  const money=(n:number)=>"RM "+n.toLocaleString("en-MY",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -392,7 +393,8 @@ async function makeVSO(details:any,advisor:string){
   ["Pelanggan",details.name],["No Kad Pengenalan",details.ic],
   ["No Telefon",details.phone],["Alamat",details.address],
   ["Sales Advisor",advisor],["Varian",item.label],
-  ["Tahun",details.year],["Warna",details.color],["Jenis Pinjaman",mode==="MARKUP"?"90% MARKUP (ANGGARAN)":"TANPA MARKUP"],
+  ["Tahun",details.year],["Warna",details.color],["Kaedah Harga","AUTO - ANCHOR 90%"],
+  ["Anchor Price (100%)",money(item.base)],["Had Loan (90%)",money(loanLimit)],
   ["Jumlah Pinjaman",money(loan)],["Harga OTR (anggaran)",money(otr)],
   ["Caj rujukan VSO",money(item.fees)],["Harga Bersih (anggaran)",money(net)],
  ]){y=draw(label,safePdfText(val),y);if(y<120)throw Error("Butiran terlalu panjang untuk satu halaman VSO Telegram");}
@@ -410,7 +412,7 @@ const vsoSteps=[
  {key:"color",question:"6/9 Warna kereta?"},
  {key:"loan",question:"7/9 Jumlah pinjaman RM? (contoh 75000)"},
  {key:"address",question:"8/9 Alamat penuh pelanggan?"},
- {key:"mode",question:"9/9 Jenis VSO: PLAIN (tanpa markup) atau MARKUP (90%)?"}
+ {key:"mode",question:"9/9 Harga automatik: loan sehingga 90% Anchor mengekalkan OTR asal; jika melebihi had, OTR = loan / 0.90. Taip AUTO untuk jana VSO DRAF."}
 ];
 async function handleWizard(token:string,chat:number,telegramId:number,account:any,text:string){
  const {data:wiz}=await db.from("lead_hub_telegram_wizards").select("*").eq("telegram_user_id",telegramId).maybeSingle();
@@ -421,7 +423,7 @@ async function handleWizard(token:string,chat:number,telegramId:number,account:a
  if(step.key==="variant"&&!VARIANTS[v.toUpperCase()]){await say(token,chat,"Kod varian tidak sah.\n"+step.question);return true}
  if(step.key==="year"&&!/^20\d{2}$/.test(v)){await say(token,chat,"Tahun tidak sah. Masukkan contoh: 2026");return true}
  if(step.key==="loan"&&(!Number.isFinite(Number(v))||Number(v)<=0)){await say(token,chat,"Masukkan pinjaman positif, contoh 75000");return true}
- if(step.key==="mode"&&!["PLAIN","MARKUP"].includes(v.toUpperCase())){await say(token,chat,"Tulis PLAIN atau MARKUP");return true}
+ if(step.key==="mode"&&!["AUTO","PLAIN","MARKUP"].includes(v.toUpperCase())){await say(token,chat,"Tulis AUTO untuk jana menggunakan formula Anchor 90%.");return true}
  if(step.key==="phone"&&!normalPhone(v)){await say(token,chat,"Nombor telefon tidak sah.");return true}
  const payload={...wiz.payload,[step.key]:step.key==="variant"||step.key==="mode"?v.toUpperCase():step.key==="phone"?normalPhone(v):v};
  const next=wiz.step+1;

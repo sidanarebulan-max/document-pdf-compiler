@@ -9,8 +9,8 @@
   let blankImage=null,baseData=null,drawSeq=0,buildBusy=false,previewCanvas=null,latest=null,templateAvailable=false;
   // Borang asal tidak diubah: hanya medan pelanggan, butiran kenderaan dan pinjaman dilukis di atas templat.
   const controlledFields=Object.freeze(['vsoCustomer','vsoNric','vsoAddress','vsoPhone','vsoEmail','vsoModel','vsoYear','vsoColor','vsoLoan','vsoPeriod']);
-  const money=n=>Math.round(n).toLocaleString("en-MY");
-  const mode=()=>host.querySelector('[data-vso-mode].active')?.dataset.vsoMode||"PLAIN";
+  const money=n=>n.toLocaleString("en-MY",{minimumFractionDigits:2,maximumFractionDigits:2});
+  const mode=()=>"AUTO";
   const validData=()=>{
     const value=id=>E(id)?.value?.trim()||"";
     const loan=Number(value("vsoLoan"));
@@ -236,7 +236,7 @@
     if(!d.customer){showStatus("Sila isi nama penuh pelanggan.");E("vsoCustomer").focus();return null;}
     if(!Number.isFinite(d.loan)||d.loan<=0){showStatus("Loan Amount mesti lebih daripada RM0.");E("vsoLoan").focus();return null;}
     if(!d.color||!d.year){showStatus("Lengkapkan warna dan tahun pembuatan.");return null;}
-    if(d.kind==="PLAIN"&&d.loan>d.otr){showStatus("Loan tidak boleh melebihi OTR asal bagi VSO tanpa markup.");return null;}
+    if(!Number.isFinite(d.otr)||d.otr<=0){showStatus("Jumlah pinjaman tidak menghasilkan harga OTR yang sah.");return null;}
     if(d.net<=0){showStatus("Jumlah pinjaman tidak menghasilkan harga bersih positif.");return null;}
     if(buildBusy)return null;
     window.FARIS_GENERATED?.clear("vso");

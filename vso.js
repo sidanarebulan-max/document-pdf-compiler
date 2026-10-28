@@ -7,10 +7,10 @@
   if(!variants)throw new Error("Data varian VSO gagal dimuatkan.");
   const chosenVariant=()=>variants.get(document.getElementById('vsoModel')?.value);
   const feeLabels={handling:"Inspection & Handling Fee",plate:"Registration Number Plate",registration:"Registration Fee",roadTax:"Road Tax",claim:"H.P. Ownership Claim Fee",insurance:"Insurance Premium Inc. 6% SST",accessory:"Accessory Package",gst:"Accessories Excise Duty / GST"};
-  let active='VSO',mode='PLAIN',lastBuild=null,lastFilename='',busy=false,previewScale=1;
+  let active='VSO',mode='AUTO',lastBuild=null,lastFilename='',busy=false,previewScale=1;
   const esc=s=>String(s??'').replace(/[&<>"']/g,k=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[k]));
-  const currency=n=>Number.isFinite(n)?'RM '+n.toLocaleString('en-MY',{minimumFractionDigits:0,maximumFractionDigits:0}):'—';
-  const fmt=n=>Number.isFinite(n)?n.toLocaleString('en-MY',{maximumFractionDigits:0}):'—';
+  const currency=n=>Number.isFinite(n)?'RM '+n.toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2}):'—';
+  const fmt=n=>Number.isFinite(n)?n.toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2}):'—';
   const today=()=>{
     const d=new Date();
     return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
@@ -30,10 +30,9 @@
    <div class="vsoIntro"><div><div class="vsoEyebrow">VEHICLE SALES ORDER</div><h1>VSO Format Asal</h1><p>Format PDF asal dikekalkan. Hanya isi butiran pelanggan, kenderaan dan pinjaman. Semak dokumen A4 sebelum muat turun atau hantar ke Compiler.</p></div><div class="vsoVersion">5 varian · e.MAS 5 & e.MAS 7</div></div>
    <div class="vsoGrid">
     <aside class="vsoFormPanel">
-     <div class="vsoSectionHead"><b>1. Pilih jenis VSO</b><span>2 pilihan</span></div>
+     <div class="vsoSectionHead"><b>1. Formula harga VSO</b><span>Automatik</span></div>
      <div class="vsoModeGrid">
-      <button type="button" data-vso-mode="PLAIN" class="vsoModeCard active"><strong>Tanpa Markup</strong><small>OTR asal, tanpa rebate</small></button>
-      <button type="button" data-vso-mode="MARKUP" class="vsoModeCard"><strong>Markup 90%</strong><small>Loan ÷ 90% = OTR</small></button>
+      <div class="vsoModeCard active" style="grid-column:1/-1"><strong>Anchor Price + Had 90%</strong><small>Loan ≤ 90% Anchor: OTR kekal. Loan melebihi had: OTR = Loan ÷ 0.90.</small></div>
      </div>
      <div class="vsoSectionHead"><b>2. Maklumat pelanggan</b><span>Untuk VSO</span></div>
      <div class="vsoFields">
@@ -52,13 +51,15 @@
        <label class="vsoField"><span>Tahun pembuatan</span><input id="vsoYear" type="number" min="2000" max="2100" value="2026"></label>
        <label class="vsoField"><span>Warna kereta</span><input id="vsoColor" value="Rose Pink" placeholder="Warna kereta"></label>
       </div>
-      <div class="vsoNotebox">Harga OTR dan pecahan caj setiap varian dikunci berdasarkan PDF VSO yang diberikan; hanya butiran pelanggan, tahun, warna dan pinjaman boleh diisi.</div>
+      <div class="vsoNotebox">Anchor Price dan caj mengikut varian asal. OTR dikira automatik daripada Loan Amount menggunakan had 90% Anchor Price.</div>
      </div>
      <div class="vsoSectionHead"><b>4. Maklumat pinjaman</b><span>Medan boleh diisi</span></div>
      <div class="vsoFields">
-       <label class="vsoField"><span>Loan Amount (RM) *</span><input id="vsoLoan" type="number" min="1" step="1" value="60800" inputmode="decimal"></label>
+       <label class="vsoField"><span>Loan Amount (RM) *</span><input id="vsoLoan" type="number" min="0.01" step="0.01" value="60800" inputmode="decimal"></label>
        <label class="vsoField"><span>Tempoh pinjaman</span><select id="vsoPeriod"><option value="9">9 tahun</option><option value="7">7 tahun</option><option value="5">5 tahun</option><option value="3">3 tahun</option></select></label>
        <div class="vsoMath">
+        <div><small>Anchor Price (100%)</small><strong id="vsoAnchor">RM 75,800.00</strong></div>
+        <div><small>Had Loan (90% Anchor)</small><strong id="vsoLoanLimit">RM 68,220.00</strong></div>
         <div><small id="vsoOtrLabel">Harga OTR asal</small><strong id="vsoOtr">RM 75,800</strong></div>
         <div><small>Jumlah caj dalam VSO contoh</small><strong id="vsoCharges">RM 3,708</strong></div>
         <div><small>Govt. Approved Net Selling Price <sup>*</sup></small><strong id="vsoNet">RM 72,092</strong></div>
@@ -100,7 +101,7 @@
       loan,
       period:E('vsoPeriod').value,
       otr:result.otr,net:result.net,feeTotal:result.feeTotal,
-      date:today(),mode
+      date:today(),mode,anchorPrice:result.anchorPrice,loanLimit:result.loanLimit,adjusted:result.adjusted
     };
   }
   function cleanFilename(name){
@@ -149,7 +150,7 @@
         <table class="vsoPayRows"><tr><td>Total Sales Price</td><td></td></tr><tr><td>Booking Fee</td><td>O/R:</td></tr><tr><td>Total Amount</td><td></td></tr><tr><td>Balance Customer</td><td></td></tr><tr><td>Balance Finance</td><td></td></tr></table>
         <h3>Customer Profile</h3>
         <table class="vsoProfileRows"><tr><td>Marital Status:</td><td></td></tr><tr><td>Race:</td><td></td></tr><tr><td>Income:</td><td></td></tr><tr><td>Occupation:</td><td></td></tr><tr><td>Sex:</td><td></td></tr><tr><td>Buyer Type:</td><td>New / Replacement / Additional</td></tr></table>
-        <div class="vsoRemarks"><strong>Remark:</strong><div class="vsoModeNote">${v.mode==='MARKUP'?'Markup 90% — pengiraan anggaran':'Tanpa markup &amp; rebate'}</div></div>
+        <div class="vsoRemarks"><strong>Remark:</strong><div class="vsoModeNote">Anchor ${currency(v.anchorPrice)} · Had 90% ${currency(v.loanLimit)} · ${v.adjusted?'OTR = Loan ÷ 0.90':'OTR kekal pada Anchor'}</div></div>
         <div class="vsoTradeNote">Note: Lon G Puncak Sdn. Bhd. Do not deal any trade-in of used vehicle.</div>
       </div>
     </div>
@@ -169,21 +170,22 @@
     E('vsoOtr').textContent=currency(v.otr);
     E('vsoCharges').textContent=currency(v.feeTotal);
     E('vsoNet').textContent=currency(v.net);
-    E('vsoModeBadge').textContent=mode==='MARKUP'?'MARKUP 90%':'TANPA MARKUP';
-    E('vsoOtrLabel').textContent=mode==='MARKUP'?'OTR daripada Loan ÷ 90%':'Harga OTR asal';
+    E('vsoAnchor').textContent=currency(v.anchorPrice);
+    E('vsoLoanLimit').textContent=currency(v.loanLimit);
+    E('vsoModeBadge').textContent=v.adjusted?'OTR DISELARASKAN':'OTR KEKAL PADA ANCHOR';
+    E('vsoOtrLabel').textContent='OTR Price';
     const breakdown=Object.entries(feeLabels)
        .filter(([key])=>v.variant.fees[key]!==null && v.variant.fees[key]!==undefined)
        .map(([key,label])=>'<div class="vsoChargeRow"><span>'+label+'</span><b>'+currency(v.variant.fees[key])+'</b></div>')
        .join('');
     E('vsoFixedBreakdown').innerHTML=breakdown+'<div class="vsoChargeTotal"><span>Jumlah caj OTR</span><b>'+currency(v.feeTotal)+'</b></div>';
     workspace.querySelector('.vsoVersion').textContent=v.variant.display;
-    if(mode==='MARKUP'){
-      E('vsoEquation').textContent=`${currency(v.loan)} ÷ 0.90 ≈ ${currency(v.otr)} (dibundarkan kepada RM10) · OTR − ${currency(v.feeTotal)} = ${currency(v.net)}`;
-      E('vsoNotice').textContent=`Harga OTR asal dalam PDF contoh ${v.variant.model} ialah ${currency(v.variant.baseOtr)}. Kiraan markup ialah anggaran dalaman, bukan pengesahan harga diluluskan untuk pembiayaan.`;
+    if(v.adjusted){
+      E('vsoEquation').textContent=`Loan ${currency(v.loan)} > had ${currency(v.loanLimit)} → OTR = ${currency(v.loan)} ÷ 0.90 = ${currency(v.otr)} · OTR − caj ${currency(v.feeTotal)} = ${currency(v.net)}`;
     }else{
-      E('vsoEquation').textContent=`OTR asal ${currency(v.variant.baseOtr)} − caj ${currency(v.feeTotal)} = ${currency(v.net)} · Tiada rebate / markup`;
-      E('vsoNotice').textContent=`Harga dan caj diambil daripada PDF contoh ${v.variant.model}; sahkan dengan pengedar sebelum keluarkan dokumen rasmi.`;
+      E('vsoEquation').textContent=`Loan ${currency(v.loan)} ≤ had ${currency(v.loanLimit)} → OTR kekal pada Anchor ${currency(v.anchorPrice)} · OTR − caj ${currency(v.feeTotal)} = ${currency(v.net)}`;
     }
+    E('vsoNotice').textContent=`Anchor dan caj mengikut PDF contoh ${v.variant.model}. OTR dibundarkan kepada sen terdekat; semak butiran sebelum pengesahan pengedar.`;
     lastBuild=null;lastFilename='';
     resize();
   }
@@ -207,12 +209,6 @@
     if(active==='VSO')requestAnimationFrame(resize);
     window.scrollTo({top:0,behavior:'auto'});
   }
-  function setMode(value){
-    mode=value==='MARKUP'?'MARKUP':'PLAIN';
-    // Jangan ubah jumlah pinjaman pengguna secara senyap semasa menukar mod.
-    workspace.querySelectorAll('[data-vso-mode]').forEach(b=>b.classList.toggle('active',b.dataset.vsoMode===mode));
-    updatePreview();
-  }
   function validate(v){
     if(!v.name)return 'Masukkan nama penuh pelanggan.';
     if(!Number.isFinite(v.loan)||v.loan<=0)return 'Loan Amount mesti melebihi RM0.';
@@ -220,7 +216,6 @@
     if(v.net<=0)return 'Harga bersih selepas caj tidak sah.';
     if(!v.year||!/^\d{4}$/.test(v.year))return 'Masukkan tahun kereta yang sah.';
     if(!v.color)return 'Masukkan warna kereta.';
-    if(v.mode==='PLAIN'&&v.loan>v.otr)return 'Loan Amount tidak boleh melebihi OTR asal untuk VSO tanpa markup.';
     return '';
   }
   async function makePdf(){
@@ -249,7 +244,7 @@
       page.drawImage(image,{x:0,y:0,width:595.28,height:841.89});
       const bytes=await pdf.save({useObjectStreams:true});
       lastBuild=new Blob([bytes],{type:'application/pdf'});
-      lastFilename=`${cleanFilename(v.name)}_${mode==='MARKUP'?'MARKUP90':'TANPA_MARKUP'}_VSO_DRAF.pdf`;
+      lastFilename=(cleanOutputName(v.name)||'Customer')+' - VSO DRAF.pdf';
       return {blob:lastBuild,name:lastFilename};
     }catch(err){
       E('vsoError').textContent='Gagal jana PDF: '+err.message;
@@ -287,7 +282,6 @@
     }
   }
   nav.querySelectorAll('[data-main]').forEach(b=>b.onclick=()=>switchMain(b.dataset.main));
-  workspace.querySelectorAll('[data-vso-mode]').forEach(b=>b.onclick=()=>setMode(b.dataset.vsoMode));
   workspace.querySelectorAll('input,textarea,select').forEach(el=>el.addEventListener('input',updatePreview));
   modelSelect.addEventListener('change',()=>{
     E('vsoYear').value=String(chosenVariant().year);
@@ -299,9 +293,9 @@
   if(typeof ResizeObserver!=='undefined')new ResizeObserver(resize).observe(E('vsoPreviewViewport'));
   window.addEventListener('resize',resize);
   window.VSO_CENTER={
-    calculate(loan,kind='MARKUP',variantId=modelSelect.value){
+    calculate(loan,kind='AUTO',variantId=modelSelect.value){
       const r=variants.calculate(loan,kind,variantId);
-      return {loan:r.loan,otr:r.otr,charges:r.feeTotal,net:r.net,baseOtr:r.baseOtr,mode:kind,variant:r.variant.model};
+      return {loan:r.loan,otr:r.otr,charges:r.feeTotal,net:r.net,baseOtr:r.baseOtr,anchorPrice:r.anchorPrice,loanLimit:r.loanLimit,adjusted:r.adjusted,mode:'AUTO',variant:r.variant.model};
     },
     variants:variants.list.map(v=>({id:v.id,model:v.model,otr:v.baseOtr,net:v.baseNet})),
     openVso:()=>switchMain('VSO'),openCompiler:()=>switchMain('COMPILER'),openApplication:()=>switchMain('APPLICATION')

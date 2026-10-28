@@ -345,6 +345,14 @@ If the native Telegram slash-command list still shows older actions, an admin ca
 - Teks paste dan medan tidak disimpan dalam localStorage atau dihantar untuk bacaan AI. Hanya tindakan simpan ke profil menggunakan API Inbox/Customer sedia ada dengan sesi dan kawalan aksesnya. Tiada schema atau Edge Function baharu diperlukan.
 - Aset font dan fontkit versi 1.1.1 disediakan dari origin website sendiri; sumber dalam `assets/application-form/README.md`. Ujian merangkumi parser, label berulang, Word table, alamat panjang, halaman sambungan, font, UI telefon/desktop, byte PDF download/simpan yang sama, import Compiler, perubahan input serta navigasi tiga tab. Regresi workspaces dan VSO/Compiler→profil turut dijalankan.
 
+## 29 Oct 2026 — VSO harga automatik mengikut Anchor 90%
+
+- Menggantikan pilihan lama PLAIN/MARKUP serta pembundaran RM10. Harga asas varian ialah **Anchor Price (100%)**. Jika Loan Amount ≤ 90% Anchor, OTR = Anchor. Jika melebihi had, OTR = Loan ÷ 0.90, dibundarkan kepada sen terdekat. Perbandingan menggunakan integer sen supaya nilai tepat pada had dan satu sen di atas had dibezakan.
+- Contoh e.MAS 5 Premium: Anchor RM75,800.00, had RM68,220.00; loan RM60,000.00 / RM68,220.00 → OTR RM75,800.00; loan RM72,800.00 → OTR RM80,888.89. Caj asal kekal RM3,708.00, maka Net Selling Price = RM77,180.89 untuk contoh terakhir.
+- Setiap varian mengekalkan Anchor/cajnya sendiri. UI memaparkan Anchor, had 90%, OTR dan persamaan aktif. Paparan, templat PDF asal, download, Compiler dan simpan ke profil menggunakan nilai yang sama dengan dua tempat perpuluhan. Pengesahan lama yang menghalang loan melebihi Anchor dibuang kerana OTR kini dilaraskan automatik.
+- Telegram `makeVSO` menggunakan formula yang sama. Langkah terakhir wizard menerima **AUTO**; nilai PLAIN/MARKUP daripada wizard lama masih diterima dan menggunakan formula automatik yang sama. PDF Telegram memaparkan Anchor dan had 90%. Status DRAF sedia ada dikekalkan.
+- Ujian: contoh pengguna, tepat pada had, +1 sen, loan melebihi Anchor, lima varian, caj tidak berubah, input tidak sah, PDF Telegram sebenar untuk AUTO/PLAIN/MARKUP; browser staf/admin × telefon/desktop menyemak UI dan angka yang dilukis pada canvas templat asal serta kesamaan byte PDF download/simpan ke profil.
+
 ## 28 Oct 2026 — Gallery bahan jualan bersama
 
 - Susunan menu: Utama → Gallery → WhatsApp → Dokumen → Telegram → Staf & Akses.
