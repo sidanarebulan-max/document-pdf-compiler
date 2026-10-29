@@ -182,3 +182,57 @@ html[data-ios-theme] .faris-staff :is(#workspaceNav,#mobileDock) button:is([data
 html[data-ios-theme] .faris-staff :is(#workspaceNav,#mobileDock) button:is([data-workspace-nav="whatsapp"],[data-mobile-nav="whatsapp"])[aria-current=page]{background:var(--ios-green-bg);color:var(--ios-green)}
 html[data-ios-theme] .faris-staff .workspace-card[data-workspace-nav="whatsapp"]>span{background:var(--ios-green-bg);color:var(--ios-green)}
 html[data-ios-theme] .faris-staff .customer-list-heading{scroll-margin-top:20px}
+
+/* Compact customer directory: disclosures on phones and flat, readable list rows. */
+html[data-ios-theme] .faris-staff .customer-name-open{display:block;text-align:left;background:transparent;color:var(--ios-text);border:0;border-radius:4px;box-shadow:none;padding:0;min-height:0;font:inherit;font-weight:700;overflow-wrap:anywhere;cursor:pointer}
+html[data-ios-theme] .faris-staff .customer-mobile-fold{margin:10px 0;border:0;min-width:0}
+html[data-ios-theme] .faris-staff .customer-mobile-fold>summary{cursor:pointer;min-height:44px;padding:12px 0;font-size:12px;font-weight:650;color:var(--ios-secondary)}
+html[data-ios-theme] .faris-staff .customer-filter-fold #customersClearFilters{margin-bottom:10px;font-size:12px}
+@media(min-width:761px){html[data-ios-theme] .faris-staff .customer-mobile-fold>summary{display:none}}
+@media(max-width:760px){
+ html[data-ios-theme] .faris-staff #appSection:has(#workspace-customers:not([hidden]))>.welcome{display:none}
+ html[data-ios-theme] .faris-staff #workspace-customers>.workspace-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px}
+ html[data-ios-theme] .faris-staff #workspace-customers>.workspace-heading :is(.eyebrow,p){display:none}
+ html[data-ios-theme] .faris-staff #workspace-customers>.workspace-heading h2{margin:0;font-size:24px}
+ html[data-ios-theme] .faris-staff #workspace-customers .workspace-actions{width:auto;flex:none}
+ html[data-ios-theme] .faris-staff #customersRefresh{font-size:12px;padding:9px 12px;min-height:40px}
+ html[data-ios-theme] .faris-staff #customersDirectory>.customer-insights{padding:0;margin:0 0 12px;background:transparent;border:0;box-shadow:none;border-radius:0}
+ html[data-ios-theme] .faris-staff #customersDirectory .insights-heading{display:none}
+ html[data-ios-theme] .faris-staff .customer-mobile-fold{margin:8px 0;background:var(--ios-surface);border:1px solid var(--ios-line);border-radius:12px;padding:0 12px}
+ html[data-ios-theme] .faris-staff .customer-mobile-fold>summary{color:var(--ios-text);font-size:12px;padding:12px 0;line-height:20px}
+ html[data-ios-theme] .faris-staff .customer-mobile-fold[open]{padding-bottom:12px}
+ html[data-ios-theme] .faris-staff .customer-insights .insights-definition{margin:8px 0;padding:0 12px;background:var(--ios-surface);border:1px solid var(--ios-line);border-radius:12px}
+ html[data-ios-theme] .faris-staff .customer-insights .insights-definition summary{padding:12px 0;min-height:44px;font-size:12px}
+ html[data-ios-theme] .faris-staff .insights-kpis{gap:8px;margin:12px 0}
+ html[data-ios-theme] .faris-staff .insights-kpi{padding:10px 12px;border-radius:13px;box-shadow:0 2px 0 var(--ios-line),0 4px 9px var(--ios-shadow)}
+ html[data-ios-theme] .faris-staff .insights-kpi strong{font-size:28px;line-height:1.2;margin-top:4px}
+ html[data-ios-theme] .faris-staff .insights-kpi small{display:none}
+ html[data-ios-theme] .faris-staff .customer-list-heading{gap:0;margin-top:12px}
+ html[data-ios-theme] .faris-staff .customer-list-heading h3{font-size:16px;margin:0 0 4px}
+ html[data-ios-theme] .faris-staff #customerActiveFilters{font-size:11px;line-height:1.4;margin:0 0 4px}
+ html[data-ios-theme] .faris-staff #customersTotal{font-size:11px;margin:8px 0}
+ html[data-ios-theme] .faris-staff #customersList{display:block;background:var(--ios-surface);border:0;border-radius:0;box-shadow:none}
+ html[data-ios-theme] .faris-staff #customersList .customer-list-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(86px,112px);grid-template-rows:auto auto;gap:2px 12px;padding:10px 4px;min-height:72px;margin:0;border:0;border-bottom:1px solid var(--ios-line);border-radius:0;background:transparent;box-shadow:none;align-items:center}
+ html[data-ios-theme] .faris-staff .customer-row-identity{grid-column:1;grid-row:1;min-width:0}
+ html[data-ios-theme] .faris-staff .customer-name-open{font-size:13px;line-height:1.35;min-height:32px;display:flex;align-items:center;width:100%}
+ html[data-ios-theme] .faris-staff .customer-row-vehicle{grid-column:1;grid-row:2;min-width:0}
+ html[data-ios-theme] .faris-staff .customer-row-vehicle b{font-size:11px;font-weight:500;color:var(--ios-secondary);line-height:1.4}
+ html[data-ios-theme] .faris-staff .customer-row-status{grid-column:2;grid-row:1/3;justify-self:end;width:100%}
+ html[data-ios-theme] .faris-staff .customer-row-status .customer-status{display:block;width:100%;min-height:44px;font-size:10px;line-height:1.35;padding:7px 8px;border:0;border-radius:8px;box-shadow:none;appearance:none;text-align:center;white-space:normal}
+ html[data-ios-theme] .faris-staff .customer-list-row :is(.customer-label,.customer-row-identity>small,.customer-row-vehicle>small,.customer-row-status>small,.customer-row-staff,.customer-row-follow,.customer-row-action.secondary){display:none}
+ html[data-ios-theme] .faris-staff .customer-list-row .customer-row-action.primary{grid-column:1/-1;margin-top:6px}
+ html[data-ios-theme] .faris-staff #customersMore{width:100%;margin-top:12px}
+ html[data-ios-theme] .faris-staff #customersMore+ p{display:none}
+}
+
+@media(max-width:760px){
+ html[data-ios-theme] .faris-staff #workspace-customers>.workspace-heading{flex-direction:row;text-align:left}
+ html[data-ios-theme] .faris-staff #customersDirectory>.customer-insights{display:grid;grid-template-columns:1fr 1fr;gap:0 8px}
+ html[data-ios-theme] .faris-staff #customerInsightsResult{display:contents}
+ html[data-ios-theme] .faris-staff #customerInsightsResult>.insights-kpis{grid-column:1/-1;order:0;margin:0 0 8px}
+ html[data-ios-theme] .faris-staff .customer-insights>[data-customer-fold="dates"]{order:1}
+ html[data-ios-theme] .faris-staff #customerInsightsResult>[data-customer-fold="analysis"]{order:2}
+ html[data-ios-theme] .faris-staff .customer-insights .customer-mobile-fold{margin:0 0 8px}
+ html[data-ios-theme] .faris-staff .customer-insights .customer-mobile-fold[open]{grid-column:1/-1}
+ html[data-ios-theme] .faris-staff .customer-insights .insights-definition{background:transparent;border:0;padding:0}
+}

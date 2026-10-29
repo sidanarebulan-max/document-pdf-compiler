@@ -26,8 +26,19 @@ function staffShell(){
  const sync=()=>{const current=document.querySelector('#workspaceNav [aria-current="page"]')?.dataset.workspaceNav;if(['gallery','telegram','settings'].includes(current)){if(trigger.getAttribute('aria-current')!=='page')trigger.setAttribute('aria-current','page')}else if(trigger.hasAttribute('aria-current'))trigger.removeAttribute('aria-current');if(app.classList.contains('hide')&&more.open)more.close()};
  new MutationObserver(sync).observe(app,{subtree:true,attributes:true,attributeFilter:['class','aria-current']});sync();
 }
+function customerLayout(){
+ const root=document.getElementById('customersDirectory');if(!root)return;
+ const phone=matchMedia('(max-width:760px)'),expanded=new Map();
+ const sync=(scope=root)=>scope.querySelectorAll('[data-customer-fold]').forEach(el=>{
+  if(el.dataset.foldReady==='1')return;
+  el.dataset.foldReady='1';el.open=!phone.matches||expanded.get(el.dataset.customerFold)===true;
+  el.addEventListener('toggle',()=>{if(phone.matches)expanded.set(el.dataset.customerFold,el.open)});
+ });
+ const resize=()=>root.querySelectorAll('[data-customer-fold]').forEach(el=>{el.open=!phone.matches||expanded.get(el.dataset.customerFold)===true});
+ phone.addEventListener('change',resize);window.FARIS_CUSTOMER_LAYOUT={sync};sync();
+}
 function start(){
- staffShell();const nav=document.getElementById('mainWorkspaceNav');if(nav&&!nav.querySelector('.theme-switch'))nav.append(themeControl());
+ staffShell();customerLayout();const nav=document.getElementById('mainWorkspaceNav');if(nav&&!nav.querySelector('.theme-switch'))nav.append(themeControl());
  window.FARIS_APPEARANCE?.refresh();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
