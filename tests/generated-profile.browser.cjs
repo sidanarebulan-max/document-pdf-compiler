@@ -1,3 +1,4 @@
+const uiAsset=require('./ui-assets.cjs');
 const {chromium}=require('playwright'),{PDFDocument}=require('pdf-lib');
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 (async()=>{
@@ -10,7 +11,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
 
   const page=await ctx.newPage(),errors=[];let uploads=[],links=[],failLink=true;page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/*',async route=>{
-   const req=route.request(),u=new URL(req.url());
+   const req=route.request(),u=new URL(req.url());if(await uiAsset(route,u))return;
    if(u.hostname==='generated.test'){
     if(u.pathname==='/api/health')return route.fulfill({contentType:'application/json',body:'{"configured":false}'});
     const f=u.pathname==='/'?'index.html':u.pathname.slice(1);

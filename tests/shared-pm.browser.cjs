@@ -1,3 +1,4 @@
+const uiAsset=require('./ui-assets.cjs');
 const {chromium}=require('playwright');
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),assert=require('node:assert/strict');
 (async()=>{
@@ -8,7 +9,7 @@ const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),asse
   const user={id:'saz',display_name:'Sazwani',staff_code:'SAZ0001',role:'staff'},number={id:'11111111-1111-4111-8111-111111111111',customer_name:'Ridwhan',phone_e164:'60123456789',model:'Proton e.MAS 5',assigned_id:'aiman',stage:'claimed',consent_confirmed:true};
   const activity=[],sent=[],calls=[],errors=[];const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
   await context.route('**/*',async route=>{
-   const url=new URL(route.request().url());
+   const url=new URL(route.request().url());if(await uiAsset(route,url))return;
    if(url.hostname==='shared.test'){
     const name=url.pathname==='/staff.html'?'staff.html':url.pathname.slice(1);
     if(['staff.html','staff.css','staff-navigation.js','staff-passcode.js','telegram-hub.js','inbox-client.js','staff-inbox.js'].includes(name))return route.fulfill({contentType:name.endsWith('.html')?'text/html':name.endsWith('.css')?'text/css':'text/javascript',body:fs.readFileSync(name)});

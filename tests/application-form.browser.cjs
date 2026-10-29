@@ -1,3 +1,4 @@
+const uiAsset=require('./ui-assets.cjs');
 const {chromium}=require('playwright'),{PDFDocument}=require('pdf-lib');
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const {fixture}=require('./application-form.test.cjs');
@@ -8,7 +9,7 @@ const {fixture}=require('./application-form.test.cjs');
   const ctx=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:1000},isMobile:mobile,hasTouch:mobile,acceptDownloads:true});await ctx.addInitScript(()=>localStorage.setItem('faris_lead_hub_session_v2','application-fixture'));
   const page=await ctx.newPage(),errors=[],uploads=[],links=[],network=[];page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/*',async route=>{
-   const req=route.request(),u=new URL(req.url());network.push(u.hostname+u.pathname);
+   const req=route.request(),u=new URL(req.url());if(await uiAsset(route,u))return;network.push(u.hostname+u.pathname);
    if(u.hostname==='application.test'){
     if(u.pathname==='/api/health')return route.fulfill({contentType:'application/json',body:'{"configured":false}'});
     const f=u.pathname==='/'?'index.html':u.pathname.slice(1);

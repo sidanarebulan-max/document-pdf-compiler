@@ -1,0 +1,174 @@
+/* FARIS production adapter for the supplied iPhone Glass design tokens.
+   UI chrome only: document sheets, PDF canvases and export templates retain their original rules. */
+html[data-ios-theme]{--bg:var(--ios-bg);--panel:var(--ios-surface);--panel2:var(--ios-surface-2);--sub:var(--ios-surface-2);--line:var(--ios-line);--text:var(--ios-text);--muted:var(--ios-secondary);--field:var(--ios-surface-2);--accent:var(--ios-primary);--accent2:var(--ios-primary-end);--blue:var(--ios-primary);--green:var(--ios-green);--good:var(--ios-green);--red:var(--ios-red);--danger:var(--ios-red);--warn:var(--ios-orange);--focus-ring:var(--ios-focus);--accent-soft:var(--ios-tint);--accent-text:var(--ios-primary)}
+html[data-ios-theme] body.faris-ui{margin:0;color:var(--ios-text);background:radial-gradient(ellipse at 88% 0%,var(--ios-lilac),transparent 42%),radial-gradient(ellipse at 0% 65%,var(--ios-mint),transparent 42%),var(--ios-bg);background-attachment:fixed;font-family:var(--ios-font);-webkit-font-smoothing:antialiased;overflow-x:clip;line-height:1.5}
+.faris-ui .hidden-render{font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+html[data-ios-theme] .faris-ui :is(button,a,input,select,textarea){-webkit-tap-highlight-color:transparent}
+html[data-ios-theme] .faris-ui :is(button,a,input,select,textarea):focus-visible{outline:3px solid var(--ios-focus);outline-offset:3px}
+html[data-ios-theme] .faris-ui button{font-family:inherit;transition:background .18s,box-shadow .18s,transform .18s}
+html[data-ios-theme] .faris-ui button:disabled{opacity:.5;transform:none;cursor:default}
+html[data-ios-theme] .faris-ui :is(input:not([type=checkbox]):not([type=radio]):not([type=file]),select,textarea){background:var(--ios-surface-2);color:var(--ios-text);border:1px solid var(--ios-line);border-radius:11px;min-height:44px;box-shadow:inset 0 1px 2px var(--ios-shadow);font-family:var(--ios-font);max-width:100%}
+html[data-ios-theme] .faris-ui :is(input,textarea)::placeholder{color:var(--ios-secondary);opacity:.8}
+html[data-ios-theme] .faris-ui label{color:var(--ios-text)}
+html[data-ios-theme] .faris-ui :is(input[type=checkbox],input[type=radio]){accent-color:var(--ios-primary)}
+html[data-ios-theme] .faris-ui :is(.muted,.small,.subtle,.sub,.privacy,.footer,footer,.afHint,.afIntro p,.vsoIntro p,.vsoLegalHint,.gallery-meta,.generated-profile-hint,.generated-customer small){color:var(--ios-secondary)}
+html[data-ios-theme] .faris-ui :is(.primary,.btn.primary,.vsoPrimary){background:linear-gradient(140deg,var(--ios-primary-end),var(--ios-primary));color:var(--ios-on-primary);border:1px solid transparent;border-radius:12px;min-height:44px;box-shadow:inset 0 1px 0 var(--ios-edge),0 3px 0 color-mix(in srgb,var(--ios-primary),var(--ios-bg) 30%),0 8px 18px var(--ios-deep-shadow);font-weight:650}
+html[data-ios-theme] .faris-ui :is(.primary,.btn.primary,.vsoPrimary):hover:not(:disabled){transform:translateY(-1px);filter:none}
+html[data-ios-theme] .faris-ui :is(.secondary,.btn:not(.primary):not(.good),.vsoSecondary,.iconbtn,.customer-status-button){background:linear-gradient(145deg,var(--ios-surface),var(--ios-surface-2));color:var(--ios-text);border:1px solid var(--ios-line);border-radius:11px;box-shadow:inset 0 1px 0 var(--ios-edge),0 3px 8px var(--ios-shadow);min-height:44px}
+html[data-ios-theme] .faris-ui :is(.wa,.btn.good,.tg-open,#generatedProfileOpen){background:var(--ios-green-bg);color:var(--ios-green);border:1px solid color-mix(in srgb,var(--ios-green),var(--ios-line) 70%);border-radius:12px;min-height:44px;box-shadow:0 3px 8px var(--ios-shadow)}
+html[data-ios-theme] .faris-ui :is(.eyebrow,.afEyebrow,.vsoEyebrow){color:var(--ios-primary);font-size:10px;letter-spacing:1.6px}
+html[data-ios-theme] .faris-ui :is(.panel,.innerpanel,.card,.customer-insights,.insights-panel,.afPanel,.vsoFormPanel,.vsoPreviewPanel,.gallery-card,.inbox-file,.lead,.generated-customer){background:var(--ios-surface);border:1px solid var(--ios-line);border-radius:20px;color:var(--ios-text);box-shadow:0 8px 22px var(--ios-shadow)}
+html[data-ios-theme] .faris-ui :is(.innerpanel,.insights-panel){background:var(--ios-surface-2);box-shadow:none;border-radius:16px}
+html[data-ios-theme] .faris-ui :is(.customer-list-row,.customer-note,.customer-history-item,.customer-file,.staffrow,.pm-history-card,.file){background:var(--ios-surface);color:var(--ios-text);border-color:var(--ios-line);border-radius:14px;box-shadow:0 4px 12px var(--ios-shadow)}
+html[data-ios-theme] .faris-ui :is(.customer-readonly,.customer-next,.inbox-guide,.access-summary,.generated-profile-file,.tg-status,.tg-provider,.msg-settings-preview){background:var(--ios-surface-2);color:var(--ios-text);border-color:var(--ios-line);border-radius:14px}
+html[data-ios-theme] .faris-ui :is(.empty,.gallery-empty,.customer-note-empty,.insights-empty,.generated-profile-empty){background:var(--ios-surface-2);color:var(--ios-secondary);border-color:var(--ios-line);border-radius:14px}
+html[data-ios-theme] .faris-ui :is(.notice,.inbox-notice,.vsoTransferNotice){background:var(--ios-blue-bg);color:var(--ios-blue);border-color:color-mix(in srgb,var(--ios-blue),var(--ios-line) 75%);border-radius:12px}
+html[data-ios-theme] .faris-ui :is(.notice.error,.errorbox,#vsoError,.afStatus.error){background:var(--ios-red-bg);color:var(--ios-red);border-color:color-mix(in srgb,var(--ios-red),var(--ios-line) 65%)}
+html[data-ios-theme] .faris-ui :is(.pill,.status,.badge,.customer-status,.insights-live,.vsoVersion,.cover-chip,.summary-pill){background:var(--ios-tint);color:var(--ios-primary);border-color:var(--ios-line);border-radius:9px;box-shadow:none}
+html[data-ios-theme] .faris-ui :is(.success,.verified,.merge-status.ready){color:var(--ios-green)}
+html[data-ios-theme] .faris-ui :is(.attention,.check .warn,.afIssues){color:var(--ios-orange)}
+html[data-ios-theme] .faris-ui :is(.metric,.stat){background:linear-gradient(145deg,var(--ios-surface),var(--ios-surface-2));border-color:var(--ios-edge);border-radius:18px;box-shadow:inset 0 1px 0 var(--ios-edge),0 5px 0 var(--ios-line),0 12px 20px var(--ios-shadow)}
+html[data-ios-theme] .faris-ui :is(.metric strong,.stat b){color:var(--ios-text);font-variant-numeric:tabular-nums}
+html[data-ios-theme] .faris-ui :is(.metric span,.stat span){color:var(--ios-secondary)}
+/* Staff shell: retained routes and permissions, sidebar above phone breakpoint. */
+html[data-ios-theme] .faris-staff .wrap{max-width:1440px;padding:20px 28px 36px}
+html[data-ios-theme] .faris-staff .header{position:sticky;top:12px;z-index:40;padding:17px 20px;margin:0 0 24px;border:1px solid var(--ios-edge);border-radius:22px;background:var(--ios-glass);box-shadow:0 9px 25px var(--ios-shadow)}
+html[data-ios-theme] .faris-staff .header>div{position:relative;padding-left:62px;min-height:50px}
+html[data-ios-theme] .faris-staff .header>div::before{content:'R+';position:absolute;left:0;top:2px;display:grid;place-items:center;width:44px;height:48px;background:linear-gradient(145deg,var(--ios-primary-end),var(--ios-primary));color:var(--ios-on-primary);border:1px solid var(--ios-edge);border-radius:15px;box-shadow:0 4px 0 var(--ios-line),0 8px 12px var(--ios-deep-shadow);font-weight:850;font-size:23px;transform:rotate(-5deg)}
+html[data-ios-theme] .faris-staff .header h1{font-size:23px;letter-spacing:-.8px;margin:2px 0}
+html[data-ios-theme] .faris-staff .header h1 span{color:var(--ios-primary)}
+html[data-ios-theme] .faris-staff .header p{color:var(--ios-secondary);font-size:11px;margin:3px 0 0}
+html[data-ios-theme] .faris-staff .header .eyebrow{font-size:8px;letter-spacing:1.3px}
+html[data-ios-theme] .faris-ui .theme-switch{display:inline-flex;padding:4px;gap:3px;background:var(--ios-fill);border:1px solid var(--ios-line);border-radius:12px;box-shadow:inset 0 2px 4px var(--ios-shadow)}
+html[data-ios-theme] .faris-ui .theme-choice{min-height:36px;min-width:55px;padding:7px 10px;font-size:11px;background:transparent;color:var(--ios-secondary);border:0;border-radius:9px;box-shadow:none}
+html[data-ios-theme] .faris-ui .theme-choice[aria-pressed=true]{background:var(--ios-surface);color:var(--ios-primary);box-shadow:0 2px 5px var(--ios-shadow)}
+html[data-ios-theme] .faris-staff #appSection:not(.hide){display:grid;grid-template-columns:204px minmax(0,1fr);gap:18px 24px;align-items:start}
+html[data-ios-theme] .faris-staff #workspaceNav{display:flex;flex-direction:column;grid-column:1;grid-row:1/3;position:sticky;top:132px;padding:12px 10px;gap:5px;border-radius:20px;background:var(--ios-glass);border:1px solid var(--ios-edge);box-shadow:0 9px 25px var(--ios-shadow);min-height:450px}
+html[data-ios-theme] .faris-staff #workspaceNav::before{content:'RUANG KERJA';display:block;padding:13px 12px;color:var(--ios-secondary);font-size:9px;letter-spacing:1.8px}
+html[data-ios-theme] .faris-staff #workspaceNav button{justify-content:flex-start;gap:12px;padding:12px;border-radius:12px;color:var(--ios-secondary);background:transparent;border:1px solid transparent;min-height:46px;box-shadow:none}
+html[data-ios-theme] .faris-staff #workspaceNav button[aria-current=page]{background:var(--ios-tint);color:var(--ios-primary)}
+html[data-ios-theme] .faris-staff #workspaceNav button small{font-size:12px;font-weight:600}
+html[data-ios-theme] .faris-staff #appSection>.welcome{grid-area:1/2;margin:0;padding:15px 19px;border:1px solid var(--ios-line);border-radius:18px;background:var(--ios-surface)}
+html[data-ios-theme] .faris-staff #appSection>.workspace-page{grid-area:2/2;min-width:0}
+html[data-ios-theme] .faris-staff .welcome h2{font-size:20px}
+html[data-ios-theme] .faris-staff .welcome p{color:var(--ios-secondary);line-height:1.6}
+html[data-ios-theme] .faris-staff .workspace-heading{margin:9px 0 23px}
+html[data-ios-theme] .faris-staff .workspace-heading h2{font-size:29px;letter-spacing:-1px;color:var(--ios-text)}
+html[data-ios-theme] .faris-staff .workspace-card{border-radius:22px;background:linear-gradient(140deg,var(--ios-surface),var(--ios-surface-2));box-shadow:0 6px 0 var(--ios-line),0 14px 24px var(--ios-shadow);padding:23px}
+html[data-ios-theme] .faris-staff .workspace-card>span{display:grid;place-items:center;width:42px;height:42px;border-radius:14px;background:var(--ios-tint);color:var(--ios-primary);box-shadow:2px 3px 0 var(--ios-line)}
+html[data-ios-theme] .faris-ui .faris-icon{width:21px;height:21px;display:block;flex-shrink:0}
+html[data-ios-theme] .faris-staff #customerDetail>.panel{background:var(--ios-surface);border-color:var(--ios-line);border-radius:20px;box-shadow:0 8px 22px var(--ios-shadow)}
+html[data-ios-theme] .faris-staff .customer-tabs{background:var(--ios-fill);border-color:var(--ios-line);border-radius:14px;padding:5px}
+html[data-ios-theme] .faris-staff .customer-tabs button{background:transparent;color:var(--ios-secondary);border:0;border-radius:10px;min-height:44px}
+html[data-ios-theme] .faris-staff .customer-tabs button[aria-current=page]{background:var(--ios-surface);color:var(--ios-primary);box-shadow:0 2px 6px var(--ios-shadow)}
+html[data-ios-theme] .faris-staff .customer-next{border-left:3px solid var(--ios-primary)}
+html[data-ios-theme] .faris-staff .insights-kpi{position:relative;background:linear-gradient(140deg,var(--ios-surface),var(--ios-surface-2));color:var(--ios-text);border:1px solid var(--ios-edge);border-radius:19px;box-shadow:inset 0 1px 0 var(--ios-edge),0 5px 0 var(--ios-line),0 12px 20px var(--ios-shadow);padding:19px 16px}
+html[data-ios-theme] .faris-staff .insights-kpi strong{font-size:35px;font-weight:750;font-variant-numeric:tabular-nums}
+html[data-ios-theme] .faris-staff .insights-kpi>span{display:inline-block;background:var(--ios-tint);color:var(--ios-primary);padding:5px 8px;border-radius:7px;font-size:10px;letter-spacing:.5px}
+html[data-ios-theme] .faris-staff .insights-kpi.delivered>span{background:var(--ios-green-bg);color:var(--ios-green)}
+html[data-ios-theme] .faris-staff .insights-kpi.pending>span{background:var(--ios-orange-bg);color:var(--ios-orange)}
+html[data-ios-theme] .faris-staff .insights-kpi.lou>span{background:var(--ios-blue-bg);color:var(--ios-blue)}
+html[data-ios-theme] .faris-staff .insights-kpi[aria-pressed=true]{outline:2px solid var(--ios-primary);outline-offset:3px;box-shadow:0 5px 0 var(--ios-line),0 12px 20px var(--ios-shadow)}
+html[data-ios-theme] .faris-staff .insights-kpi small{color:var(--ios-secondary)}
+html[data-ios-theme] .faris-staff .insights-kpi-link{color:var(--ios-primary)!important}
+html[data-ios-theme] .faris-ui :is(.insights-track,.progress){background:var(--ios-fill)}
+html[data-ios-theme] .faris-ui :is(.insights-track>span,.progress>div){background:linear-gradient(90deg,var(--ios-primary),var(--ios-primary-end))}
+html[data-ios-theme] .faris-staff .insights-drill{color:var(--ios-text)}
+html[data-ios-theme] .faris-staff :is(.authcard,.authform){background:var(--ios-surface);color:var(--ios-text);border-color:var(--ios-line)}
+html[data-ios-theme] .faris-staff .authcard{border-radius:26px;box-shadow:0 18px 45px var(--ios-shadow);margin-top:46px}
+html[data-ios-theme] .faris-staff .authinfo{background:radial-gradient(ellipse at 80% 5%,var(--ios-pink),transparent 65%),radial-gradient(ellipse at 5% 100%,var(--ios-mint),transparent 70%),var(--ios-surface-2);border-color:var(--ios-line)}
+html[data-ios-theme] .faris-staff .authinfo h2{color:var(--ios-text);letter-spacing:-.6px}
+html[data-ios-theme] .faris-staff .authinfo p{color:var(--ios-secondary)}
+html[data-ios-theme] .faris-staff .mark{border-radius:16px;background:linear-gradient(145deg,var(--ios-primary-end),var(--ios-primary));color:var(--ios-on-primary);box-shadow:0 5px 0 var(--ios-line),0 10px 18px var(--ios-deep-shadow)}
+html[data-ios-theme] .faris-staff :is(.credential,.msg-tokens button){background:var(--ios-tint);color:var(--ios-primary);border-color:var(--ios-line)}
+html[data-ios-theme] .faris-staff .credential :is(strong,code){color:var(--ios-text)}
+html[data-ios-theme] .faris-staff :is(.pm-tab,.gallery-model-filters button){background:var(--ios-surface-2);color:var(--ios-secondary);border-color:var(--ios-line);box-shadow:none;border-radius:12px}
+html[data-ios-theme] .faris-staff :is(.pm-tab[aria-selected=true],.pm-tab[aria-pressed=true],.pm-tab.active,.gallery-model-filters button[aria-pressed=true]){background:var(--ios-tint);color:var(--ios-primary);border-color:var(--ios-primary)}
+html[data-ios-theme] .faris-staff :is(.pm-count,.pm-empty,.pm-history-group-title,.leadmodel,.lead-secondary,.lead-chevron){color:var(--ios-secondary)}
+html[data-ios-theme] .faris-staff .leadtop :is(h3,.number){color:var(--ios-text)}
+html[data-ios-theme] .faris-staff .msg-phone-chat{background:var(--ios-surface-2)}
+html[data-ios-theme] .faris-staff .msg-bubble{background:var(--ios-green-bg);color:var(--ios-text)}
+/* Shared native dialogs, including dynamic gallery and generated-document pickers. */
+html[data-ios-theme] .faris-ui :is(dialog,.gallery-dialog,.customer-dialog,.generated-profile-dialog){background:var(--ios-surface);color:var(--ios-text);border:1px solid var(--ios-edge);border-radius:24px;box-shadow:0 24px 80px var(--ios-deep-shadow);font-family:var(--ios-font)}
+html[data-ios-theme] .faris-ui dialog::backdrop{background:var(--ios-scrim);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
+html[data-ios-theme] .faris-ui :is(.generated-profile-file,.generated-customer,.gallery-edit){background:var(--ios-surface-2);border-color:var(--ios-line);color:var(--ios-text)}
+html[data-ios-theme] .faris-ui :is(#generatedProfileStatus,.gallery-dialog-head p,.gallery-footnote,#gallerySummary){color:var(--ios-secondary)}
+/* Document tools: style only editor/chrome. No selector changes the official VSO sheet or canvas. */
+html[data-ios-theme] .faris-documents :is(.app,#vsoWorkspace,#applicationWorkspace){color:var(--ios-text);max-width:1480px}
+html[data-ios-theme] .faris-documents #mainWorkspaceNav{background:var(--ios-glass);color:var(--ios-text);border-color:var(--ios-edge);box-shadow:0 7px 22px var(--ios-shadow);gap:16px;padding:14px max(22px,calc((100% - 1440px)/2))}
+html[data-ios-theme] .faris-documents .hubEmblem{border-radius:12px;background:linear-gradient(145deg,var(--ios-primary-end),var(--ios-primary));color:var(--ios-on-primary);box-shadow:0 4px 0 var(--ios-line),0 8px 12px var(--ios-deep-shadow)}
+html[data-ios-theme] .faris-documents :is(.hubBrand small,.vsoSectionHead span,.vsoModeCard small,.vsoField span,.vsoPreviewToolbar small,.vsoPreviewFooter){color:var(--ios-secondary)}
+html[data-ios-theme] .faris-documents .hubSwitch{background:var(--ios-fill);border-color:var(--ios-line);border-radius:13px}
+html[data-ios-theme] .faris-documents .hubTab{background:transparent;color:var(--ios-secondary);border-radius:10px;min-height:40px}
+html[data-ios-theme] .faris-documents .hubTab.active{background:var(--ios-surface);color:var(--ios-primary);box-shadow:0 2px 5px var(--ios-shadow)}
+html[data-ios-theme] .faris-documents :is(.vsoIntro h1,.afIntro h1,.brand h1,.vsoSectionHead b,.vsoChargeRow b,.vsoChargeTotal,.vsoExactHeader strong){color:var(--ios-text)}
+html[data-ios-theme] .faris-documents :is(.vsoModeCard,.vsoMath,.vsoNotebox,.vsoFixedDetails,.vsoExactPanel,.vsoExactPanel.vso-template-loaded,.afGroup,.party-summary,.party-banner,.file,.log,.merge-order,.privacy){background:var(--ios-surface-2);color:var(--ios-text);border-color:var(--ios-line);border-radius:14px}
+html[data-ios-theme] .faris-documents :is(.vsoModeCard.active,.party-tab.active){background:var(--ios-tint);color:var(--ios-primary);border-color:var(--ios-primary);box-shadow:inset 0 1px 0 var(--ios-edge),0 4px 10px var(--ios-shadow)}
+html[data-ios-theme] .faris-documents :is(.vsoMath small,.vsoEquation,.vsoFixedDetails summary,.vsoChargeRow span,.vsoExactPanel p,.vsoExactPanel small,.afGroup summary,.afField,.afPreview figcaption){color:var(--ios-secondary)}
+html[data-ios-theme] .faris-documents :is(.vsoExactPill,#vsoModeBadge,.vsoExactWord,.optional,.optional-note){background:var(--ios-tint);color:var(--ios-primary);border-color:var(--ios-line)}
+html[data-ios-theme] .faris-documents :is(#vsoExactStatus,.vsoCaution){background:var(--ios-orange-bg);color:var(--ios-orange);border-color:var(--ios-line)}
+html[data-ios-theme] .faris-documents #vsoExactStatus.vsoExactOk{background:var(--ios-green-bg);color:var(--ios-green);border-color:var(--ios-line)}
+html[data-ios-theme] .faris-documents :is(.vsoPreviewToolbar,.vsoPreviewFooter,.vsoSectionHead,.vsoChargeTotal){border-color:var(--ios-line)}
+html[data-ios-theme] .faris-documents :is(#vsoPreviewViewport,.afPreview,.preview,.canvas-wrap){background:var(--ios-fill);border-color:var(--ios-line)}
+html[data-ios-theme] .faris-documents :is(#vsoExactPlaceholder,#vsoExactPlaceholder p,.afPlaceholder,.placeholder){color:var(--ios-secondary)}
+html[data-ios-theme] .faris-documents .party-tab{background:var(--ios-surface);color:var(--ios-text);border-color:var(--ios-line);border-radius:18px;box-shadow:0 6px 14px var(--ios-shadow)}
+html[data-ios-theme] .faris-documents .party-step{background:var(--ios-tint);color:var(--ios-primary);border-color:var(--ios-line);border-radius:12px}
+html[data-ios-theme] .faris-documents .party-tab small{color:var(--ios-secondary)}
+html[data-ios-theme] .faris-documents :is(.category-upload-title,.category-upload-empty,.category-upload-more,.section-head,.category-upload-plus){background:var(--ios-surface);color:var(--ios-text);border-color:var(--ios-line)}
+html[data-ios-theme] .faris-documents :is(.section-title,.category-upload-empty strong){color:var(--ios-text)}
+html[data-ios-theme] .faris-documents :is(.category-upload-empty span,.section-head .small,.doc-info-text,.merge-status){color:var(--ios-secondary)}
+html[data-ios-theme] .faris-documents :is(.section,.doc-info-button,.select-mini,.source-preview-btn,.compiler-output-jump){background:var(--ios-surface-2);color:var(--ios-text);border-color:var(--ios-line);border-radius:12px}
+html[data-ios-theme] .faris-documents .drop{background:linear-gradient(140deg,var(--ios-surface),var(--ios-tint));border-color:var(--ios-primary)}
+html[data-ios-theme] .faris-documents .drop .plus{background:var(--ios-tint);color:var(--ios-primary);border-color:var(--ios-line)}
+html[data-ios-theme] .faris-documents .brand>a{background:var(--ios-tint)!important;color:var(--ios-primary)!important;border-color:var(--ios-line)!important;box-shadow:0 3px 8px var(--ios-shadow)}
+html[data-ios-theme] .faris-documents .brand h1>span{color:var(--ios-secondary)!important}
+html[data-ios-theme] .faris-documents :is(.vsoExactChoose,.vsoExactChange){background:var(--ios-tint);color:var(--ios-primary);border-color:var(--ios-line)}
+.faris-more-dialog{width:min(430px,calc(100vw - 24px));padding:24px}.faris-more-dialog h2{font-size:20px;margin:0}.faris-more-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.faris-more-items{display:grid;gap:8px;margin-top:20px}.faris-more-items button{display:flex;align-items:center;gap:12px;text-align:left;min-height:52px;padding:14px}.faris-more-items small{font-size:14px}
+@supports(backdrop-filter:blur(20px)){html[data-ios-theme] .faris-ui :is(.header,#workspaceNav,#mainWorkspaceNav,#mobileDock){backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}}
+@media(max-width:1180px){html[data-ios-theme] .faris-documents #mainWorkspaceNav{flex-wrap:wrap}html[data-ios-theme] .faris-documents .hubSwitch{order:3;width:100%;display:flex}html[data-ios-theme] .faris-documents .hubTab{flex:1}}
+@media(max-width:1000px){html[data-ios-theme] .faris-staff .wrap{padding:16px 18px 28px}html[data-ios-theme] .faris-staff #appSection:not(.hide){grid-template-columns:170px minmax(0,1fr);gap:16px}html[data-ios-theme] .faris-staff #workspaceNav{padding:10px 7px}html[data-ios-theme] .faris-staff .header h1{font-size:21px}html[data-ios-theme] .faris-staff .header p{max-width:290px}}
+@media(max-width:760px){
+ html[data-ios-theme] .faris-staff .wrap{padding:10px 12px calc(105px + env(safe-area-inset-bottom,0px))}
+ html[data-ios-theme] .faris-staff .header{top:7px;padding:12px;border-radius:19px;flex-direction:row;align-items:center;gap:10px;margin-bottom:20px}
+ html[data-ios-theme] .faris-staff .header>div{padding-left:43px;min-height:38px;min-width:0}.faris-staff .header>div::before{width:32px!important;height:36px!important;border-radius:11px!important;font-size:18px!important}
+ html[data-ios-theme] .faris-staff .header h1{font-size:17px;line-height:1.15}.faris-staff .header .eyebrow,.faris-staff .header p{display:none}
+ html[data-ios-theme] .faris-staff .header nav{width:auto;display:flex!important;gap:7px;overflow:visible;flex-shrink:0}
+ html[data-ios-theme] .faris-ui .theme-choice{min-width:33px;padding:7px 6px;min-height:36px;font-size:11px}.faris-staff .theme-choice span{display:none}
+ html[data-ios-theme] .faris-staff #signoutBtn{font-size:11px;padding:9px;min-height:38px}
+ html[data-ios-theme] .faris-staff #appSection:not(.hide){display:block}html[data-ios-theme] .faris-staff #workspaceNav{display:none}
+ html[data-ios-theme] .faris-staff #appSection>.welcome{padding:14px 16px;margin-bottom:20px;border-radius:17px}
+ html[data-ios-theme] .faris-staff .welcome h2{font-size:19px}
+ html[data-ios-theme] .faris-staff #mobileDock{position:fixed;display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px;overflow:visible;bottom:calc(8px + env(safe-area-inset-bottom,0px));left:10px;right:10px;width:auto;padding:7px 5px;border:1px solid var(--ios-edge);border-radius:23px;background:var(--ios-glass);box-shadow:0 8px 25px var(--ios-deep-shadow);z-index:90}
+ html[data-ios-theme] .faris-staff #mobileDock button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:7px 1px;min-height:52px;min-width:0;background:transparent;color:var(--ios-secondary);border:0;border-radius:16px;box-shadow:none}
+ html[data-ios-theme] .faris-staff #mobileDock button[aria-current=page]{background:var(--ios-tint);color:var(--ios-primary)}
+ html[data-ios-theme] .faris-staff #mobileDock small{font-size:9px!important;font-weight:600;white-space:nowrap}
+ html[data-ios-theme] .faris-staff .workspace-heading h2{font-size:27px}.faris-staff .workspace-card{min-height:148px}.faris-staff .workspace-card b{font-size:16px}
+ html[data-ios-theme] .faris-staff :is(.panel,.customer-insights,#customerDetail>.panel){padding:16px;border-radius:19px}
+ html[data-ios-theme] .faris-staff .insights-kpi{padding:15px 12px;border-radius:17px}.faris-staff .insights-kpi strong{font-size:33px}
+ html[data-ios-theme] .faris-ui :is(input:not([type=checkbox]):not([type=radio]),select,textarea){font-size:16px}
+ html[data-ios-theme] .faris-ui :is(dialog,.gallery-dialog,.customer-dialog,.generated-profile-dialog){border-radius:25px;padding:18px;max-height:calc(100dvh - 24px);max-width:calc(100vw - 20px)}
+ html[data-ios-theme] .faris-ui .faris-more-dialog{margin:auto auto calc(9px + env(safe-area-inset-bottom,0px));width:calc(100vw - 20px)}
+ html[data-ios-theme] .faris-documents #mainWorkspaceNav{padding:10px 12px;gap:10px}.faris-documents .hubBrand{flex:1;min-width:0}.faris-documents .hubBrand strong{font-size:12px}.faris-documents .hubBrand small{display:none}
+ html[data-ios-theme] .faris-documents .hubSwitch{order:3;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px;width:100%}.faris-documents .hubTab{min-width:0;min-height:42px;padding:7px 3px}
+ html[data-ios-theme] .faris-documents .hubTab b{font-size:10px}.faris-documents .theme-switch{margin-left:auto}.faris-documents .theme-choice{min-width:31px}
+ html[data-ios-theme] .faris-documents :is(#vsoWorkspace,#applicationWorkspace){padding:22px 12px 45px}.faris-documents .vsoIntro h1{font-size:27px}.faris-documents .vsoFieldRow{grid-template-columns:1fr}
+}
+@media(max-width:370px){html[data-ios-theme] .faris-staff .header{gap:5px;padding:10px}html[data-ios-theme] .faris-staff .header h1{font-size:15px}html[data-ios-theme] .faris-staff .header>div{padding-left:0}.faris-staff .header>div::before{display:none}.faris-staff .theme-switch{gap:1px}.faris-staff .header nav{gap:4px!important}}
+@media(prefers-reduced-motion:reduce){html[data-ios-theme] .faris-ui *,html[data-ios-theme] .faris-ui *::before,html[data-ios-theme] .faris-ui *::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+@media(min-width:761px) and (max-width:1080px){html[data-ios-theme] .faris-staff .customer-drill-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){html[data-ios-theme] .faris-staff .header h1>span{display:block;font-size:10px;letter-spacing:.8px;line-height:1.3;margin-top:2px}}
+html[data-ios-theme] .faris-documents .party-tab b{color:var(--ios-text)}
+html[data-ios-theme] .faris-documents .party-tab.active b{color:var(--ios-primary)}
+html[data-ios-theme] .faris-documents :is(.party-banner b,.merge-order b){color:var(--ios-text)}
+html[data-ios-theme] .faris-documents .party-banner span{color:var(--ios-secondary)}
+html[data-ios-theme] .faris-documents .merge-num{background:var(--ios-tint);color:var(--ios-primary);border-color:var(--ios-line)}
+html[data-ios-theme] .faris-staff :is(.tg-secret,.tg-cli-guide,.tg-cli-command,.tg-routing,.tg-commands code){background:var(--ios-surface-2);color:var(--ios-text);border-color:var(--ios-line)}
+html[data-ios-theme] .faris-staff :is(.tg-secret b,.tg-cli-command code,.tg-cli-guide a){color:var(--ios-primary)}
+html[data-ios-theme] .faris-staff .tg-provider-badge{background:var(--ios-fill);color:var(--ios-secondary);border-color:var(--ios-line)}
+html[data-ios-theme] .faris-staff .tg-provider-badge.on{background:var(--ios-green-bg);color:var(--ios-green);border-color:var(--ios-line)}
+html[data-ios-theme] .faris-staff :is(.workflow-action small,.staffrow small,.lead-phone){color:var(--ios-secondary)}
+html[data-ios-theme] .faris-staff .leadwork button:first-child{background:var(--ios-tint);color:var(--ios-primary);border-color:var(--ios-line)}
+html[data-ios-theme] .faris-ui .tg-open{color:var(--ios-green)!important}
+html[data-ios-theme] .faris-documents #applicationPaste{background:var(--ios-surface-2);color:var(--ios-text);border-color:var(--ios-line);border-radius:12px;font-family:var(--ios-font)}
+html[data-ios-theme] .faris-documents #applicationPaste::placeholder{color:var(--ios-secondary);opacity:.8}
+@supports not ((backdrop-filter:blur(20px)) or (-webkit-backdrop-filter:blur(20px))){html[data-ios-theme] .faris-ui :is(.header,#workspaceNav,#mainWorkspaceNav,#mobileDock){background:var(--ios-surface)}}

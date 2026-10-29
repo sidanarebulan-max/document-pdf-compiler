@@ -1,3 +1,4 @@
+const uiAsset=require('./ui-assets.cjs');
 const {chromium}=require('playwright');
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=','base64');
@@ -9,7 +10,7 @@ const initial=()=>['emas7_phev','emas7_ev','emas5'].map((model,i)=>({id:'0000000
   await ctx.addInitScript(()=>{localStorage.setItem('faris_lead_hub_session_v2','gallery-fixture-session');Object.defineProperty(navigator,'canShare',{value:()=>true,configurable:true});Object.defineProperty(navigator,'share',{value:async data=>{window.__shared=data.files.map(f=>({name:f.name,type:f.type,size:f.size}))}})});
   let rows=initial(),calls=[],uploadCount=0;const errors=[];const page=await ctx.newPage();page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/*',async route=>{
-   const req=route.request(),url=new URL(req.url());
+   const req=route.request(),url=new URL(req.url());if(await uiAsset(route,url))return;
    if(url.hostname==='gallery.test'){
     const f=url.pathname.slice(1);if(/^(staff\.html|staff\.css|staff-gallery\.css|staff-gallery\.js|staff-navigation\.js|staff-passcode\.js|telegram-hub\.js|inbox-client\.js|staff-inbox\.js)$/.test(f))return route.fulfill({contentType:f.endsWith('html')?'text/html':f.endsWith('css')?'text/css':'text/javascript',body:fs.readFileSync(path.join(process.cwd(),f))});
    }
@@ -33,7 +34,7 @@ const initial=()=>['emas7_phev','emas7_ev','emas5'].map((model,i)=>({id:'0000000
   await page.goto('https://gallery.test/staff.html#gallery');
   await page.waitForFunction(()=>document.getElementById('galleryCountAll').textContent==='3');
   const nav=page.locator(mobile?'#mobileDock':'#workspaceNav');
-  assert.deepEqual(await nav.locator('button').evaluateAll(nodes=>nodes.map(n=>n.dataset.mobileNav||n.dataset.workspaceNav)),['home','gallery','whatsapp','customers','docs','telegram','settings']);
+  assert.deepEqual(await nav.locator('button').evaluateAll(nodes=>nodes.map(n=>n.dataset.mobileNav||n.dataset.workspaceNav)),mobile?['home','customers','docs','whatsapp',undefined]:['home','gallery','whatsapp','customers','docs','telegram','settings']);
   assert.equal(await page.locator('.gallery-category').count(),3);assert.equal(await page.locator('.gallery-card').count(),3);
   assert.equal(await page.locator('#galleryUploadToggle').isVisible(),role==='admin');assert.equal(await page.locator('[data-gallery-edit]').count(),role==='admin'?3:0);
   await page.locator('[data-gallery-model="emas7_ev"]').click();await page.waitForFunction(()=>document.querySelectorAll('.gallery-card').length===1);assert.match(await page.locator('#galleryColumns').innerText(),/EV Harga/);

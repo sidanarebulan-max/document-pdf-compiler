@@ -1,0 +1,33 @@
+/* Faris iPhone-inspired UI kit. Scope all markup with .ios-app.
+   These tokens are a design direction, not Apple's proprietary assets. */
+:root,[data-ios-theme="light"]{
+  color-scheme:light;
+  --ios-bg:#f1f2f8;--ios-surface:#ffffff;--ios-surface-2:#f7f8fc;
+  --ios-fill:#eceef6;--ios-text:#22273d;--ios-secondary:#626b83;
+  --ios-line:#dde1ed;--ios-edge:#ffffff;--ios-primary:#6654d9;
+  --ios-primary-end:#7960d6;--ios-on-primary:#ffffff;--ios-tint:#eee9ff;
+  --ios-green:#08765c;--ios-green-bg:#e1f5ed;--ios-orange:#935800;
+  --ios-orange-bg:#fff1d6;--ios-blue:#245ca5;--ios-blue-bg:#e5efff;
+  --ios-red:#b62f4d;--ios-red-bg:#fde7ed;--ios-lilac:#dfd7ff;
+  --ios-mint:#d9f1ed;--ios-pink:#f7e5ef;--ios-shadow:rgba(58,64,111,.08);
+  --ios-deep-shadow:rgba(72,63,135,.17);--ios-glass:rgba(255,255,255,.84);
+  --ios-scrim:rgba(16,19,38,.34);--ios-focus:#3874ee;
+  --ios-radius-sm:10px;--ios-radius:18px;--ios-radius-lg:24px;
+  --ios-font:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --ios-space-1:4px;--ios-space-2:8px;--ios-space-3:12px;
+  --ios-space-4:16px;--ios-space-5:20px;--ios-space-6:24px;
+  --ios-space-8:32px;--ios-motion:180ms;--ios-sidebar-width:204px;
+}
+[data-ios-theme="dark"]{
+  color-scheme:dark;
+  --ios-bg:#10131d;--ios-surface:#1b2030;--ios-surface-2:#202739;
+  --ios-fill:#2a3247;--ios-text:#f3f4ff;--ios-secondary:#b2bdd5;
+  --ios-line:#39445b;--ios-edge:#48526b;--ios-primary:#b8a6ff;
+  --ios-primary-end:#c9bdff;--ios-on-primary:#21163e;--ios-tint:#34294e;
+  --ios-green:#7de1be;--ios-green-bg:#1e3e37;--ios-orange:#f3cc83;
+  --ios-orange-bg:#443821;--ios-blue:#a6caff;--ios-blue-bg:#263952;
+  --ios-red:#ffb0c0;--ios-red-bg:#4b2838;--ios-lilac:#322a4e;
+  --ios-mint:#18383c;--ios-pink:#3b263b;--ios-shadow:rgba(0,0,0,.2);
+  --ios-deep-shadow:rgba(0,0,0,.35);--ios-glass:rgba(27,32,48,.88);
+  --ios-scrim:rgba(0,0,0,.58);--ios-focus:#a6caff;
+}

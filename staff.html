@@ -1,18 +1,13 @@
 <!doctype html>
 <html lang="ms">
 <head>
- <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+ <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1,viewport-fit=cover">
  <link rel="manifest" href="/manifest.webmanifest">
  <link rel="apple-touch-icon" href="/assets/faris-app-192.png">
  <meta name="apple-mobile-web-app-capable" content="yes">
  <meta name="apple-mobile-web-app-title" content="FARIS Dokumen">
  <meta name="theme-color" content="#0b1020" id="farisThemeColor">
- <script>
- // Set theme before first paint. Only visual preference is stored, never login data.
- (()=>{let theme="dark";try{theme=localStorage.getItem("faris_lead_hub_theme_v1")==="light"?"light":"dark"}catch{}
- document.documentElement.setAttribute("data-theme",theme);
- })();
- </script>
+ <script src="/assets/faris-appearance.js?v=iphone-glass-v59-20261030"></script>
  <title>FARIS LEAD HUB — ID & Passcode Staf</title>
  <meta name="description" content="Portal staf Proton: masuk menggunakan ID dan passcode, ambil nombor pelanggan, buka WhatsApp dalam telefon.">
  <link rel="stylesheet" href="/staff.css?v=customers-v39-20261028">
@@ -255,37 +250,16 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
  .lead,.theme-switch .theme-choice{transition:none}
 }
 </style>
-<script>
-(()=>{
- const KEY="faris_lead_hub_theme_v1";
- const accepted=t=>t==="light"?"light":"dark";
- const apply=(theme,save)=>{
-  const t=accepted(theme);
-  document.documentElement.dataset.theme=t;
-  const meta=document.getElementById("farisThemeColor");
-  if(meta)meta.content=t==="light"?"#f3f6fb":"#0b1020";
-  document.querySelectorAll("[data-theme-choice]").forEach(button=>{
-   button.setAttribute("aria-pressed",String(button.dataset.themeChoice===t));
-  });
-  if(save){try{localStorage.setItem(KEY,t)}catch{}}
- };
- document.addEventListener("DOMContentLoaded",()=>{
-  apply(document.documentElement.dataset.theme,false);
-  document.querySelectorAll("[data-theme-choice]").forEach(button=>{
-   button.addEventListener("click",()=>apply(button.dataset.themeChoice,true));
-  });
-  window.addEventListener("storage",event=>{
-   if(event.key===KEY)apply(event.newValue,false);
-  });
- });
-})();
-</script>
+
+ <link rel="stylesheet" href="/assets/ios-tokens.css?v=iphone-glass-v59-20261030">
+ <link rel="stylesheet" href="/assets/faris-glass.css?v=iphone-glass-v59-20261030">
 </head>
-<body>
+<body class="faris-ui faris-staff">
 <div class="wrap">
 <header class="header">
  <div><div class="eyebrow">FARIS R+PROTON · SALES OPERATIONS</div><h1>FARIS <span>LEAD HUB</span></h1><p>Gallery · WhatsApp · Pelanggan · Dokumen · VSO · Telegram</p></div>
  <nav><div class="theme-switch" role="group" aria-label="Pilih warna paparan">
+   <button type="button" class="theme-choice" data-theme-choice="auto" aria-pressed="false" aria-label="Ikut tema peranti">◐ <span>Auto</span></button>
    <button type="button" class="theme-choice" data-theme-choice="light" aria-pressed="false" aria-label="Aktifkan Light Mode">☀ <span>Light</span></button>
    <button type="button" class="theme-choice" data-theme-choice="dark" aria-pressed="true" aria-label="Aktifkan Dark Mode">☾ <span>Dark</span></button>
   </div><button class="secondary hide" id="signoutBtn" type="button">Keluar</button></nav>
@@ -672,4 +646,5 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
 <script src="/staff-passcode.js?v=application-v42-20261028-customers-v39-20261028"></script>
 
 <script src="/telegram-hub.js?v=inbox-v36-20261026"></script>
+<script src="/assets/faris-glass.js?v=iphone-glass-v59-20261030"></script>
 </body></html>
