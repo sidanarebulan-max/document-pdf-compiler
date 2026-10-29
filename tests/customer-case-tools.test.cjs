@@ -32,6 +32,13 @@ test('Reference list includes old and unknown classifications without per-docume
 test('Complete PDFs and support files upload unchanged under the same customer reference workflow',async()=>{
  const files=[{name:'Complete application.pdf',size:1500,type:'application/pdf'},{name:'Supporting letter.png',size:1000,type:'image/png'}],uploaded=[],linked=[],nodes=new Map([['customerUpload',{files,value:'chosen'}]]);
  const ctx={$:id=>nodes.get(id),window:{FARIS_INBOX_CLIENT:{upload:async f=>{uploaded.push(f);return {files:[{id:'file-'+uploaded.length}]}}}},busyState:()=>{},notice:()=>{},mutate:async(action,data,id)=>linked.push({action,data,id}),refreshProfile:async()=>{}};vm.createContext(ctx);
- vm.runInContext("let customer={lead:{id:'customer-a'}},busy=false,epoch=1;"+src.slice(src.indexOf('async function upload('),src.indexOf('function resetBank('))+";globalThis.uploadFiles=upload;",ctx);await ctx.uploadFiles();
+ vm.runInContext("let customer={lead:{id:'customer-a'}},busy=false,epoch=1;"+src.slice(src.indexOf('async function upload('),src.indexOf('const fieldNames='))+";globalThis.uploadFiles=upload;",ctx);await ctx.uploadFiles();
  assert.deepEqual(uploaded,files);assert.equal(linked.length,2);for(const row of linked){assert.equal(row.action,'link_files');assert.equal(row.id,'customer-a');assert.equal(row.data.party,'HIRER');assert.equal(row.data.category,'OTHER')};assert.equal(nodes.get('customerUpload').value,'');
+});
+test('Saving the summary preserves stored financial values after the bank inputs are removed',()=>{
+ const saved={booking_status:'paid',booking_amount:100,selling_price:75800,deposit:5000,loan_amount:60000},nodes=new Map();
+ const node=id=>{if(!nodes.has(id))nodes.set(id,{value:'',checked:false});return nodes.get(id)};
+ Object.entries({cpName:'Customer',cpModel:'e.MAS 5',cpVariant:'Premium',cpColour:'White',cpStatus:'documents',cpFollow:'2026-11-01',cpNext:'Follow up',cpReason:''}).forEach(([id,value])=>node(id).value=value);
+ const ctx={$:node,saved};vm.createContext(ctx);vm.runInContext("let customer={profile:saved},editRevision=7,editStamp='2026-10-30T01:00:00Z';"+src.slice(src.indexOf('function profileValues('),src.indexOf('async function runWrite('))+";globalThis.values=profileValues;",ctx);
+ const data=ctx.values();for(const [key,value] of Object.entries(saved))assert.equal(data[key],value);assert.equal(data.expected_revision,7);assert.equal(data.next_action,'Follow up');assert.ok(![...nodes.keys()].some(id=>/^cp(Booking|Price|Deposit|Loan)/.test(id)));
 });
