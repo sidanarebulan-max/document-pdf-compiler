@@ -4,7 +4,7 @@ const host=document.getElementById('vsoWorkspace'),viewport=document.getElementB
 if(!host||!viewport)return;
 const E=id=>document.getElementById(id),core=window.FARIS_VSO_WORD;
 const controlledFields=['vsoCustomer','vsoNric','vsoAddress','vsoPhone','vsoEmail','vsoModel','vsoYear','vsoColor','vsoLoan','vsoPeriod'];
-const VERSION='word-vector-v47-live-20261029';
+const VERSION='word-vector-v48-advisor-20261029';
 let assetsPromise=null,result=null,building=null,buildBusy=false,previewDoc=null,renderTask=null,drawSeq=0,resizeSeq=0,timer=null;
 const prep=document.createElement('div');prep.className='vsoExactPanel vso-template-loaded';
 prep.innerHTML=`<div class="vsoExactHeader"><strong>Format VSO Mengikut Word</strong><span class="vsoExactPill">TEMPLAT WORD</span></div>

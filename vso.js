@@ -115,8 +115,8 @@
     <div class="vsoDocTitle"><b>VEHICLE SALES ORDER</b><span><strong>VSO No:</strong> <i>Untuk diisi oleh pengedar</i></span><span>Date: ${esc(v.date)}</span></div>
     <div class="vsoCustomerTable">
       <table><tr><td class="vsoLbl">Customer Name:</td><td>${esc(v.name)}</td><td class="vsoLbl">Sales Advisor:</td><td>FARIS</td></tr>
-      <tr><td class="vsoLbl">Mailing Address:</td><td rowspan="2">${esc(v.address).replace(/\n/g,'<br>')}</td><td class="vsoLbl">HP No:</td><td>${esc(v.phone)}</td></tr>
-      <tr><td></td><td class="vsoLbl">NRIC:</td><td>${esc(v.nric)}</td></tr>
+      <tr><td class="vsoLbl">Mailing Address:</td><td rowspan="2">${esc(v.address).replace(/\n/g,'<br>')}</td><td class="vsoLbl">HP No:</td><td></td></tr>
+      <tr><td></td><td class="vsoLbl">NRIC:</td><td></td></tr>
       <tr><td class="vsoLbl">NRIC/Passport:</td><td>${esc(v.nric)}</td><td class="vsoLbl">Finance:</td><td></td></tr>
       <tr><td class="vsoLbl">Contact/HPNo:</td><td>${esc(v.phone)}</td><td class="vsoLbl">Loan Amount:</td><td><b>${currency(v.loan)}</b></td></tr>
       <tr><td class="vsoLbl">Email:</td><td>${esc(v.email)}</td><td class="vsoLbl">Period:</td><td>${esc(v.period)} years</td></tr></table>

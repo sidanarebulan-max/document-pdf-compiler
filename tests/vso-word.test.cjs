@@ -11,7 +11,7 @@ const PDFLib=require('pdf-lib'),fontkit=require('../assets/vendor/fontkit-1.1.1.
    const data=input(variant,loan),built=await core.buildPdf({...assets,data,now:new Date('2026-10-28T16:10:00Z')});
    const doc=await PDFLib.PDFDocument.load(built.bytes);assert.equal(doc.getPageCount(),1);
    assert.ok(Math.abs(doc.getPage(0).getWidth()-595.28)<.1);assert.ok(Math.abs(doc.getPage(0).getHeight()-841.89)<.1);
-   const text=Object.fromEntries(built.painted.map(x=>[x.key,x.text]));assert.equal(text.date,'29/10/2026');assert.equal(text.period,'108 Month');assert.equal(text.draft,'DRAF');
+   const text=Object.fromEntries(built.painted.map(x=>[x.key,x.text]));assert.equal(text.date,'29/10/2026');assert.equal(text.advisorPhone,undefined);assert.equal(text.advisorNric,undefined);assert.equal(text.nric,baseline.nric);assert.equal(text.phone,baseline.phone);assert.equal(text.period,'108 Month');assert.equal(text.draft,'DRAF');
    const money=n=>n.toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
    assert.equal(text.net,money(data.net));assert.equal(text.otr,money(data.otr));assert.equal(text.loan,'RM '+money(loan));
    for(const fee of ['gst','handling','plate','accessory','registration','roadTax','claim','insurance']){
@@ -31,7 +31,7 @@ const PDFLib=require('pdf-lib'),fontkit=require('../assets/vendor/fontkit-1.1.1.
  const partial=input(variant,0,{customer:'sdfsg',nric:'99098',color:'',year:''});
  const live=await core.buildPdf({...assets,data:partial,preview:true});
  const liveText=Object.fromEntries(live.painted.map(v=>[v.key,v.text]));
- assert.equal(liveText.customer,'SDFSG');assert.equal(liveText.nric,'99098');assert.equal(liveText.loan,undefined);
+ assert.equal(liveText.advisorPhone,undefined);assert.equal(liveText.advisorNric,undefined);assert.equal(liveText.customer,'SDFSG');assert.equal(liveText.nric,'99098');assert.equal(liveText.loan,undefined);
  await assert.rejects(()=>core.buildPdf({...assets,data:partial}),/pinjaman/);
  const noName=input(variant,80000,{customer:'',color:''});
  const started=await core.buildPdf({...assets,data:noName,preview:true});
