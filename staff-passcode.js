@@ -308,7 +308,7 @@ function sharedNumberCard(number){
   '<div class="lead-primary"><strong class="lead-customer">'+esc(number.customer_name)+'</strong><span class="lead-phone">+'+esc(number.phone_e164)+'</span><span class="lead-secondary">'+esc(number.model||"Belum pasti")+'</span></div>'+
   '<p class="shared-claim-note">Claim / agihan terakhir: <b>'+esc(claim.claim_name||"Staf")+' ('+esc(claim.claim_code||"ID tidak tersedia")+')</b></p>'+
   (confirmed?'<p class="small muted">PM anda terakhir: '+esc(pmTime(confirmed.pm_confirmed_at))+'</p>':"")+
-  (number.consent_confirmed?'<div class="shared-number-actions"><a class="wa" data-history-open="'+esc(number.id)+'" href="'+esc(waUrl(number))+'" target="_blank" rel="noopener noreferrer">✆ WhatsApp ↗</a><button type="button" class="secondary" data-history-confirm="'+esc(number.id)+'">✓ '+(confirmed?"Tandakan PM Baharu":"Tandakan Dah PM")+'</button></div>':'<p class="small attention">Kebenaran untuk menghubungi pelanggan belum disahkan.</p>')+
+  (number.consent_confirmed?'<div class="shared-number-actions"><a class="wa" data-history-open="'+esc(number.id)+'" href="'+esc(waUrl(number))+'" target="_blank" rel="noopener noreferrer">WhatsApp ↗</a><button type="button" class="secondary" data-history-confirm="'+esc(number.id)+'">✓ '+(confirmed?"Tandakan PM Baharu":"Tandakan Dah PM")+'</button></div>':'<p class="small attention">Kebenaran untuk menghubungi pelanggan belum disahkan.</p>')+
   '</article>';
 }
 function renderPmTabs(){
@@ -399,7 +399,7 @@ function renderLeads(){
     ${staff.filter(s=>s.active&&s.role==="staff").map(s=>`<option value="${esc(s.id)}" ${s.id===l.assigned_id?"selected":""}>${esc(s.display_name)} (${esc(s.staff_code)})</option>`).join("")}
     </select></label></div>`:"";
   const whatsApp=l.consent_confirmed
-   ?`<a class="wa lead-quick-wa" data-open="${esc(l.id)}" href="${esc(waUrl(l))}" target="_blank" rel="noopener noreferrer">✆ WhatsApp ↗</a>`
+   ?`<a class="wa lead-quick-wa" data-open="${esc(l.id)}" href="${esc(waUrl(l))}" target="_blank" rel="noopener noreferrer">WhatsApp ↗</a>`
    :'<span class="small attention">Tiada izin</span>';
   return `<article class="lead" data-id="${esc(l.id)}">
     <div class="lead-compact">
