@@ -22,3 +22,7 @@ button.insights-kpi{display:block;text-align:left;color:var(--text);font:inherit
 /* Three customer sections; notes and follow-up live in the summary. */
 .customer-tabs{grid-template-columns:repeat(3,minmax(0,1fr))}.customer-summary-notes{border-top:1px solid var(--line);padding-top:22px;margin-top:24px}.customer-summary-notes h3{margin-bottom:12px}.customer-summary-notes #customerNoteForm{margin-top:0}
 @media(max-width:760px){.customer-summary-notes{padding-top:16px;margin-top:18px}}
+
+/* Trend belongs to WhatsApp; the customer dashboard keeps date and sales filters. */
+.insights-trend h3{margin:0 0 17px;font-size:14px}.customer-date-filters{grid-template-columns:1.1fr 1fr 1fr auto}
+@media(max-width:1080px){.customer-date-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}

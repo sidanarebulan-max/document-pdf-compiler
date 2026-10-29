@@ -21,6 +21,7 @@ function show(page,{scroll=true,updateHash=true}={}){
   $("telegramPanel").classList.remove("hide");
   window.FARIS_TG?.onShow?.();
  }
+ if(page==="whatsapp")window.FARIS_CUSTOMERS?.onWhatsappShow?.();
  if(page==="customers")window.FARIS_CUSTOMERS?.onShow?.();
  if(page==="gallery")window.FARIS_GALLERY?.onShow?.();
  if(page==="docs")window.FARIS_INBOX?.onShow?.();

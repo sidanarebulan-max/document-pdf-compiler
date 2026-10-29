@@ -309,7 +309,17 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
   <div class="metric"><span>Belum selesai</span><strong id="metricNew">0</strong></div>
   <div class="metric"><span>Follow-up</span><strong id="metricFollow">0</strong></div>
   <div class="metric"><span>Booking</span><strong id="metricBooked">0</strong></div>
- </div><section id="leadSection" class="panel">
+ </div><section id="whatsappTrend" class="customer-insights" aria-label="Trend lead masuk">
+  <form id="whatsappTrendForm" class="insights-filters">
+   <label>Tempoh<select id="whatsappTrendPeriod"><option value="today">Hari ini</option><option value="week">Minggu ini</option><option value="month" selected>Bulan ini</option><option value="all">Semua tarikh</option><option value="custom">Pilih tarikh</option></select></label>
+   <label>Dari tarikh<input id="whatsappTrendFrom" type="date" min="2000-01-01" max="2100-12-31"></label>
+   <label>Hingga tarikh<input id="whatsappTrendTo" type="date" min="2000-01-01" max="2100-12-31"></label>
+   <label>Paparan trend<select id="whatsappTrendGroup"><option value="day">Harian</option><option value="week">Mingguan</option><option value="month">Bulanan</option></select></label>
+   <button type="submit" class="primary">Lihat trend</button>
+  </form>
+  <div id="whatsappTrendResult" aria-live="polite" aria-busy="false"></div>
+  <p id="whatsappTrendContext" class="muted small insights-context"></p>
+ </section><section id="leadSection" class="panel">
   <div class="panelhead lead-section-head"><div><h2>WhatsApp · Senarai Pelanggan</h2><p class="muted">Tekan WhatsApp untuk mesej pelanggan. Tekan nama atau nombor untuk buka status, tarikh dan catatan.</p><p class="small muted" id="lastRefresh" aria-live="polite">Belum disegarkan.</p></div>
       <button class="secondary lead-refresh" id="refreshBtn" type="button">↻ Refresh Nombor</button></div>
   <div class="filters">
@@ -407,16 +417,16 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
  <div id="customersDirectory">
  <section class="customer-insights" aria-labelledby="customerInsightsTitle">
   <div class="insights-heading"><div><p class="eyebrow">SALES INSIGHTS</p><h3 id="customerInsightsTitle">Gambaran jualan pelanggan</h3><p class="muted small">Ringkasan status semasa bagi pelanggan dalam tempoh lead masuk yang dipilih.</p></div><span class="insights-live">Data sebenar</span></div>
-  <form id="customerInsightsForm" class="insights-filters">
+  <form id="customerInsightsForm" class="insights-filters customer-date-filters">
    <label>Tempoh<select id="customerInsightsPeriod"><option value="today">Hari ini</option><option value="week">Minggu ini</option><option value="month" selected>Bulan ini</option><option value="all">Semua tarikh</option><option value="custom">Pilih tarikh</option></select></label>
    <label>Dari tarikh<input id="customerInsightsFrom" type="date" min="2000-01-01" max="2100-12-31"></label>
    <label>Hingga tarikh<input id="customerInsightsTo" type="date" min="2000-01-01" max="2100-12-31"></label>
-   <label>Paparan trend<select id="customerInsightsGroup"><option value="day">Harian</option><option value="week">Mingguan</option><option value="month">Bulanan</option></select></label>
+   <input id="customerInsightsGroup" type="hidden" value="day">
    <button type="submit" class="primary">Lihat insight</button>
   </form>
   <p class="muted small insights-context" id="customerInsightsContext">Memuatkan ringkasan…</p>
   <div id="customerInsightsResult" aria-live="polite" aria-busy="false"></div>
-  <details class="insights-definition"><summary>Bagaimana angka ini dikira?</summary><p>LOU: profil ditanda “LOU telah diterima” dan kereta belum diserahkan. DELIVER: status Kereta diserahkan. PENDING: pelanggan aktif yang belum LOU atau Deliver. Tangguh dan Tidak diteruskan tidak termasuk LOU / Pending. TRADE IN: semua profil ditanda Trade In; boleh bertindih dengan kategori lain. Kotak angka mengikut semua tapisan kecuali pilihan kategori kotak. Pecahan dan senarai mengikut kategori yang dipilih. Penapis tarikh berdasarkan tarikh lead masuk (waktu Malaysia); trend menunjukkan status semasa kumpulan lead tersebut, bukan bilangan pertukaran status pada tarikh itu. Warna diambil daripada medan Warna kereta dalam profil.</p></details>
+  <details class="insights-definition"><summary>Bagaimana angka ini dikira?</summary><p>LOU: profil ditanda “LOU telah diterima” dan kereta belum diserahkan. DELIVER: status Kereta diserahkan. PENDING: pelanggan aktif yang belum LOU atau Deliver. Tangguh dan Tidak diteruskan tidak termasuk LOU / Pending. TRADE IN: semua profil ditanda Trade In; boleh bertindih dengan kategori lain. Kotak angka mengikut semua tapisan kecuali pilihan kategori kotak. Pecahan dan senarai mengikut kategori yang dipilih. Penapis tarikh berdasarkan tarikh lead masuk (waktu Malaysia). Warna diambil daripada medan Warna kereta dalam profil.</p></details>
  </section>
  <div class="customer-list-heading" id="customerListHeading"><div><h3>Senarai pelanggan</h3><p class="muted small" id="customerActiveFilters" aria-live="polite"></p></div><button type="button" class="secondary" id="customersClearFilters">Kosongkan tapisan</button></div>
  <form id="customersFilterForm" class="customer-filters customer-drill-filters">
