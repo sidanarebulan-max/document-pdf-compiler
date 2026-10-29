@@ -54,8 +54,8 @@
           phone,
           fileBase64,
           outputFilename:safeFilename(),
-          jobType:lastGeneratedMode==='REBATE_ONLY'?'COP_REBATE':'LOAN_DOCUMENT',
-          filesUsed:lastGeneratedMode==='REBATE_ONLY'?partyItems('REBATE').length:lastGeneratedMode==='STANDARD'?partyItems('HIRER').length+partyItems('GUARANTOR').length:items.length,
+          jobType:lastGeneratedMode==='TRADEIN_ONLY'?'TRADE_IN':lastGeneratedMode==='REBATE_ONLY'?'COP_REBATE':'LOAN_DOCUMENT',
+          filesUsed:selectedParties(lastGeneratedMode).reduce((n,p)=>n+partyItems(p).length,0),
           notes:'Generated from Document PDF Compiler web UI'
         })
       });

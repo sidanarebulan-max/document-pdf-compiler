@@ -21,7 +21,7 @@
     .field{margin-top:14px}.field label{display:block;font-size:12px;color:#aebddb;margin-bottom:7px}.field input,.field select{width:100%;padding:11px 12px;border-radius:11px;background:#0c1427;color:var(--text);border:1px solid #2c3a5d;outline:none}.field input:focus,.field select:focus{border-color:#4f8cff}
     .toggle{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(37,49,81,.6)}
     .toggle:last-child{border:0}.toggle label{font-size:13px}.toggle input{width:18px;height:18px;accent-color:#4f8cff}
-    .cats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:4px 0 14px}
+    .cats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:4px 0 14px}
     .stat{background:#0c1427;border:1px solid #253151;border-radius:12px;padding:10px}.stat b{display:block;font-size:18px}.stat span{font-size:11px;color:var(--muted)}
     .section{margin-bottom:14px;border:1px solid #263452;border-radius:14px;overflow:hidden;background:#0c1427}
     .section-head{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#111c35;border-bottom:1px solid #263452}
@@ -72,11 +72,13 @@
 /* Pratonton dokumen terus di dalam kad fail */
 .file .source-thumb{width:95px;height:126px;min-width:95px;border:1px solid #365489;border-radius:9px;background:#f4f6fa;padding:2px;cursor:pointer;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#345078;text-align:center}.file .source-thumb img{width:100%;height:100%;object-fit:contain;display:block;background:#fff}.file .source-thumb small{display:block;font-size:8px;font-weight:400;margin-top:5px;color:#789}.file .source-thumb:hover{border-color:#7caaff;box-shadow:0 0 0 2px rgba(87,139,255,.25)}.file .meta{min-width:0}.file .actions{flex-wrap:wrap}@media(max-width:620px){.file .source-thumb{width:72px;height:98px;min-width:72px}.file .actions{gap:4px}}
 
-/* Tiga tab: Peminjam, Penjamin dan COP Rebate */
-.party-tabs{grid-template-columns:repeat(3,minmax(0,1fr))}
+/* Empat tab: Peminjam, Penjamin, COP Rebate dan Trade in */
+.party-tabs{grid-template-columns:repeat(4,minmax(0,1fr))}
 .party-tab{min-width:0}
 .party-tab b{overflow-wrap:anywhere}
 .compile-scope-field{margin:14px 0}
 .compile-scope-field select{display:block;width:100%;background:#0a1530;color:#f3f6ff;border:1px solid #38517f;border-radius:10px;padding:12px 10px;font-size:12px}
 .compile-scope-field .small{padding-top:7px;color:#a9c6f8}
 @media(max-width:800px){.party-tabs{grid-template-columns:1fr}}
+
+.doc-info-button{margin-left:8px;width:28px;height:28px;flex-shrink:0;border:1px solid #577bac;border-radius:50%;background:#152c50;color:#d8e8ff;cursor:pointer;font-size:17px}.doc-info-button:focus-visible{outline:2px solid #a9c9ff;outline-offset:2px}.doc-info-text{padding:12px 16px;color:#c4d8f4;background:#10243d;font-size:12px;line-height:1.7}.doc-info-text[hidden]{display:none}.section-head .section-title{flex:1}

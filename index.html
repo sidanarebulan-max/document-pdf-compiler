@@ -44,7 +44,7 @@
   </script>
   <title>Proton Document Center — VSO, PDF Compiler & Application Form</title>
   <meta name="description" content="Jana VSO Proton, pilih tanpa markup atau markup 90%, pratonton PDF dan gabungkan dokumen Hirer, Guarantor serta COP Rebate." />
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=tradein-v50-20261029">
   <link rel="stylesheet" href="vso.css?v=word-vector-v49-accessories-20261029">
   <link rel="stylesheet" href="application-form.css?v=application-v42-20261028">
   <link rel="stylesheet" href="vso-exact.css?v=word-vector-v49-accessories-20261029">
@@ -54,8 +54,8 @@
 <div class="app">
   <div class="topbar">
     <div class="brand">
-      <h1>Document PDF Compiler <span style="font-size:11px;color:#8ca2c8;font-weight:600">v1.4 COP Rebate</span></h1>
-      <p>HIRER / PEMINJAM → GUARANTOR / PENJAMIN → COP REBATE</p>
+      <h1>Document PDF Compiler <span style="font-size:11px;color:#8ca2c8;font-weight:600">v1.5 Trade in</span></h1>
+      <p>HIRER / PEMINJAM → GUARANTOR / PENJAMIN → COP REBATE → TRADE IN</p>
       <a href="/staff.html" style="display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:12px 16px;border:1px solid #3f67a8;border-radius:11px;color:#fff;background:linear-gradient(135deg,#356bd7,#6251ae);font-size:13px;font-weight:800;text-decoration:none">📲 BUKA LEAD WHATSAPP STAF →</a>
     </div>
     <div><div class="privacy">🔒 Local-first • Google Drive sync optional</div><div id="driveStatus" class="small" style="text-align:right;margin-top:6px">☁️ Checking Drive...</div></div>
@@ -73,6 +73,9 @@
     <button class="party-tab" data-party="REBATE">
       <span class="party-step">03</span>
       <span><b>COP REBATE</b><small id="rebateTabCount">0 fail</small></span>
+    </button>
+    <button class="party-tab" data-party="TRADEIN">
+      <span class="party-step">04</span><span><b>TRADE IN</b><small id="tradeinTabCount">0 fail</small></span>
     </button>
   </div>
 
@@ -153,7 +156,7 @@
     </main>
 
     <section class="card right">
-      <div class="card-head"><h2>3. Final PDF Gabungan</h2><span class="small">3 tab • pilih output</span></div>
+      <div class="card-head"><h2>3. Final PDF Gabungan</h2><span class="small">4 tab • pilih output</span></div>
       <div class="card-body">
         <div class="merge-order">
           <div><span class="merge-num">1</span><b>HIRER / PEMINJAM</b><small>Susunan: VSO → IC → LESEN → PAYSLIP → BANK → OTHER</small></div>
@@ -163,14 +166,17 @@
           <div><span class="merge-num">2</span><b>GUARANTOR / PENJAMIN</b><small>Susunan yang sama seperti Hirer</small></div>
           <div class="merge-arrow">↓</div>
           <div class="cover-chip"><span class="merge-num">3</span><b>COP REBATE</b><small>IC Depan → IC Belakang → Lesen → Surat Kerja → Sijil Lahir → Sijil Nikah → Lain-lain</small></div>
+          <div class="merge-arrow">↓</div>
+          <div class="cover-chip"><span class="merge-num">4</span><b>TRADE IN</b><small>IC → Lesen → e-Auto → Geran → Sijil Lahir → Sijil Nikah → Other Documents · Semua optional</small></div>
         </div>
 
         <div class="field compile-scope-field">
           <label for="compileScope">Pilih dokumen untuk digabungkan</label>
           <select id="compileScope">
-            <option value="ALL">Semua tab (Hirer + Guarantor + COP Rebate)</option>
+            <option value="ALL">Semua tab (Hirer + Guarantor + COP Rebate + Trade in)</option>
             <option value="STANDARD">Hirer + Guarantor sahaja</option>
             <option value="REBATE_ONLY">COP Rebate sahaja</option>
+            <option value="TRADEIN_ONLY">Trade in sahaja</option>
           </select>
           <div class="small" id="compileScopeHint">Gabung semua dokumen yang telah dimuat naik.</div>
         </div>
@@ -210,11 +216,11 @@
 <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
-<script src="app1.js"></script>
-<script src="app2.js?v=readable-output-v41-20261028"></script>
+<script src="app1.js?v=tradein-v50-20261029"></script>
+<script src="app2.js?v=tradein-v50-20261029"></script>
 <script src="app3.js"></script>
-<script src="app4.js?v=readable-output-v41-20261028"></script>
-<script src="app5.js"></script>
+<script src="app4.js?v=tradein-v50-20261029"></script>
+<script src="app5.js?v=tradein-v50-20261029"></script>
 <script src="vso-variants.js?v=word-vector-v49-accessories-20261029"></script>
 <script src="vso.js?v=word-vector-v49-accessories-20261029"></script>
 <script src="assets/vendor/fontkit-1.1.1.umd.min.js"></script>

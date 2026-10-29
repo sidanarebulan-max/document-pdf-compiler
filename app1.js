@@ -17,14 +17,27 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
     {id:'SIJIL_NIKAH',label:'SIJIL NIKAH',order:6},
     {id:'OTHER',label:'LAIN-LAIN DOKUMEN',order:7}
   ];
-  const categoriesFor=party=>party==='REBATE'?REBATE_CATEGORIES:CATEGORIES;
+  const TRADEIN_CATEGORIES = [
+    {id:'IC',label:'IC',order:1,info:'Salinan IC pemilik kereta yang hendak ditrade in. Boleh masukkan bahagian hadapan dan belakang jika ada.'},
+    {id:'LESEN',label:'LESEN MEMANDU',order:2,info:'Salinan lesen memandu berkaitan urusan trade in, jika ada.'},
+    {id:'EAUTO',label:'E-AUTO',order:3,info:'Dokumen e-Auto berkaitan kereta yang hendak ditrade in, jika ada.'},
+    {id:'GERAN',label:'GERAN KERETA',order:4,info:'Geran atau Sijil Pemilikan Kenderaan (VOC) bagi kereta yang hendak ditrade in.'},
+    {id:'SIJIL_LAHIR',label:'SIJIL LAHIR',order:5,info:'Untuk pelanggan yang menggunakan kereta milik adik-beradik bagi urusan trade in. Sijil lahir digunakan sebagai dokumen sokongan hubungan adik-beradik.'},
+    {id:'SIJIL_NIKAH',label:'SIJIL NIKAH',order:6,info:'Untuk pelanggan yang menggunakan kereta milik pasangan suami atau isteri bagi urusan trade in. Sijil nikah digunakan sebagai dokumen sokongan hubungan pasangan.'},
+    {id:'OTHER',label:'OTHER DOCUMENTS',order:7,info:'Dokumen tambahan berkaitan trade in yang tidak termasuk dalam kategori di atas.'}
+  ];
+  const categoriesFor=party=>party==='TRADEIN'?TRADEIN_CATEGORIES:party==='REBATE'?REBATE_CATEGORIES:CATEGORIES;
+  const selectedParties=scope=>scope==='TRADEIN_ONLY'?['TRADEIN']:scope==='REBATE_ONLY'?['REBATE']:scope==='STANDARD'?['HIRER','GUARANTOR']:['HIRER','GUARANTOR','REBATE','TRADEIN'];
+  const scopeLabel=scope=>selectedParties(scope).map(p=>PARTY_META[p].short).join(' + ');
+
   const PARTY_META = {
     HIRER:{label:'HIRER / PEMINJAM', short:'Hirer / Peminjam'},
     GUARANTOR:{label:'GUARANTOR / PENJAMIN', short:'Guarantor / Penjamin'},
-    REBATE:{label:'COP REBATE', short:'COP Rebate'}
+    REBATE:{label:'COP REBATE', short:'COP Rebate'},
+    TRADEIN:{label:'TRADE IN', short:'Trade in'}
   };
   let activeParty = 'HIRER';
-  let partyNames = {HIRER:'', GUARANTOR:'', REBATE:''};
+  let partyNames = {HIRER:'', GUARANTOR:'', REBATE:'', TRADEIN:''};
   let lastGeneratedMode = 'ALL';
   let items = [];
   let finalBlob = null;

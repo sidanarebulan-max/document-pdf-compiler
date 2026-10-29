@@ -68,6 +68,17 @@
   return {category:'OTHER',confidence:0};
 }
 
+  function classifyTradeinItem(filename,text){
+    const all=normalize(filename+' '+text);
+    if(/e\s*auto/.test(all))return {category:'EAUTO',confidence:85};
+    if(/geran|sijil pemilikan|vehicle ownership|\bvoc\b/.test(all))return {category:'GERAN',confidence:85};
+    const family=classifyRebateItem(filename,text);
+    if(['SIJIL_LAHIR','SIJIL_NIKAH'].includes(family.category))return family;
+    const result=classifyText(filename,text);
+    return ['IC','LESEN'].includes(result.category)?result:{category:'OTHER',confidence:0};
+  }
+  const classifyForParty=(party,name,text)=>party==='TRADEIN'?classifyTradeinItem(name,text):party==='REBATE'?classifyRebateItem(name,text):classifyText(name,text);
+
   function partyItems(party=activeParty){ return items.filter(x=>x.party===party); }
 
   async function analyzeItem(item){
@@ -80,8 +91,8 @@
       else if(ext==='txt') data={text:await item.file.text(),pages:1};
     }catch(e){ log(`Analisis gagal untuk ${item.file.name}: ${e.message}`); }
     item.text=data.text||''; item.pages=data.pages||1;
-    const cls=item.party==='REBATE'?classifyRebateItem(item.file.name,item.text):classifyText(item.file.name,item.text);
-    const signals=ext==='pdf' && item.party!=='REBATE' ? categorySignals(item.text) : [];
+    const cls=classifyForParty(item.party,item.file.name,item.text);
+    const signals=ext==='pdf' && ['HIRER','GUARANTOR'].includes(item.party) ? categorySignals(item.text) : [];
     item.mixed = signals.length>=2 ? signals : [];
     if(item.mixed.length>=2){
       if($('#autoClassify').checked || item.category==='OTHER') item.category='OTHER';
@@ -130,13 +141,13 @@
 
   window.FARIS_COMPILER={async importInbox(entries){
     for(const {file,metadata} of entries){
-      const party=['HIRER','GUARANTOR','REBATE'].includes(metadata.party)?metadata.party:'HIRER';
+      const party=['HIRER','GUARANTOR','REBATE','TRADEIN'].includes(metadata.party)?metadata.party:'HIRER';
       switchParty(party);
       const added=await addFiles([file],{analyze:false});
       if(added.length!==1)throw Error('Format fail tidak boleh dibuka dalam Compiler: '+file.name);
       const item=added[0],valid=categoriesFor(party).map(x=>x.id);
       const manual=valid.includes(metadata.category);
-      const guess=party==='REBATE'?classifyRebateItem(file.name,''):classifyText(file.name,'');
+      const guess=classifyForParty(party,file.name,'');
       item.category=manual?metadata.category:valid.includes(guess.category)?guess.category:'OTHER';
       item.confidence=manual?100:guess.confidence;item.review=!manual;item.analyzed=manual;
       item.note=manual?'Kategori dipilih daripada Fail Masuk':'Dari Fail Masuk — semak kategori atau tekan Analisis';
@@ -185,7 +196,7 @@
   }
 
   function sortAllParties(){
-    ['HIRER','GUARANTOR','REBATE'].forEach(p=>{
+    ['HIRER','GUARANTOR','REBATE','TRADEIN'].forEach(p=>{
       const sorted=sortedPartyItems(p);
       sorted.forEach((x,i)=>x.order=i);
     });
@@ -224,8 +235,8 @@
     const meta=PARTY_META[party];
     $('#inputPanelTitle').textContent=`1. Dokumen ${meta.short}`;
     $('#reviewPanelTitle').textContent=`2. Semak & Susun — ${meta.short}`;
-    $('#partyBanner').innerHTML=`<b>${meta.label}</b><span>Masukkan dokumen ${party==='HIRER'?'peminjam':party==='GUARANTOR'?'penjamin':'untuk permohonan COP Rebate'} di bahagian ini.</span>`;
-    $('#dropTitle').textContent=party==='HIRER'?'Upload Dokumen Peminjam':party==='GUARANTOR'?'Upload Dokumen Penjamin':'Upload Dokumen COP Rebate';
+    $('#partyBanner').innerHTML=`<b>${meta.label}</b><span>Masukkan dokumen ${party==='HIRER'?'peminjam':party==='GUARANTOR'?'penjamin':party==='TRADEIN'?'trade in (semua dokumen optional)':'untuk permohonan COP Rebate'} di bahagian ini.</span>`;
+    $('#dropTitle').textContent=party==='HIRER'?'Upload Dokumen Peminjam':party==='GUARANTOR'?'Upload Dokumen Penjamin':party==='TRADEIN'?'Upload Dokumen Trade in':'Upload Dokumen COP Rebate';
     $('#partyNameLabel').innerHTML=`Nama ${meta.short} <span class="optional">Optional</span>`;
     $('#partyName').value=partyNames[party]||'';
     $('#fileInput').value='';
@@ -323,6 +334,7 @@
     $('#hirerTabCount').textContent=`${hirerCount} fail`;
     $('#guarantorTabCount').textContent=`${guarantorCount} fail`;
     $('#rebateTabCount').textContent=`${rebateCount} fail`;
+    $('#tradeinTabCount').textContent=`${partyItems('TRADEIN').length} fail`;
     $('#fileCount').textContent=`${current.length} fail`;
     $('#totalFiles').textContent=current.length;
     $('#totalPages').textContent=current.reduce((s,x)=>s+(x.pages||1),0);
@@ -332,7 +344,9 @@
     for(const cat of categoriesFor(activeParty)){
       const group=current.filter(x=>x.category===cat.id).sort((a,b)=>a.order-b.order);
       const sec=document.createElement('div'); sec.className='section';
-      sec.innerHTML=`<div class="section-head"><div class="section-title">${cat.label}<span class="badge">${group.length}</span></div><span class="small">${cat.order.toString().padStart(2,'0')}</span></div><div class="file-list"></div>`;
+      sec.innerHTML=`<div class="section-head"><div class="section-title">${cat.label}<span class="badge">${group.length}</span></div><span class="small">${cat.order.toString().padStart(2,'0')}</span>${cat.info?`<button type="button" class="doc-info-button" aria-label="Info ${cat.label}" aria-expanded="false" aria-controls="doc-info-${cat.id}">ⓘ</button>`:''}</div>${cat.info?`<div class="doc-info-text" id="doc-info-${cat.id}" hidden>${escapeHtml(cat.info)} Semua dokumen optional. Boleh teruskan walaupun dokumen ini belum ada.</div>`:''}<div class="file-list"></div>`;
+      const infoButton=sec.querySelector('.doc-info-button');
+      if(infoButton)infoButton.onclick=()=>{const text=sec.querySelector('.doc-info-text');text.hidden=!text.hidden;infoButton.setAttribute('aria-expanded',String(!text.hidden))};
       const fl=sec.querySelector('.file-list');
       if(!group.length){
         fl.innerHTML='<div class="empty">Optional — belum ada dokumen</div>';
@@ -375,14 +389,15 @@
   }
 
   function renderChecklist(){
-  const h=partySummary('HIRER'),g=partySummary('GUARANTOR'),r=partySummary('REBATE');
+  const h=partySummary('HIRER'),g=partySummary('GUARANTOR'),r=partySummary('REBATE'),t=partySummary('TRADEIN');
   const scope=$('#compileScope').value;
   const row=(label,count)=>`<span class="summary-pill">${label} ${count||0}</span>`;
   const block=(title,x,cats)=>`<div class="party-summary"><div class="party-summary-head"><b>${title}</b><span>${x.total} fail • ${x.totalPages} page</span></div><div class="summary-pills">${cats.map(cat=>row(cat.label,x.counts[cat.id])).join('')}</div></div>`;
-  const parts=scope==='REBATE_ONLY'?[r]:scope==='STANDARD'?[h,g]:[h,g,r];
+  const summaries={HIRER:h,GUARANTOR:g,REBATE:r,TRADEIN:t};
+  const parts=selectedParties(scope).map(p=>summaries[p]);
   const count=parts.reduce((n,x)=>n+x.total,0);
-  const desc=scope==='REBATE_ONLY'?'COP Rebate sahaja':scope==='STANDARD'?'Hirer + Guarantor sahaja':'Hirer + Guarantor + COP Rebate';
+  const desc=scopeLabel(scope);
   $('#compileScopeHint').textContent=`${desc} • ${count} fail dipilih`;
-  $('#checklist').innerHTML=block('HIRER / PEMINJAM',h,CATEGORIES)+block('GUARANTOR / PENJAMIN',g,CATEGORIES)+block('COP REBATE',r,REBATE_CATEGORIES)+
+  $('#checklist').innerHTML=block('HIRER / PEMINJAM',h,CATEGORIES)+block('GUARANTOR / PENJAMIN',g,CATEGORIES)+block('COP REBATE',r,REBATE_CATEGORIES)+block('TRADE IN',t,TRADEIN_CATEGORIES)+
     `<div class="merge-status ${count?'ready':''}">${count?'✓ '+count+' fail akan digabungkan: '+desc:'Masukkan dokumen pada tab yang dipilih untuk menjana PDF.'}</div>`;
 }

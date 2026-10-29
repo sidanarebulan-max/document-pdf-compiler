@@ -37,8 +37,8 @@
   function safeFilename(mode=lastGeneratedMode){
     const custom=cleanOutputName($('#outputName').value);
     if(custom)return custom+'.pdf';
-    const raw=cleanOutputName($('#customerName').value.trim()||partyNames.HIRER||partyNames.GUARANTOR||partyNames.REBATE);
-    const label=mode==='REBATE_ONLY'?'Cop Rebate':'Document';
+    const raw=cleanOutputName($('#customerName').value.trim()||partyNames.HIRER||partyNames.GUARANTOR||partyNames.REBATE||partyNames.TRADEIN);
+    const label=mode==='TRADEIN_ONLY'?'Trade in':mode==='REBATE_ONLY'?'Cop Rebate':'Document';
     return (raw?raw+' - ':'')+label+'.pdf';
   }
   function updateOutputNamePreview(){
@@ -100,7 +100,7 @@
     centerText('Halaman pemisah automatik',8,normal,92,rgb(0.57,0.61,0.7));
   }
 
-  async function addRebateCoverPage(doc){
+  async function addRebateCoverPage(doc,party='REBATE'){
   const page=doc.addPage([595.28,841.89]);
   const bold=await doc.embedFont(StandardFonts.HelveticaBold);
   const normal=await doc.embedFont(StandardFonts.Helvetica);
@@ -113,13 +113,13 @@
     page.drawText(safe,{x:(w-font.widthOfTextAtSize(safe,size))/2,y,size,font,color});
   };
   center('DOCUMENT SECTION',11,bold,545,rgb(.31,.55,1));
-  center('COP REBATE',30,bold,500);
-  center('Dokumen Sokongan Rebat',14,normal,468,rgb(.36,.42,.55));
-  const name=(partyNames.REBATE||'').trim();
+  center(PARTY_META[party].label,30,bold,500);
+  center(party==='TRADEIN'?'Dokumen Trade in':'Dokumen Sokongan Rebat',14,normal,468,rgb(.36,.42,.55));
+  const name=(partyNames[party]||'').trim();
   if(name)center(name.toUpperCase().slice(0,43),17,bold,405);
   const customer=($('#customerName').value||'').trim();
   if(customer)center(customer.toUpperCase().slice(0,50),11,normal,365);
-  center('IC DEPAN - IC BELAKANG - LESEN - SURAT KERJA',9,normal,120);
+  center(party==='TRADEIN'?'IC - LESEN - E-AUTO - GERAN KERETA':'IC DEPAN - IC BELAKANG - LESEN - SURAT KERJA',9,normal,120);
   center('SIJIL LAHIR - SIJIL NIKAH - LAIN-LAIN',9,normal,100);
   center('Halaman pemisah automatik',8,normal,75,rgb(.57,.61,.7));
 }
@@ -139,10 +139,10 @@
   async function generate(){
   partyNames[activeParty]=$('#partyName').value.trim();
   const scope=$('#compileScope').value;
-  const hirerDocs=scope==='REBATE_ONLY'?[]:sortedPartyItems('HIRER');
-  const guarantorDocs=scope==='REBATE_ONLY'?[]:sortedPartyItems('GUARANTOR');
-  const rebateDocs=scope==='STANDARD'?[]:sortedPartyItems('REBATE');
-  const allCount=hirerDocs.length+guarantorDocs.length+rebateDocs.length;
+  const included=selectedParties(scope);
+  const docsFor=party=>included.includes(party)?sortedPartyItems(party):[];
+  const hirerDocs=docsFor('HIRER'),guarantorDocs=docsFor('GUARANTOR'),rebateDocs=docsFor('REBATE'),tradeinDocs=docsFor('TRADEIN');
+  const allCount=hirerDocs.length+guarantorDocs.length+rebateDocs.length+tradeinDocs.length;
   if(!allCount){
     alert('Tiada dokumen dalam pilihan ini. Muat naik dokumen dahulu atau tukar pilihan gabungan.');
     return;
@@ -154,7 +154,7 @@
   $('#downloadBtn').disabled=true;
   $('#openBtn').disabled=true;
   $('#driveSaveBtn').disabled=true;
-  setProgress(1,'Menjana PDF: '+(scope==='REBATE_ONLY'?'COP Rebate':scope==='STANDARD'?'Hirer + Guarantor':'Semua tab')+'...');
+  setProgress(1,'Menjana PDF: '+scopeLabel(scope)+'...');
   lastProcessingName='';
   try{
     const doc=await PDFDocument.create();
@@ -181,6 +181,10 @@
       log('Mula COP REBATE ('+rebateDocs.length+' fail).');
       await processPartyDocs('REBATE',rebateDocs,doc,state);
     }
+    if(tradeinDocs.length){
+      if(hirerDocs.length||guarantorDocs.length||rebateDocs.length)await addRebateCoverPage(doc,'TRADEIN');
+      await processPartyDocs('TRADEIN',tradeinDocs,doc,state);
+    }
     if(doc.getPageCount()===0)throw new Error('Tiada muka surat berjaya dimasukkan ke PDF.');
     setProgress(94,'Menyimpan dan menyediakan pratonton PDF...');
     const bytes=await doc.save({useObjectStreams:true});
@@ -188,7 +192,7 @@
     finalBlob=new Blob([bytes],{type:'application/pdf'});
     finalUrl=URL.createObjectURL(finalBlob);
     lastGeneratedMode=scope;
-    window.FARIS_GENERATED?.publish('compiler',{blob:finalBlob,name:safeFilename(),party:scope==='REBATE_ONLY'?'REBATE':!hirerDocs.length&&guarantorDocs.length&&!rebateDocs.length?'GUARANTOR':!hirerDocs.length&&!guarantorDocs.length?'REBATE':'HIRER',category:'OTHER',valid:()=>profileStamp===compilerProfileStamp()});
+    window.FARIS_GENERATED?.publish('compiler',{blob:finalBlob,name:safeFilename(),party:tradeinDocs.length?'HIRER':scope==='REBATE_ONLY'?'REBATE':!hirerDocs.length&&guarantorDocs.length&&!rebateDocs.length?'GUARANTOR':!hirerDocs.length&&!guarantorDocs.length?'REBATE':'HIRER',category:'OTHER',valid:()=>profileStamp===compilerProfileStamp()});
     $('#downloadBtn').disabled=false;
     $('#openBtn').disabled=false;
     $('#driveSaveBtn').disabled=false;
@@ -199,7 +203,7 @@
       log('Pratonton gagal tetapi PDF telah berjaya dijana: '+pe.message);
       $('#preview').innerHTML=`<div class="placeholder"><div><b>PDF siap (${pages} page)</b>Tekan Download PDF atau Buka PDF.</div></div>`;
     }
-    const label=scope==='REBATE_ONLY'?'COP Rebate sahaja':scope==='STANDARD'?'Hirer + Guarantor':'Semua tab';
+    const label=scopeLabel(scope);
     setProgress(100,`PDF siap • ${pages} muka surat • ${label}.`);
     log(`Siap: ${safeFilename()} • ${pages} page • ${label} • ${(finalBlob.size/1024/1024).toFixed(2)} MB`);
   }catch(e){
