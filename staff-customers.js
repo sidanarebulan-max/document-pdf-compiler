@@ -69,7 +69,7 @@ function fillDashboardOptions(options){
 async function loadInsights(){return directory()}
 function insightPreset(){const range=insightCore.preset($('customerInsightsPeriod').value);$('customerInsightsFrom').value=range.from;$('customerInsightsTo').value=range.to}
 function renderDirectory(){
- $('customersList').innerHTML=rows.length?rows.map(r=>'<article class="customer-list-row"><div><b>'+esc(r.customer_name)+'</b><small>'+esc(r.phone_e164)+'</small></div><div><small class="customer-label">Model / Varian / Warna</small><b>'+esc(r.model||'Belum dipilih')+'</b><small>'+esc(r.variant||'Varian belum diisi')+' · '+esc(r.colour||'Warna belum diisi')+'</small></div><div><small class="customer-label">Status</small><span class="customer-status">'+esc(STATUSES[r.sales_status]||r.sales_status)+'</span><small>'+[r.lou_received?'LOU diterima':'',r.trade_in?'Trade In':''].filter(Boolean).join(' · ')+'</small><small>'+Number(r.doc_count||0)+' dokumen</small></div><div><small class="customer-label">Staff urus</small><b>'+esc(r.staff_name||'Belum diagih')+'</b><small>'+esc(r.staff_code||'')+'</small></div><div><small class="customer-label">Follow-up</small><b>'+esc(day(r.follow_up_at))+'</b><small>'+esc(r.next_action||'Belum ditetapkan')+'</small></div><button class="'+(linkHandoff?'primary':'secondary')+'" type="button" '+(linkHandoff?'data-customer-link-target':'data-customer-open')+'="'+esc(r.id)+'">'+(linkHandoff?'Pautkan '+linkHandoff.ids.length+' Fail':'Lihat Profil')+'</button></article>').join(''):'<div class="empty">Tiada customer dalam tapisan ini. Tukar tapisan atau tempoh.</div>';
+ $('customersList').innerHTML=rows.length?rows.map(r=>'<article class="customer-list-row"><div><b>'+esc(r.customer_name)+'</b><small>'+esc(r.phone_e164)+'</small></div><div><small class="customer-label">Model / Varian / Warna</small><b>'+esc(r.model||'Belum dipilih')+'</b><small>'+esc(r.variant||'Varian belum diisi')+' · '+esc(r.colour||'Warna belum diisi')+'</small></div><div><small class="customer-label">Status</small><button type="button" class="customer-status" data-customer-status-open="'+esc(r.id)+'" aria-haspopup="dialog" aria-controls="customerCaseDialog">'+esc(caseStage(r))+' ↗</button><small>'+(r.trade_in?'Trade In':'')+'</small></div><div><small class="customer-label">Staff urus</small><b>'+esc(r.staff_name||'Belum diagih')+'</b><small>'+esc(r.staff_code||'')+'</small></div><div><small class="customer-label">Follow-up</small><b>'+esc(day(r.follow_up_at))+'</b><small>'+esc(r.next_action||'Belum ditetapkan')+'</small></div><button class="'+(linkHandoff?'primary':'secondary')+'" type="button" '+(linkHandoff?'data-customer-link-target':'data-customer-open')+'="'+esc(r.id)+'">'+(linkHandoff?'Pautkan '+linkHandoff.ids.length+' Fail':'Lihat Profil')+'</button></article>').join(''):'<div class="empty">Tiada customer dalam tapisan ini. Tukar tapisan atau tempoh.</div>';
  $('customersMore').classList.toggle('hide',next===null);
  $('customersLinkBanner').classList.toggle('hide',!linkHandoff);if(linkHandoff)$('customersLinkMessage').textContent='Pilih customer untuk pautkan '+linkHandoff.ids.length+' fail · '+PARTIES[linkHandoff.party]+' / '+CATS[linkHandoff.category]+'.';
 }
@@ -87,37 +87,11 @@ async function directory(append=false){
  finally{if(gen===epoch&&id===listing){host.setAttribute('aria-busy','false');$('customersList').setAttribute('aria-busy','false');$('customersMore').disabled=false}}
 }
 function showTab(value){tab=value;document.querySelectorAll('[data-customer-panel]').forEach(n=>n.classList.toggle('hide',n.dataset.customerPanel!==tab));document.querySelectorAll('[data-customer-tab]').forEach(n=>{if(n.dataset.customerTab===tab)n.setAttribute('aria-current','page');else n.removeAttribute('aria-current')});if(tab==='history'&&!historyLoaded)loadHistory()}
-function docState(party,category){const manual=customer.checklist.find(c=>c.party===party&&c.category===category);const count=customer.files.filter(f=>f.party===party&&f.category===category).length;return {manual:manual?.status||'auto',effective:manual?.status||(count?'received':'missing'),count}}
-function missingDocs(){const missing=[];for(const party of customer.profile.guarantor_required?['HIRER','GUARANTOR']:['HIRER'])for(const category of ['IC','LESEN','PAYSLIP','BANK']){const s=docState(party,category);if(['missing','replace'].includes(s.effective))missing.push(PARTIES[party]+': '+CATS[category]+(s.effective==='replace'?' (perlu ganti)':''))}return missing}
 function caseStage(profile){
  if(profile.sales_status==='delivered')return 'DELIVER · Kereta diserahkan';
  if(['on_hold','cancelled'].includes(profile.sales_status))return STATUSES[profile.sales_status];
- if(profile.lou_received)return 'LOU diterima · '+(STATUSES[profile.sales_status]||profile.sales_status);
+ if(profile.lou_received)return 'LOU diterima';
  return STATUSES[profile.sales_status]||profile.sales_status;
-}
-function renderCaseStatus(){
- if(!customer)return;const p=customer.profile;
- $('customerCaseStatusButton').textContent='Status kes: '+caseStage(p)+' ↗';
- $('customerCaseStageHint').textContent=(p.trade_in?'Trade In · ':'')+'Status terakhir disimpan. Tekan untuk kemas kini tahap kes.';
-}
-function checklistMarkup(profile){
- const stateLabels={missing:'Belum diterima',received:'Diterima',replace:'Perlu ganti',not_required:'Tidak diperlukan'};
- return (profile.guarantor_required?['HIRER','GUARANTOR']:['HIRER']).map(party=>'<section class="customer-checklist-group"><h4>'+PARTIES[party]+'</h4>'+['IC','LESEN','PAYSLIP','BANK'].map(category=>{
-  const d=docState(party,category),label=CATS[category],attrs=' data-doc-party="'+party+'" data-doc-category="'+category+'"';
-  return '<div class="customer-check-row"><label for="cc-'+party+'-'+category+'">'+label+'<small>'+d.count+' fail · '+stateLabels[d.effective]+'</small></label><select aria-label="Status '+esc(label)+' '+PARTIES[party]+'" id="cc-'+party+'-'+category+'" data-check-party="'+party+'" data-check-category="'+category+'">'+Object.entries({auto:'Automatik ikut fail',missing:'Belum diterima',received:'Diterima / disemak',replace:'Perlu ganti',not_required:'Tidak diperlukan'}).map(([v,t])=>'<option value="'+v+'" '+(v===d.manual?'selected':'')+'>'+t+'</option>').join('')+'</select><div class="customer-doc-quick"><button type="button" class="secondary" data-doc-upload'+attrs+' aria-label="Upload '+esc(label)+' '+PARTIES[party]+'">+ Upload</button><button type="button" class="secondary" data-doc-inbox'+attrs+' aria-label="Pilih '+esc(label)+' '+PARTIES[party]+' dari Fail Masuk">Fail Masuk</button>'+(d.count?'<button type="button" class="customer-text-action" data-doc-show'+attrs+'>Lihat '+d.count+' fail</button>':'')+'</div></div>';
- }).join('')+'</section>').join('');
-}
-function chooseDocumentTarget(party,category){
- if(!customer||busy||!Object.hasOwn(PARTIES,party))return false;
- $('customerDocParty').value=party;categories();
- if(![...$('customerDocCategory').options].some(o=>o.value===category))return false;
- $('customerDocCategory').value=category;return true;
-}
-function focusDocumentFiles(party,category){
- const cards=[...document.querySelectorAll('#customerFiles [data-document-party]')];
- const matches=cards.filter(n=>n.dataset.documentParty===party&&n.dataset.documentCategory===category);
- cards.forEach(n=>n.classList.toggle('customer-file-focus',matches.includes(n)));
- if(matches.length){matches[0].setAttribute('tabindex','-1');matches[0].focus({preventScroll:true});matches[0].scrollIntoView({behavior:'smooth',block:'center'})}
 }
 function caseReasonRequired(){const required=['on_hold','cancelled'].includes($('customerCaseStatus').value);$('customerCaseReason').required=required;$('customerCaseReasonLabel').textContent=required?'Sebab (wajib)':'Catatan sebab tangguh / tidak diteruskan';}
 function openCaseStatus(){
@@ -127,19 +101,20 @@ function openCaseStatus(){
  $('customerCaseFeedback').textContent='';caseReasonRequired();$('customerCaseDialog').showModal();
 }
 function caseStatusValues(){return {...profileValues(),sales_status:$('customerCaseStatus').value,closure_reason:$('customerCaseReason').value.trim(),lou_received:$('customerCaseLou').checked,trade_in:$('customerCaseTradeIn').checked}}
+function referenceFilesMarkup(files){
+ return files.length?files.map(f=>'<article class="customer-file"><label><input type="checkbox" data-customer-file="'+esc(f.id)+'" '+(selected.has(f.id)?'checked':'')+'><span><b>'+esc(f.original_name)+'</b><small>'+(f.byte_size/1048576).toFixed(2)+' MB · '+esc(when(f.created_at))+'</small></span></label><div class="customer-row-actions"><button type="button" class="secondary" data-customer-preview="'+esc(f.id)+'">Pratonton</button><button type="button" class="secondary" data-customer-download="'+esc(f.id)+'">Download</button><button type="button" class="secondary" data-customer-unlink="'+esc(f.id)+'">Nyahpaut</button></div></article>').join(''):'<div class="empty">Belum ada dokumen rujukan. Upload dokumen lengkap atau dokumen sokongan di sini.</div>';
+}
 function renderProfile(fill=true){
  const {lead:l,profile:p,staff}=customer;
  $('customerName').textContent=l.customer_name;$('customerIdentity').textContent=l.phone_e164+' · '+(l.model||'Model belum dipilih')+(p.variant?' / '+p.variant:'');$('customerOwner').textContent='Staff urus: '+(staff?staff.display_name+' ('+staff.staff_code+')':'Belum diagih');$('customerStatusBadge').textContent=STATUSES[p.sales_status]||p.sales_status;
- const missing=missingDocs();$('customerNextAction').innerHTML='<b>Tindakan seterusnya</b>'+esc(p.next_action||'Belum ditetapkan')+'<br>Follow-up: '+esc(day(l.follow_up_at))+'<div class="customer-missing">'+(missing.length?'Checklist belum lengkap: '+esc(missing.join(' · ')):'Checklist dokumen yang diperlukan sudah ditandakan lengkap.')+'</div>';
+ $('customerNextAction').innerHTML='<b>Tindakan seterusnya</b>'+esc(p.next_action||'Belum ditetapkan')+'<br>Follow-up: '+esc(day(l.follow_up_at));
  const wa=$('customerWhatsapp');wa.setAttribute('aria-disabled',String(!l.consent_confirmed));if(l.consent_confirmed)wa.href='https://wa.me/'+l.phone_e164;else wa.removeAttribute('href');
  if(fill){for(const [id,value] of Object.entries({cpName:l.customer_name,cpPhone:l.phone_e164,cpModel:l.model,cpVariant:p.variant,cpColour:p.colour||'',cpStatus:p.sales_status,cpFollow:l.follow_up_at,cpNext:p.next_action,cpReason:p.closure_reason,cpBooking:p.booking_status,cpBookingAmount:p.booking_amount,cpPrice:p.selling_price,cpDeposit:p.deposit,cpLoan:p.loan_amount}))$(id).value=value??'';$('cpGuarantor').checked=p.guarantor_required;$('cpLou').checked=p.lou_received===true;$('cpTradeIn').checked=p.trade_in===true;editRevision=p.revision;editStamp=l.updated_at;dirty=false;reasonRequired()}
  $('customerSourceInfo').textContent='Sumber: '+(l.source||'—')+'\nLead diwujudkan: '+when(l.created_at)+'\nStatus WhatsApp: '+(WA[l.stage]||l.stage)+(l.pm_confirmed_at?' · PM disahkan '+when(l.pm_confirmed_at):'');
  $('customerLegacyNotes').textContent=l.notes?'Catatan WhatsApp semasa:\n'+l.notes:'Belum ada catatan WhatsApp.';
  $('customerDocCount').textContent=customer.files.length;
- $('customerChecklist').innerHTML=checklistMarkup(p);
- renderCaseStatus();
  selected=new Set([...selected].filter(id=>customer.files.some(f=>f.id===id)));
- $('customerFiles').innerHTML=customer.files.length?Object.entries(PARTIES).map(([party,label])=>{const files=customer.files.filter(f=>f.party===party);return files.length?'<div><h4>'+label+'</h4>'+files.map(f=>'<article class="customer-file" data-document-party="'+esc(f.party)+'" data-document-category="'+esc(f.category)+'"><label><input type="checkbox" data-customer-file="'+esc(f.id)+'" '+(selected.has(f.id)?'checked':'')+'><span><b>'+esc(f.original_name)+'</b><small>'+esc(CATS[f.category]||f.category)+' · '+(f.byte_size/1048576).toFixed(2)+' MB · '+esc(when(f.created_at))+'</small></span></label><div class="customer-row-actions"><button type="button" class="secondary" data-customer-preview="'+esc(f.id)+'">Pratonton</button><button type="button" class="secondary" data-customer-download="'+esc(f.id)+'">Download</button><button type="button" class="secondary" data-customer-unlink="'+esc(f.id)+'">Nyahpaut</button></div></article>').join('')+'</div>':''}).join(''):'<div class="empty">Belum ada dokumen dipautkan. Upload di sini atau pilih fail yang sudah disimpan dalam Fail Masuk.</div>';
+ $('customerFiles').innerHTML=referenceFilesMarkup(customer.files);
  $('customerBanks').innerHTML=customer.banks.length?customer.banks.map(b=>'<article class="customer-bank"><h4>'+esc(b.bank_name)+' · '+esc(BANKS[b.status]||b.status)+'</h4><p>Jumlah: '+esc(money(b.amount))+'\nTarikh dihantar: '+esc(day(b.submitted_at))+(b.notes?'\n'+esc(b.notes):'')+'</p><div class="customer-row-actions"><button type="button" class="secondary" data-bank-edit="'+esc(b.id)+'">Edit Bank</button><button type="button" class="secondary" data-bank-delete="'+esc(b.id)+'">Padam Rekod Bank</button></div></article>').join(''):'<p class="customer-note-empty">Belum ada permohonan bank direkodkan.</p>';
  $('customerFollowSummary').textContent='Follow-up: '+day(l.follow_up_at)+'\nTindakan seterusnya: '+(p.next_action||'Belum ditetapkan');
  $('customerNotes').innerHTML=customer.notes.length?customer.notes.map(n=>'<article class="customer-note"><small>'+esc(n.actor_name+' ('+n.actor_code+') · '+when(n.created_at))+'</small><p>'+esc(n.details.note)+'</p></article>').join(''):'<p class="customer-note-empty">Belum ada nota profil. Catatan WhatsApp sedia ada boleh dilihat dalam Ringkasan.</p>';
@@ -163,10 +138,9 @@ async function runWrite(action,data,success,button=null){
  try{await mutate(action,data,id);if(gen!==epoch||customer?.lead.id!==id)return false;if(action==='save_profile')dirty=false;await refreshProfile();if(gen!==epoch)return false;notice(success);return true}
  catch(e){if(gen===epoch){notice(e.message,true);if(e.status===403){try{await refreshProfile()}catch{}}}return false}finally{if(gen===epoch){busyState(false);if(button)button.disabled=false}}
 }
-function categories(){const party=$('customerDocParty').value,list=party==='REBATE'?['AUTO','IC_FRONT','IC_BACK','LESEN','SURAT_KERJA','SIJIL_LAHIR','SIJIL_NIKAH','OTHER']:['AUTO','VSO','IC','LESEN','PAYSLIP','BANK','OTHER'];$('customerDocCategory').innerHTML=list.map(v=>'<option value="'+v+'">'+CATS[v]+'</option>').join('')}
 async function upload(){
  const files=[...$('customerUpload').files];if(!customer||busy||!files.length)return;
- const gen=epoch,id=customer.lead.id,party=$('customerDocParty').value,category=$('customerDocCategory').value;let saved=0,linked=0;busyState(true);
+ const gen=epoch,id=customer.lead.id,party='HIRER',category='OTHER';let saved=0,linked=0;busyState(true);
  try{for(const file of files){if(gen!==epoch||customer?.lead.id!==id)return;if(file.size>20*1048576)throw Error(file.name+' melebihi 20 MB.');notice('Menyimpan '+(saved+1)+' / '+files.length+': '+file.name);const d=await window.FARIS_INBOX_CLIENT.upload(file);saved++;if(gen!==epoch)return;await mutate('link_files',{ids:d.files.map(f=>f.id),party,category},id);linked++}
   if(gen===epoch)notice(linked+' dokumen disimpan dan dipautkan kepada customer.');
  }catch(e){if(gen===epoch)notice(linked+' fail dipautkan. '+(saved>linked?'Fail yang sudah diupload kekal dalam Fail Masuk. ':'')+e.message,true)}
@@ -203,7 +177,7 @@ async function loadPicker(append=false){
   $('customerInboxList').querySelectorAll('input').forEach(n=>n.checked=pickerSelected.has(n.dataset.customerInbox));$('customerInboxMore').classList.toggle('hide',pickerNext===null);$('customerInboxStatus').textContent=d.total+' fail tersedia · '+pickerSelected.size+' dipilih';
  }catch(e){if(gen===epoch&&seq===pickerSeq)$('customerInboxStatus').textContent=e.message}finally{if(gen===epoch&&seq===pickerSeq){$('customerInboxLink').disabled=false;$('customerInboxMore').disabled=false}}
 }
-function pickInbox(){if(!customer||busy)return;pickerMeta={party:$('customerDocParty').value,category:$('customerDocCategory').value};pickerRows=[];pickerNext=null;pickerSelected.clear();$('customerInboxSearch').value='';$('customerInboxList').innerHTML='';$('customerInboxDialog').showModal();loadPicker()}
+function pickInbox(){if(!customer||busy)return;pickerMeta={party:'HIRER',category:'OTHER'};pickerRows=[];pickerNext=null;pickerSelected.clear();$('customerInboxSearch').value='';$('customerInboxList').innerHTML='';$('customerInboxDialog').showModal();loadPicker()}
 function clearPreview(){previewSeq++;previewFile=null;if(previewUrl)URL.revokeObjectURL(previewUrl);previewUrl=null;$('customerPreviewBody').innerHTML='';$('customerPreviewTitle').textContent='Pratonton dokumen'}
 async function preview(id){
  if(!customer)return;clearPreview();const gen=epoch,seq=previewSeq,leadId=customer.lead.id;const f=customer.files.find(f=>f.id===id);if(!f)return;$('customerPreviewTitle').textContent=f.original_name;$('customerPreviewStatus').textContent='Memuatkan fail asal…';$('customerPreviewDownload').disabled=true;$('customerPreview').showModal();
@@ -221,11 +195,11 @@ function compiler(){if(!customer||!selected.size||busy)return;const files=custom
 function forgetCustomer(){
  opening++;historySeq++;customer=null;dirty=false;selected.clear();historyRows=[];historyNext=null;historyLoaded=false;bankId=null;
  for(const id of ['customerPreview','customerInboxDialog','customerCaseDialog'])if($(id).open)$(id).close();clearPreview();
- for(const id of ['customerFiles','customerHistory','customerNotes','customerBanks','customerChecklist','customerName','customerIdentity','customerOwner','customerNextAction','customerSourceInfo','customerLegacyNotes','customerFollowSummary'])$(id).textContent='';
- $('customerProfileForm').reset();$('customerCaseForm').reset();$('customerCaseFeedback').textContent='';$('customerCaseStatusButton').textContent='Status kes';$('customerCaseStageHint').textContent='';$('customerNoteForm').reset();resetBank();$('customerWhatsapp').removeAttribute('href');$('customerDetail').classList.add('hide');$('customersDirectory').classList.remove('hide');directory();
+ for(const id of ['customerFiles','customerHistory','customerNotes','customerBanks','customerName','customerIdentity','customerOwner','customerNextAction','customerSourceInfo','customerLegacyNotes','customerFollowSummary'])$(id).textContent='';
+ $('customerProfileForm').reset();$('customerCaseForm').reset();$('customerCaseFeedback').textContent='';$('customerNoteForm').reset();resetBank();$('customerWhatsapp').removeAttribute('href');$('customerDetail').classList.add('hide');$('customersDirectory').classList.remove('hide');directory();
 }
 function reset(){epoch++;$('customerInsightsResult').innerHTML='';$('customerInsightsContext').textContent='';listing++;opening++;historySeq++;pickerSeq++;user=null;customer=null;rows=[];next=null;historyRows=[];historyNext=null;historyLoaded=false;selected.clear();pickerRows=[];pickerSelected.clear();operations.clear();linkHandoff=null;busy=false;dirty=false;bankId=null;
- for(const id of ['customerPreview','customerInboxDialog','customerCaseDialog'])if($(id).open)$(id).close();clearPreview();$('customerDetail').classList.add('hide');$('customersDirectory').classList.remove('hide');$('customersList').innerHTML='';$('customerFiles').innerHTML='';$('customerHistory').innerHTML='';$('customerNotes').innerHTML='';$('customerBanks').innerHTML='';$('customerInboxList').innerHTML='';$('customerChecklist').innerHTML='';$('customerName').textContent='';$('customerIdentity').textContent='';$('customerOwner').textContent='';$('customerNextAction').textContent='';$('customerSourceInfo').textContent='';$('customerLegacyNotes').textContent='';$('customerFollowSummary').textContent='';$('customerWhatsapp').removeAttribute('href');$('customerProfileForm').reset();$('customerCaseForm').reset();$('customerCaseFeedback').textContent='';$('customerCaseStatusButton').textContent='Status kes';$('customerCaseStageHint').textContent='';$('customerNoteForm').reset();resetBank();$('customersFilterForm').reset();$('customerActiveFilters').textContent='';$('customersTotal').textContent='';$('customerUpload').value='';$('customersNotice').classList.add('hide');$('customersLinkBanner').classList.add('hide');$('customersRefresh').disabled=false;busyState(false)}
+ for(const id of ['customerPreview','customerInboxDialog','customerCaseDialog'])if($(id).open)$(id).close();clearPreview();$('customerDetail').classList.add('hide');$('customersDirectory').classList.remove('hide');$('customersList').innerHTML='';$('customerFiles').innerHTML='';$('customerHistory').innerHTML='';$('customerNotes').innerHTML='';$('customerBanks').innerHTML='';$('customerInboxList').innerHTML='';$('customerName').textContent='';$('customerIdentity').textContent='';$('customerOwner').textContent='';$('customerNextAction').textContent='';$('customerSourceInfo').textContent='';$('customerLegacyNotes').textContent='';$('customerFollowSummary').textContent='';$('customerWhatsapp').removeAttribute('href');$('customerProfileForm').reset();$('customerCaseForm').reset();$('customerCaseFeedback').textContent='';$('customerNoteForm').reset();resetBank();$('customersFilterForm').reset();$('customerActiveFilters').textContent='';$('customersTotal').textContent='';$('customerUpload').value='';$('customersNotice').classList.add('hide');$('customersLinkBanner').classList.add('hide');$('customersRefresh').disabled=false;busyState(false)}
 window.FARIS_CUSTOMERS={onLogin(account){reset();user=account;$('customersStaff').classList.toggle('hide',user.role!=='admin')},onLogout:reset,onShow(){const params=new URLSearchParams(location.search),target=params.get('customer');if(target&&/^[a-f0-9-]{36}$/i.test(target)){const requestedTab=params.get('customer_tab');params.delete('customer');params.delete('customer_tab');history.replaceState(null,'',location.pathname+(params.size?'?'+params:'')+location.hash);open(target).then(()=>{if(customer?.lead.id===target&&requestedTab==='documents')showTab('documents')});return}if(customer){const gen=epoch;refreshProfile().catch(e=>{if(gen===epoch)notice(e.message,true)})}else directory()},open,
  linkFromInbox(data){if(!user||busy||!data.ids?.length)return;linkHandoff=data;customer=null;dirty=false;$('customerDetail').classList.add('hide');$('customersDirectory').classList.remove('hide');window.FARIS_NAV.show('customers');renderDirectory()}};
 document.addEventListener('DOMContentLoaded',()=>{
@@ -238,7 +212,7 @@ document.addEventListener('DOMContentLoaded',()=>{
  $('customerInsightsGroup').addEventListener('change',loadInsights);
 
  for(const id of ['customersStatus','cpStatus','customerCaseStatus'])$(id).insertAdjacentHTML('beforeend',Object.entries(STATUSES).map(([v,label])=>'<option value="'+v+'">'+label+'</option>').join(''));
- $('cbStatus').innerHTML=Object.entries(BANKS).map(([v,label])=>'<option value="'+v+'">'+label+'</option>').join('');categories();
+ $('cbStatus').innerHTML=Object.entries(BANKS).map(([v,label])=>'<option value="'+v+'">'+label+'</option>').join('');
  document.addEventListener('click',e=>{const b=e.target.closest('[data-customer-open]');if(b)open(b.dataset.customerOpen)});
  $('customersFilterForm').addEventListener('submit',e=>{e.preventDefault();directory()});for(const id of ['customersStatus','customersVariant','customersColour','customersBucket','customersStaff'])$(id).addEventListener('change',()=>directory());$('customersModel').addEventListener('change',()=>{$('customersVariant').value='';directory()});$('customersMore').addEventListener('click',()=>directory(true));
  $('customersRefresh').addEventListener('click',async()=>{if(busy)return;try{if(customer){if(dirty&&!confirm('Buang perubahan belum disimpan dan refresh profil?'))return;await refreshProfile(true)}else await directory()}catch(e){notice(e.message,true)}});
@@ -253,15 +227,8 @@ document.addEventListener('DOMContentLoaded',()=>{
  $('customerEditFollow').addEventListener('click',()=>{showTab('summary');$('cpFollow').focus()});
  $('customerBankForm').addEventListener('submit',async e=>{e.preventDefault();const data={id:bankId,bank_name:$('cbName').value.trim(),status:$('cbStatus').value,amount:$('cbAmount').value||null,submitted_at:$('cbDate').value||null,notes:$('cbNotes').value.trim()};if(await runWrite('save_bank',data,'Permohonan bank disimpan.'))resetBank()});$('customerBankCancel').addEventListener('click',resetBank);
  $('customerBanks').addEventListener('click',async e=>{const edit=e.target.closest('[data-bank-edit]'),del=e.target.closest('[data-bank-delete]');if(edit)editBank(edit.dataset.bankEdit);if(del&&confirm('Padam rekod bank ini? Rekod perubahan kekal dalam Sejarah.'))await runWrite('delete_bank',{id:del.dataset.bankDelete},'Rekod bank dipadam.')});
- $('customerChecklist').addEventListener('change',e=>{if(e.target.dataset.checkParty)runWrite('checklist',{party:e.target.dataset.checkParty,category:e.target.dataset.checkCategory,status:e.target.value},'Checklist dikemas kini.')});
- $('customerChecklist').addEventListener('click',e=>{
-  const b=e.target.closest('button');if(!b||!customer||busy)return;
-  if(b.hasAttribute('data-doc-show')){focusDocumentFiles(b.dataset.docParty,b.dataset.docCategory);return}
-  if(!chooseDocumentTarget(b.dataset.docParty,b.dataset.docCategory))return;
-  if(b.hasAttribute('data-doc-upload'))$('customerUpload').click();else if(b.hasAttribute('data-doc-inbox'))pickInbox();
- });
- $('customerReferenceUpload').addEventListener('click',()=>{if(chooseDocumentTarget('HIRER','OTHER'))$('customerUpload').click()});
- for(const id of ['customerCaseStatusButton','customerStatusBadge'])$(id).addEventListener('click',openCaseStatus);
+ $('customerStatusBadge').addEventListener('click',openCaseStatus);
+ document.addEventListener('click',async e=>{const b=e.target.closest('[data-customer-status-open]');if(!b||busy)return;const gen=epoch,id=b.dataset.customerStatusOpen;await open(id);if(gen===epoch&&customer?.lead.id===id)openCaseStatus()});
  $('customerCaseClose').addEventListener('click',()=>$('customerCaseDialog').close());$('customerCaseCancel').addEventListener('click',()=>$('customerCaseDialog').close());$('customerCaseStatus').addEventListener('change',caseReasonRequired);
  $('customerCaseForm').addEventListener('submit',async e=>{
   e.preventDefault();if(!customer||busy)return;
@@ -269,7 +236,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(await runWrite('save_profile',caseStatusValues(),'Status kes dikemas kini dan direkodkan dalam Sejarah.')){if(gen===epoch&&customer?.lead.id===id)$('customerCaseDialog').close()}
   else if(gen===epoch&&customer?.lead.id===id)$('customerCaseFeedback').textContent=$('customersNotice').textContent||'Status belum disimpan. Cuba lagi.';
  });
- $('customerDocParty').addEventListener('change',categories);$('customerUploadButton').addEventListener('click',()=>$('customerUpload').click());$('customerUpload').addEventListener('change',upload);$('customerPickInbox').addEventListener('click',pickInbox);$('customerOpenCompiler').addEventListener('click',compiler);
+ $('customerUploadButton').addEventListener('click',()=>$('customerUpload').click());$('customerUpload').addEventListener('change',upload);$('customerPickInbox').addEventListener('click',pickInbox);$('customerOpenCompiler').addEventListener('click',compiler);
  $('customerFiles').addEventListener('change',e=>{const id=e.target.dataset.customerFile;if(id){e.target.checked?selected.add(id):selected.delete(id);selection()}});
  $('customerFiles').addEventListener('click',e=>{const p=e.target.closest('[data-customer-preview]'),d=e.target.closest('[data-customer-download]'),u=e.target.closest('[data-customer-unlink]');if(p)preview(p.dataset.customerPreview);if(d)download(d.dataset.customerDownload,d);if(u&&confirm('Nyahpaut fail daripada customer ini? Fail asal kekal dalam Fail Masuk.'))runWrite('unlink_file',{id:u.dataset.customerUnlink},'Fail dinyahpaut. Fail asal kekal dalam Fail Masuk.')});
  $('customerHistoryMore').addEventListener('click',()=>loadHistory(true));
