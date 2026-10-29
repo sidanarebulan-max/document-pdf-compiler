@@ -57,12 +57,14 @@
      <div class="vsoFields">
        <label class="vsoField"><span>Loan Amount (RM) *</span><input id="vsoLoan" type="number" min="0.01" step="0.01" value="60800" inputmode="decimal"></label>
        <label class="vsoField"><span>Tempoh pinjaman</span><select id="vsoPeriod"><option value="9">9 tahun</option><option value="7">7 tahun</option><option value="5">5 tahun</option><option value="3">3 tahun</option></select></label>
+       <label class="vsoNotebox"><input id="vsoAccessoriesMode" type="checkbox" role="switch"> <strong>Lebihan ke Accessories</strong><br><small>Aktif: Govt. Approved kekal pada nilai asas; lebihan OTR masuk ke Inclusive of Approved Standard Accessories Excise. Tutup: guna cara asal.</small></label>
        <div class="vsoMath">
         <div><small>Anchor Price (100%)</small><strong id="vsoAnchor">RM 75,800.00</strong></div>
         <div><small>Had Loan (90% Anchor)</small><strong id="vsoLoanLimit">RM 68,220.00</strong></div>
         <div><small id="vsoOtrLabel">Harga OTR asal</small><strong id="vsoOtr">RM 75,800</strong></div>
         <div><small>Jumlah caj dalam VSO contoh</small><strong id="vsoCharges">RM 3,708</strong></div>
         <div><small>Govt. Approved Net Selling Price <sup>*</sup></small><strong id="vsoNet">RM 72,092</strong></div>
+        <div id="vsoAccessoriesRow" hidden><small>Lebihan ke Inclusive Accessories Excise</small><strong id="vsoAccessoriesAmount">RM 0.00</strong></div>
         <div class="vsoEquation" id="vsoEquation">OTR asal daripada dokumen varian, tanpa rebate.</div>
        </div>
        <details class="vsoFixedDetails"><summary>Semak caj tetap mengikut varian</summary><div id="vsoFixedBreakdown"></div></details>
@@ -88,7 +90,7 @@
   function read(){
     const loan=Number(E('vsoLoan').value);
     const selected=chosenVariant();
-    const result=variants.calculate(loan,mode,selected.id);
+    const result=variants.present(variants.calculate(loan,mode,selected.id),E('vsoAccessoriesMode').checked?'ACCESSORIES':'NET');
     return {
       name:E('vsoCustomer').value.trim(),
       nric:E('vsoNric').value.trim(),
@@ -100,7 +102,7 @@
       color:E('vsoColor').value.trim(),
       loan,
       period:E('vsoPeriod').value,
-      otr:result.otr,net:result.net,feeTotal:result.feeTotal,
+      otr:result.otr,net:result.net,feeTotal:result.feeTotal,placement:result.placement,accessoriesExcess:result.accessoriesExcess,
       date:today(),mode,anchorPrice:result.anchorPrice,loanLimit:result.loanLimit,adjusted:result.adjusted
     };
   }
@@ -126,7 +128,7 @@
       <div class="vsoDocPrices"><div class="vsoPriceHeader"><span></span><span>RM</span></div>
        <table class="vsoPriceTable">
         ${row('Govt. Approved Net Selling Price*',v.net)}
-        ${row('Inclusive of Approved Standard Accessories Excise Duty',null)}
+        ${row('Inclusive of Approved Standard Accessories Excise Duty',v.accessoriesExcess>0?v.accessoriesExcess:null)}
         ${row('Sub Total (Sales Price)',null)}
         ${row('Inspection & Handling Fee',v.variant.fees.handling)}
         ${row('Metallic Paint',null)}
@@ -170,6 +172,8 @@
     E('vsoOtr').textContent=currency(v.otr);
     E('vsoCharges').textContent=currency(v.feeTotal);
     E('vsoNet').textContent=currency(v.net);
+    E('vsoAccessoriesRow').hidden=v.placement!=='ACCESSORIES';
+    E('vsoAccessoriesAmount').textContent=currency(v.accessoriesExcess);
     E('vsoAnchor').textContent=currency(v.anchorPrice);
     E('vsoLoanLimit').textContent=currency(v.loanLimit);
     E('vsoModeBadge').textContent=v.adjusted?'OTR DISELARASKAN':'OTR KEKAL PADA ANCHOR';
@@ -185,6 +189,7 @@
     }else{
       E('vsoEquation').textContent=`Loan ${currency(v.loan)} ≤ had ${currency(v.loanLimit)} → OTR kekal pada Anchor ${currency(v.anchorPrice)} · OTR − caj ${currency(v.feeTotal)} = ${currency(v.net)}`;
     }
+    if(v.placement==='ACCESSORIES')E('vsoEquation').textContent=`OTR ${currency(v.otr)} = Govt. Approved ${currency(v.net)} + lebihan Inclusive Accessories ${currency(v.accessoriesExcess)} + caj ${currency(v.feeTotal)}. Formula OTR dan loan kekal sama.`;
     E('vsoNotice').textContent=`Anchor dan caj mengikut PDF contoh ${v.variant.model}. OTR dibundarkan kepada sen terdekat; semak butiran sebelum pengesahan pengedar.`;
     lastBuild=null;lastFilename='';
     resize();

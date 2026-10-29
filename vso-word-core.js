@@ -13,6 +13,7 @@ const fields=Object.freeze({
  loan:[424.75,185.10,10,'serif',125],period:[424.20,199.45,10,'serif',125],
  model:[120.45,213.35,9,'serif',133],year:[329.10,213.65,9,'sans',26,0,1.03],color:[401.75,214.30,9,'sans',147],
  net:[184.60,235.50,6,'sans',66.1,1,1.025],gst:[184.60,246.30,6,'sans',66.1,1,1.025],
+ inclusive:[184.60,246.30,6,'sans',66.1,1,1.025],
  handling:[184.60,302.07,6,'sans',68.85,1,1.025],plate:[184.60,326.50,6,'sans',68.85,1,1.025],
  accessory:[184.60,336.60,6,'sans',68.85,1,1.025],registration:[184.60,448.55,6,'sans',68.85,1,1.025],
  roadTax:[184.60,459.65,6,'sans',68.85,1,1.025],claim:[184.60,470.85,6,'sans',68.85,1,1.025],
@@ -73,7 +74,11 @@ async function buildPdf({PDFLib,fontkit,templateBytes,fontBytes,data,now,preview
   loan:Number.isFinite(d.loan)&&d.loan>0?'RM '+money(d.loan):'',period:tidy(d.period)?Number(d.period)*12+' Month':'',
   model:d.model,year:d.year,color:d.color,net:Number.isFinite(d.net)?money(d.net):'',otr:Number.isFinite(d.otr)?money(d.otr):'',draft:'DRAF'};
  for(const [key,value] of Object.entries(values))draw(key,value);
+ // This is the Inclusive ... Excise line, separate from Accessory Package below.
+ const inclusiveExcess=d.placement==='ACCESSORIES'&&Number.isFinite(d.accessoriesExcess)?Math.max(0,d.accessoriesExcess):0;
+ if(inclusiveExcess>0)draw('inclusive',money(inclusiveExcess+(d.fees?.gst||0)));
  for(const key of ['gst','handling','plate','accessory','registration','roadTax','claim','insurance']){
+  if(key==='gst'&&inclusiveExcess>0)continue;
   if(d.fees?.[key]!==null&&d.fees?.[key]!==undefined)draw(key,money(d.fees[key]));
  }
  doc.setTitle('Vehicle Sales Order DRAF');doc.setAuthor('FARIS R+PROTON');doc.setCreator('FARIS VSO Generator Word Template');

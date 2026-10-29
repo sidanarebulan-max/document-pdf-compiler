@@ -147,5 +147,12 @@ const calculate=(amount,kind="AUTO",variantId="EMAS5_PREMIUM_2026")=>{
  const otr=otrCents/100,net=(otrCents-Math.round(feeTotal*100))/100;
  return {variant:v,loan,otr,net,feeTotal,baseOtr:v.baseOtr,baseNet:v.baseNet,anchorPrice:v.baseOtr,loanLimit:anchorCents*9/1000,adjusted,kind};
 };
-window.VSO_VARIANTS=Object.freeze({list,get,charges,calculate});
+// Presentation only: the OTR/90% calculation above remains the source of truth.
+const present=(result,placement='NET')=>{
+ const accessoriesMode=placement==='ACCESSORIES';
+ const extraCents=accessoriesMode&&Number.isFinite(result.otr)?Math.max(0,Math.round(result.otr*100)-Math.round(result.anchorPrice*100)):0;
+ return {...result,placement:accessoriesMode?'ACCESSORIES':'NET',accessoriesExcess:extraCents/100,
+  net:extraCents?(Math.round(result.net*100)-extraCents)/100:result.net};
+};
+window.VSO_VARIANTS=Object.freeze({list,get,charges,calculate,present});
 })();

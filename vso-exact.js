@@ -3,8 +3,8 @@
 const host=document.getElementById('vsoWorkspace'),viewport=document.getElementById('vsoPreviewViewport');
 if(!host||!viewport)return;
 const E=id=>document.getElementById(id),core=window.FARIS_VSO_WORD;
-const controlledFields=['vsoCustomer','vsoNric','vsoAddress','vsoPhone','vsoEmail','vsoModel','vsoYear','vsoColor','vsoLoan','vsoPeriod'];
-const VERSION='word-vector-v48-advisor-20261029';
+const controlledFields=['vsoCustomer','vsoNric','vsoAddress','vsoPhone','vsoEmail','vsoModel','vsoYear','vsoColor','vsoLoan','vsoPeriod','vsoAccessoriesMode'];
+const VERSION='word-vector-v49-accessories-20261029';
 let assetsPromise=null,result=null,building=null,buildBusy=false,previewDoc=null,renderTask=null,drawSeq=0,resizeSeq=0,timer=null;
 const prep=document.createElement('div');prep.className='vsoExactPanel vso-template-loaded';
 prep.innerHTML=`<div class="vsoExactHeader"><strong>Format VSO Mengikut Word</strong><span class="vsoExactPill">TEMPLAT WORD</span></div>
@@ -20,8 +20,8 @@ const canvas=document.createElement('canvas');canvas.id='vsoExactCanvas';canvas.
 const showStatus=(message,ok=false)=>{status.textContent=message;status.className=ok?'vsoExactOk':'vsoExactWait'};
 function data(){
  const value=id=>E(id)?.value?.trim()||'';
- const loan=Number(value('vsoLoan')),variant=window.VSO_VARIANTS.get(value('vsoModel')),r=window.VSO_VARIANTS.calculate(loan,'AUTO',variant.id);
- return {customer:value('vsoCustomer'),nric:value('vsoNric'),address:value('vsoAddress'),phone:value('vsoPhone'),email:value('vsoEmail'),year:value('vsoYear'),color:value('vsoColor'),period:value('vsoPeriod'),model:variant.model,fees:variant.fees,loan,otr:r.otr,net:r.net,date:core.dateInMalaysia()};
+ const loan=Number(value('vsoLoan')),variant=window.VSO_VARIANTS.get(value('vsoModel')),placement=E('vsoAccessoriesMode')?.checked?'ACCESSORIES':'NET',r=window.VSO_VARIANTS.present(window.VSO_VARIANTS.calculate(loan,'AUTO',variant.id),placement);
+ return {customer:value('vsoCustomer'),nric:value('vsoNric'),address:value('vsoAddress'),phone:value('vsoPhone'),email:value('vsoEmail'),year:value('vsoYear'),color:value('vsoColor'),period:value('vsoPeriod'),model:variant.model,fees:variant.fees,loan,otr:r.otr,net:r.net,placement,accessoriesExcess:r.accessoriesExcess,date:core.dateInMalaysia()};
 }
 const stamp=d=>JSON.stringify(d);
 async function assets(){
