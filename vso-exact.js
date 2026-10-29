@@ -4,7 +4,7 @@ const host=document.getElementById('vsoWorkspace'),viewport=document.getElementB
 if(!host||!viewport)return;
 const E=id=>document.getElementById(id),core=window.FARIS_VSO_WORD;
 const controlledFields=['vsoCustomer','vsoNric','vsoAddress','vsoPhone','vsoEmail','vsoModel','vsoYear','vsoColor','vsoLoan','vsoPeriod'];
-const VERSION='word-vector-v46-20261029';
+const VERSION='word-vector-v47-live-20261029';
 let assetsPromise=null,result=null,building=null,buildBusy=false,previewDoc=null,renderTask=null,drawSeq=0,resizeSeq=0,timer=null;
 const prep=document.createElement('div');prep.className='vsoExactPanel vso-template-loaded';
 prep.innerHTML=`<div class="vsoExactHeader"><strong>Format VSO Mengikut Word</strong><span class="vsoExactPill">TEMPLAT WORD</span></div>
@@ -34,8 +34,12 @@ async function assets(){
  return assetsPromise;
 }
 function invalidate(){result=null;window.FARIS_GENERATED?.clear('vso');drawSeq++;if(timer)clearTimeout(timer);timer=setTimeout(drawPreview,160)}
-async function generate(d){
- const key=stamp(d);if(result?.stamp===key)return result;
+async function generate(d,preview=false){
+ const key=stamp(d);if(!preview&&result?.stamp===key)return result;
+ if(preview){
+  const built=await core.buildPdf({...await assets(),data:d,preview:true});
+  return {bytes:built.bytes};
+ }
  if(building?.stamp===key)return building.promise;
  const operation={stamp:key};operation.promise=(async()=>{
   const built=await core.buildPdf({...await assets(),data:d});
@@ -68,12 +72,9 @@ async function showPdf(bytes,seq){
 async function drawPreview(){
  const seq=++drawSeq,d=data();
  try{
-  const loaded=await assets();if(seq!==drawSeq)return;
-  if(!d.customer||!d.color||!/^\d{4}$/.test(d.year)||!(d.loan>0)||!(d.net>0)){
-   await showPdf(loaded.templateBytes,seq);if(seq===drawSeq)showStatus('✓ Templat Word dimuatkan automatik. Lengkapkan maklumat untuk pratonton VSO.',true);return;
-  }
-  const next=await generate(d);if(seq!==drawSeq)return;
-  await showPdf(next.bytes,seq);if(seq===drawSeq)showStatus('✓ Pratonton mengikut Word. PDF sedia dimuat turun.',true);
+  await assets();if(seq!==drawSeq)return;
+  const next=await generate(d,true);if(seq!==drawSeq)return;
+  await showPdf(next.bytes,seq);if(seq===drawSeq)showStatus('✓ Pratonton dikemas kini semasa anda menaip. Lengkapkan maklumat sebelum muat turun PDF.',true);
  }catch(error){
   if(seq!==drawSeq||error.name==='RenderingCancelledException')return;
   canvas.hidden=true;blankHint.hidden=false;blankHint.textContent='Pratonton belum tersedia. '+error.message;showStatus(error.message);

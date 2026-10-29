@@ -32,7 +32,7 @@ function addressLines(value,font,size=8.5){
  }
  return best.lines;
 }
-async function buildPdf({PDFLib,fontkit,templateBytes,fontBytes,data,now}){
+async function buildPdf({PDFLib,fontkit,templateBytes,fontBytes,data,now,preview=false}){
  if(!PDFLib||!fontkit)throw Error('Enjin PDF belum sedia. Segar semula halaman.');
  const doc=await PDFLib.PDFDocument.load(templateBytes,{updateMetadata:false});
  if(doc.getPageCount()!==1)throw Error('Templat Word mesti satu halaman A4.');
@@ -63,13 +63,15 @@ async function buildPdf({PDFLib,fontkit,templateBytes,fontBytes,data,now}){
  }
  const d=data||{};
  const name=tidy(d.customer??d.name);
- if(!name)throw Error('Sila isi nama penuh pelanggan.');
- if(!Number.isFinite(d.loan)||d.loan<=0||!Number.isFinite(d.otr)||!Number.isFinite(d.net)||d.net<=0)throw Error('Jumlah pinjaman atau harga tidak sah.');
- if(!/^\d{4}$/.test(tidy(d.year))||!tidy(d.color))throw Error('Lengkapkan tahun pembuatan dan warna kereta.');
+ if(!preview){
+  if(!name)throw Error('Sila isi nama penuh pelanggan.');
+  if(!Number.isFinite(d.loan)||d.loan<=0||!Number.isFinite(d.otr)||!Number.isFinite(d.net)||d.net<=0)throw Error('Jumlah pinjaman atau harga tidak sah.');
+  if(!/^\d{4}$/.test(tidy(d.year))||!tidy(d.color))throw Error('Lengkapkan tahun pembuatan dan warna kereta.');
+ }
  const addresses=addressLines(d.address,fonts.serif);
  const values={date:d.date||dateInMalaysia(now),customer:name.toUpperCase(),address1:addresses[0],address2:addresses[1],nric:d.nric,phone:d.phone,email:d.email,
-  advisorPhone:d.phone,advisorNric:d.nric,loan:'RM '+money(d.loan),period:tidy(d.period)?Number(d.period)*12+' Month':'',
-  model:d.model,year:d.year,color:d.color,net:money(d.net),otr:money(d.otr),draft:'DRAF'};
+  advisorPhone:d.phone,advisorNric:d.nric,loan:Number.isFinite(d.loan)&&d.loan>0?'RM '+money(d.loan):'',period:tidy(d.period)?Number(d.period)*12+' Month':'',
+  model:d.model,year:d.year,color:d.color,net:Number.isFinite(d.net)?money(d.net):'',otr:Number.isFinite(d.otr)?money(d.otr):'',draft:'DRAF'};
  for(const [key,value] of Object.entries(values))draw(key,value);
  for(const key of ['gst','handling','plate','accessory','registration','roadTax','claim','insurance']){
   if(d.fees?.[key]!==null&&d.fees?.[key]!==undefined)draw(key,money(d.fees[key]));

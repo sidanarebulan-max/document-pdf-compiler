@@ -27,6 +27,20 @@ const PDFLib=require('pdf-lib'),fontkit=require('../assets/vendor/fontkit-1.1.1.
   }
  }
  const variant=variants.list[0];
+ // A partially completed form paints each entered field without permitting export.
+ const partial=input(variant,0,{customer:'sdfsg',nric:'99098',color:'',year:''});
+ const live=await core.buildPdf({...assets,data:partial,preview:true});
+ const liveText=Object.fromEntries(live.painted.map(v=>[v.key,v.text]));
+ assert.equal(liveText.customer,'SDFSG');assert.equal(liveText.nric,'99098');assert.equal(liveText.loan,undefined);
+ await assert.rejects(()=>core.buildPdf({...assets,data:partial}),/pinjaman/);
+ const noName=input(variant,80000,{customer:'',color:''});
+ const started=await core.buildPdf({...assets,data:noName,preview:true});
+ assert.ok(started.painted.some(v=>v.key==='model'));
+ await assert.rejects(()=>core.buildPdf({...assets,data:noName}),/nama penuh/);
+ const script=fs.readFileSync('vso-exact.js','utf8');
+ assert.match(script,/generate\(d,true\)/);assert.match(script,/generate\(d\)/);
+ assert.doesNotMatch(script,/showPdf\(loaded.templateBytes/);
+
  const long=input(variant,80000,{customer:'PELANGGAN NAMA PANJANG BIN CONTOH UJIAN A/L CONTOH',address:'BLOK A-12-08 KONDOMINIUM TAMAN CONTOH JALAN PERSIARAN PUNCAK ALAM 6 SEKSYEN 2 42300 PUNCAK ALAM SELANGOR DARUL EHSAN',email:'pelanggan.ujian.panjang@example.test'});
  const built=await core.buildPdf({...assets,data:long});const address=built.painted.filter(v=>/^address/.test(v.key)).map(v=>v.text).join(' ');assert.equal(address,long.address);assert.equal(built.painted.find(v=>v.key==='customer').text,long.customer);
  fs.writeFileSync(path.join(out,'long-fields.pdf'),built.bytes);
