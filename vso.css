@@ -17,3 +17,7 @@
 @media(max-width:780px){.hubSwitch{box-sizing:border-box;overflow-x:auto}.hubTab{flex:1 0 auto;padding:10px 8px}.hubTab b{font-size:11px}}
 
 #vsoAccessoriesRow[hidden]{display:none}#vsoAccessoriesMode{accent-color:#6f7cff;width:18px;height:18px;vertical-align:middle;margin:0 6px 2px 0}.vsoNotebox:has(#vsoAccessoriesMode){cursor:pointer}
+
+@media(max-width:780px){
+ #mainWorkspaceNav{padding:8px 10px;gap:7px}.hubEmblem{width:30px;height:30px;font-size:20px;border-radius:9px}#mainWorkspaceNav .hubBrand{gap:8px}.hubBrand strong{font-size:13px}.hubBrand small{display:none}.hubSwitch{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px;padding:3px;overflow:visible}.hubTab{padding:9px 2px;min-width:0;font-size:0;white-space:normal;line-height:1.2;min-height:36px}.hubTab b{font-size:10px}.hubSwitch .hubTab:nth-child(3) b{font-size:10px}
+}

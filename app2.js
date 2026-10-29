@@ -95,13 +95,13 @@
     const signals=ext==='pdf' && ['HIRER','GUARANTOR'].includes(item.party) ? categorySignals(item.text) : [];
     item.mixed = signals.length>=2 ? signals : [];
     if(item.mixed.length>=2){
-      if($('#autoClassify').checked || item.category==='OTHER') item.category='OTHER';
+      if(!item.manualCategory && ($('#autoClassify').checked || item.category==='OTHER')) item.category='OTHER';
       item.confidence=20;
       item.review=true;
       item.note='PDF bercampur: '+item.mixed.join(' + ');
     }else{
-      if($('#autoClassify').checked || item.category==='OTHER') item.category=cls.category;
-      item.confidence=cls.confidence;
+      if(!item.manualCategory && ($('#autoClassify').checked || item.category==='OTHER')) item.category=cls.category;
+      item.confidence=item.manualCategory?100:cls.confidence;
       item.review=item.confidence<35;
       item.note='';
     }
@@ -114,21 +114,23 @@
     const files=[...fileList].filter(f=>accepted.includes(extOf(f.name)));
     const rejected=[...fileList].filter(f=>!accepted.includes(extOf(f.name)));
     rejected.forEach(f=>log(`Format tidak disokong: ${f.name}`));
-    const uploadParty=activeParty;
+    const uploadParty=PARTY_META[options.party]?options.party:activeParty;
+    const selectedCategory=categoriesFor(uploadParty).some(c=>c.id===options.category)?options.category:null;
     const newlyAdded=[];
     for(const file of files){
       const item={
         id:crypto.randomUUID(),
         file,
         party:uploadParty,
-        category:'OTHER',
-        confidence:0,
+        category:selectedCategory||'OTHER',
+        manualCategory:!!selectedCategory,
+        confidence:selectedCategory?100:0,
         text:'',
         date:0,
         pages:1,
         order:sequence++,
         analyzed:false,
-        review:true
+        review:!selectedCategory
       };
       items.push(item);newlyAdded.push(item);
     }
@@ -149,6 +151,7 @@
       const manual=valid.includes(metadata.category);
       const guess=classifyForParty(party,file.name,'');
       item.category=manual?metadata.category:valid.includes(guess.category)?guess.category:'OTHER';
+      item.manualCategory=manual;
       item.confidence=manual?100:guess.confidence;item.review=!manual;item.analyzed=manual;
       item.note=manual?'Kategori dipilih daripada Fail Masuk':'Dari Fail Masuk — semak kategori atau tekan Analisis';
       partyNames[party]=metadata.customer_name||'';
@@ -216,7 +219,7 @@
 
   function changeCat(id,cat){
     const x=items.find(x=>x.id===id);
-    if(x){ x.category=cat; x.review=false; sortParty(x.party); }
+    if(x){ x.category=cat; x.manualCategory=true; x.review=false; sortParty(x.party); }
   }
 
   function formatDate(ts){
@@ -233,8 +236,8 @@
     document.querySelector(`.party-tab[data-party="${party}"]`)?.classList.add('active');
 
     const meta=PARTY_META[party];
-    $('#inputPanelTitle').textContent=`1. Dokumen ${meta.short}`;
-    $('#reviewPanelTitle').textContent=`2. Semak & Susun — ${meta.short}`;
+    $('#inputPanelTitle').textContent=`Muat Naik Umum — ${meta.short}`;
+    $('#reviewPanelTitle').textContent=`Dokumen — ${meta.short}`;
     $('#partyBanner').innerHTML=`<b>${meta.label}</b><span>Masukkan dokumen ${party==='HIRER'?'peminjam':party==='GUARANTOR'?'penjamin':party==='TRADEIN'?'trade in (semua dokumen optional)':'untuk permohonan COP Rebate'} di bahagian ini.</span>`;
     $('#dropTitle').textContent=party==='HIRER'?'Upload Dokumen Peminjam':party==='GUARANTOR'?'Upload Dokumen Penjamin':party==='TRADEIN'?'Upload Dokumen Trade in':'Upload Dokumen COP Rebate';
     $('#partyNameLabel').innerHTML=`Nama ${meta.short} <span class="optional">Optional</span>`;
@@ -324,6 +327,17 @@
     if(modal){modal.hidden=true;modal.style.display='none';modal.querySelector('#sourcePreviewBody').replaceChildren();}
   }
 
+  function chooseCategoryFiles(party,category){
+    const input=document.createElement('input');
+    input.type='file';input.multiple=true;input.hidden=true;
+    input.accept=$('#fileInput').accept;
+    input.setAttribute('aria-label','Muat naik '+category+' untuk '+PARTY_META[party].short);
+    document.body.appendChild(input);
+    input.onchange=()=>{const files=Array.from(input.files||[]);input.remove();if(files.length)addFiles(files,{party,category})};
+    input.oncancel=()=>input.remove();
+    input.click();
+  }
+
   function render(){
     if(typeof updateOutputNamePreview==='function')updateOutputNamePreview();
     const current=partyItems().sort((a,b)=>a.order-b.order);
@@ -344,12 +358,20 @@
     for(const cat of categoriesFor(activeParty)){
       const group=current.filter(x=>x.category===cat.id).sort((a,b)=>a.order-b.order);
       const sec=document.createElement('div'); sec.className='section';
-      sec.innerHTML=`<div class="section-head"><div class="section-title">${cat.label}<span class="badge">${group.length}</span></div><span class="small">${cat.order.toString().padStart(2,'0')}</span>${cat.info?`<button type="button" class="doc-info-button" aria-label="Info ${cat.label}" aria-expanded="false" aria-controls="doc-info-${cat.id}">ⓘ</button>`:''}</div>${cat.info?`<div class="doc-info-text" id="doc-info-${cat.id}" hidden>${escapeHtml(cat.info)} Semua dokumen optional. Boleh teruskan walaupun dokumen ini belum ada.</div>`:''}<div class="file-list"></div>`;
+      sec.innerHTML=`<div class="section-head"><button type="button" class="category-upload-title" aria-label="Muat naik ${cat.label}"><span class="section-title">${cat.label}<span class="badge">${group.length}</span></span><span class="category-upload-plus" aria-hidden="true">＋</span></button>${cat.info?`<button type="button" class="doc-info-button" aria-label="Info ${cat.label}" aria-expanded="false" aria-controls="doc-info-${cat.id}">ⓘ</button>`:''}</div>${cat.info?`<div class="doc-info-text" id="doc-info-${cat.id}" hidden>${escapeHtml(cat.info)} Semua dokumen optional. Boleh teruskan walaupun dokumen ini belum ada.</div>`:''}<div class="file-list"></div><button type="button" class="category-upload-more" aria-label="Tambah fail ${cat.label}">＋ Tambah fail</button>`;
+      const uploadParty=activeParty;
+      sec.querySelector('.category-upload-title').onclick=()=>chooseCategoryFiles(uploadParty,cat.id);
+      sec.querySelector('.category-upload-more').onclick=()=>chooseCategoryFiles(uploadParty,cat.id);
+      sec.addEventListener('dragover',e=>{e.preventDefault();sec.classList.add('upload-drag')});
+      sec.addEventListener('dragleave',()=>sec.classList.remove('upload-drag'));
+      sec.addEventListener('drop',e=>{e.preventDefault();e.stopPropagation();sec.classList.remove('upload-drag');addFiles(e.dataTransfer.files,{party:uploadParty,category:cat.id})});
       const infoButton=sec.querySelector('.doc-info-button');
       if(infoButton)infoButton.onclick=()=>{const text=sec.querySelector('.doc-info-text');text.hidden=!text.hidden;infoButton.setAttribute('aria-expanded',String(!text.hidden))};
       const fl=sec.querySelector('.file-list');
       if(!group.length){
-        fl.innerHTML='<div class="empty">Optional — belum ada dokumen</div>';
+        fl.innerHTML=`<button type="button" class="category-upload-empty" aria-label="Pilih dokumen ${cat.label}"><strong>＋ Tambah dokumen</strong><span>Optional · Tekan untuk pilih fail</span></button>`;
+        fl.querySelector('button').onclick=()=>chooseCategoryFiles(uploadParty,cat.id);
+        sec.querySelector('.category-upload-more').hidden=true;
       }else{
         group.forEach(it=>{
           const ext=extOf(it.file.name);
