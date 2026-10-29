@@ -1,6 +1,6 @@
 import {createClient} from "npm:@supabase/supabase-js@2.57.4";
 import {isId,validate,STATUSES} from "./validation.mjs";
-import {insightsFilters} from "./insights.mjs";
+import {insightsFilters,dashboardFilters} from "./insights.mjs";
 const URL=Deno.env.get("SUPABASE_URL")!;
 const KEY=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS")||"{}").default;
 if(!KEY)throw Error("Server configuration missing");
@@ -24,6 +24,11 @@ async function handler(req:Request){
  if(req.method!=="POST")return json(req,{ok:false,error:"Gunakan POST."},405);
  const a=await account(req);if(!a)return json(req,{ok:false,error:"Sesi tamat. Log masuk semula."},401);
  let b;try{b=await body(req)}catch{return json(req,{ok:false,error:"Permintaan JSON tidak sah atau terlalu besar."},400)}
+ if(b.action==="dashboard"){
+  let filters;try{filters=dashboardFilters(b,STATUSES,isId)}catch(e){return json(req,{ok:false,error:e.message},400)}
+  const {data,error}=await db.rpc("lead_hub_customer_dashboard",{_actor:a.id,...filters});if(error)throw error;
+  return json(req,{ok:true,...data});
+ }
  if(b.action==="insights"){
   let filters;try{filters=insightsFilters(b,STATUSES,isId)}catch(e){return json(req,{ok:false,error:e.message},400)}
   const {data,error}=await db.rpc("lead_hub_customer_insights",{_actor:a.id,...filters});if(error)throw error;
