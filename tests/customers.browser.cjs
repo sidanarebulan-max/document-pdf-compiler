@@ -12,7 +12,7 @@ try{for(const role of ['staff','admin'])for(const mobile of [true,false]){
  await page.route('**/*',async route=>{
   const req=route.request(),url=new URL(req.url());
   if(url.hostname==='customers.test'){
-   const f=url.pathname.slice(1);if(/^(staff\.html|staff\.css|staff-gallery\.css|staff-gallery\.js|staff-customers\.css|staff-customers\.js|staff-navigation\.js|staff-passcode\.js|telegram-hub\.js|inbox-client\.js|staff-inbox\.js)$/.test(f))return route.fulfill({contentType:f.endsWith('html')?'text/html':f.endsWith('css')?'text/css':'text/javascript',body:fs.readFileSync(path.join(process.cwd(),f))});
+   const f=url.pathname.slice(1);if(/^(staff\.html|staff\.css|staff-gallery\.css|staff-gallery\.js|staff-customers\.css|staff-customers\.js|customer-insights-core\.js|staff-navigation\.js|staff-passcode\.js|telegram-hub\.js|inbox-client\.js|staff-inbox\.js)$/.test(f))return route.fulfill({contentType:f.endsWith('html')?'text/html':f.endsWith('css')?'text/css':'text/javascript',body:fs.readFileSync(path.join(process.cwd(),f))});
   }
   if(url.hostname==='files.test')return route.fulfill({contentType:'image/png',headers:{'Access-Control-Allow-Origin':'*'},body:png});
   if(url.hostname.endsWith('.supabase.co')){
@@ -22,6 +22,7 @@ try{for(const role of ['staff','admin'])for(const mobile of [true,false]){
     if(revoked&&b.action==='get')return route.fulfill({status:403,contentType:'application/json',headers,body:JSON.stringify({ok:false,error:'Profile access changed'})});
     customer.files=allFiles.filter(f=>f.customer_id===leadId);
     if(b.action==='list')result={ok:true,customers:[{...customer.lead,...customer.profile,id:leadId,staff_name:user.display_name,staff_code:user.staff_code,doc_count:customer.files.length}],total:1,next_offset:null,staff:[user],models:[{model:'e.MAS 5'}]};
+    else if(b.action==='insights')result={ok:true,insights:{total:1,confirm:0,pending:1,on_hold:0,cancelled:0,coloured:0,missing_colour:1,colours:[{label:'Belum diisi',value:1}],models:[{label:'e.MAS 5',value:1}],statuses:[{label:'new',value:1}],trend:[{bucket:'2026-10-28',total:1,confirm:0,pending:1}],generated_at:'2026-10-30T01:00:00Z'}};
     else if(b.action==='get')result={ok:true,customer};
     else if(b.action==='timeline')result={ok:true,events,next_offset:null};
     else if(b.action==='unlinked_files')result={ok:true,files:allFiles.filter(f=>!f.customer_id),total:allFiles.filter(f=>!f.customer_id).length,next_offset:null};
@@ -47,7 +48,7 @@ try{for(const role of ['staff','admin'])for(const mobile of [true,false]){
   return route.fulfill({contentType:'text/javascript',body:''});
  });
  await page.goto('https://customers.test/staff.html#customers');await page.locator('#customersList [data-customer-open="'+leadId+'"]').waitFor();
- assert.equal(await page.locator('#customersStaff').isVisible(),role==='admin');
+ assert.equal(await page.locator('#customersStaff').isVisible(),role==='admin');await page.locator('.insights-kpi').first().waitFor();assert.equal(await page.locator('.insights-kpi').count(),4);assert.match(await page.locator('#customerInsightsResult').innerText(),/Belum diisi/);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
  await page.locator('#customersList [data-customer-open]').click();await page.locator('#cpName').waitFor();assert.equal(await page.locator('#cpName').inputValue(),'Customer Ujian');assert.match(await page.locator('#customerLegacyNotes').innerText(),/Catatan WhatsApp asal/);
  await page.locator('#cpStatus').selectOption('documents');await page.locator('#cpNext').fill('Minta penyata bank');await page.locator('#cpFollow').fill('2026-11-01');await page.locator('#cpVariant').fill('Premium');await page.locator('#cpGuarantor').check();await page.locator('#customerProfileForm [data-profile-save]').click();await page.waitForFunction(()=>document.getElementById('customerStatusBadge').textContent==='Mengumpul dokumen');assert.match(await page.locator('#customerNextAction').innerText(),/Minta penyata bank/);
  await page.locator('[data-customer-tab="notes"]').click();await page.locator('#customerNote').fill('Customer mahu warna hijau <script>');await page.locator('#customerNoteSave').click();await page.getByText('Customer mahu warna hijau <script>',{exact:true}).waitFor();assert.equal(await page.locator('#customerNotes script').count(),0);
