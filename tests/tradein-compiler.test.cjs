@@ -24,6 +24,6 @@ const all=[item('HIRER','IC'),item('GUARANTOR','IC'),item('REBATE','SIJIL_NIKAH'
 for(const [scope,expected,pages] of [['ALL',['HIRER:IC','GUARANTOR:IC','REBATE:SIJIL_NIKAH','TRADEIN:GERAN'],7],['STANDARD',['HIRER:IC','GUARANTOR:IC'],3],['REBATE_ONLY',['REBATE:SIJIL_NIKAH'],1],['TRADEIN_ONLY',['TRADEIN:GERAN'],1]]){
 node('#compileScope').value=scope;processed.length=0;await api.generate();assert.deepEqual(processed,expected);assert.equal((await PDFLib.PDFDocument.load(await api.getBlob().arrayBuffer())).getPageCount(),pages);
 }
-assert.equal(api.filename('TRADEIN_ONLY'),'Trade in.pdf');assert.equal(alerts.length,0,alerts.join('\n'));
+assert.equal(api.filename('TRADEIN_ONLY'),'Trade In - UCM Rebate.pdf');assert.equal(alerts.length,0,alerts.join('\n'));
 console.log('PASS Trade in: every category exports alone, all optional, classification, sorting, four scopes, combined cover pages and filename');
 })().catch(e=>{console.error(e);process.exitCode=1});

@@ -38,7 +38,7 @@
     const custom=cleanOutputName($('#outputName').value);
     if(custom)return custom+'.pdf';
     const raw=cleanOutputName($('#customerName').value.trim()||partyNames.HIRER||partyNames.GUARANTOR||partyNames.REBATE||partyNames.TRADEIN);
-    const label=mode==='TRADEIN_ONLY'?'Trade in':mode==='REBATE_ONLY'?'Cop Rebate':'Document';
+    const label=mode==='TRADEIN_ONLY'?'Trade In - UCM Rebate':mode==='REBATE_ONLY'?'Corp & Gov Rebate':'Document';
     return (raw?raw+' - ':'')+label+'.pdf';
   }
   function updateOutputNamePreview(){
@@ -114,7 +114,7 @@
   };
   center('DOCUMENT SECTION',11,bold,545,rgb(.31,.55,1));
   center(PARTY_META[party].label,30,bold,500);
-  center(party==='TRADEIN'?'Dokumen Trade in':'Dokumen Sokongan Rebat',14,normal,468,rgb(.36,.42,.55));
+  center(party==='TRADEIN'?'Dokumen Trade In - UCM Rebate':'Dokumen Sokongan Rebat',14,normal,468,rgb(.36,.42,.55));
   const name=(partyNames[party]||'').trim();
   if(name)center(name.toUpperCase().slice(0,43),17,bold,405);
   const customer=($('#customerName').value||'').trim();
@@ -174,11 +174,11 @@
     }
     if(rebateDocs.length){
       if(hirerDocs.length||guarantorDocs.length){
-        lastProcessingName='COVER PAGE COP REBATE';
-        setProgress(90,'Menambah cover page COP Rebate...');
+        lastProcessingName='COVER PAGE Corp & Gov Rebate';
+        setProgress(90,'Menambah cover page Corp & Gov Rebate...');
         await addRebateCoverPage(doc);
       }
-      log('Mula COP REBATE ('+rebateDocs.length+' fail).');
+      log('Mula Corp & Gov Rebate ('+rebateDocs.length+' fail).');
       await processPartyDocs('REBATE',rebateDocs,doc,state);
     }
     if(tradeinDocs.length){

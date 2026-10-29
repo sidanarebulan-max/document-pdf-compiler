@@ -37,7 +37,7 @@ async function open(source){
  const r=results.get(source);if(!r||busy)return;
  if(!r.valid()){results.delete(source);controls();alert('Maklumat atau dokumen telah berubah. Jana PDF semula sebelum simpan ke profil.');return}
  current=r;identity=null;rows=[];next=null;epoch++;seq++;const generation=epoch;
- $('generatedProfileFile').textContent=r.name+' · '+(r.blob.size/1048576).toFixed(2)+' MB\n'+(r.source==='application'?'Application Form · Pemohon / Lain-lain':r.source==='vso'?'VSO DRAF · Pemohon / VSO':r.party==='REBATE'?'PDF gabungan · COP Rebate / Lain-lain':r.party==='GUARANTOR'?'Dokumen lengkap · Penjamin':'Dokumen lengkap · Pemohon (termasuk bahagian penjamin jika digabung)');
+ $('generatedProfileFile').textContent=r.name+' · '+(r.blob.size/1048576).toFixed(2)+' MB\n'+(r.source==='application'?'Application Form · Pemohon / Lain-lain':r.source==='vso'?'VSO DRAF · Pemohon / VSO':r.party==='REBATE'?'PDF gabungan · Corp & Gov Rebate / Lain-lain':r.party==='GUARANTOR'?'Dokumen lengkap · Penjamin':'Dokumen lengkap · Pemohon (termasuk bahagian penjamin jika digabung)');
  $('generatedProfileSearch').value='';$('generatedProfileList').innerHTML='';$('generatedProfileMore').hidden=true;$('generatedProfileOpen').hidden=true;$('generatedProfileOpen').removeAttribute('href');status('Menyemak akaun…');dialog.showModal();
  if(r.blob.size>20*1048576){status('PDF ini melebihi had simpanan 20 MB. Kecilkan PDF atau jana dalam beberapa bahagian sebelum simpan.',true);return}
  try{

@@ -33,8 +33,8 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
   const PARTY_META = {
     HIRER:{label:'HIRER / PEMINJAM', short:'Hirer / Peminjam'},
     GUARANTOR:{label:'GUARANTOR / PENJAMIN', short:'Guarantor / Penjamin'},
-    REBATE:{label:'COP REBATE', short:'COP Rebate'},
-    TRADEIN:{label:'TRADE IN', short:'Trade in'}
+    REBATE:{label:'Corp & Gov Rebate', short:'Corp & Gov Rebate'},
+    TRADEIN:{label:'Trade In - UCM Rebate', short:'Trade In - UCM Rebate'}
   };
   let activeParty = 'HIRER';
   let partyNames = {HIRER:'', GUARANTOR:'', REBATE:'', TRADEIN:''};

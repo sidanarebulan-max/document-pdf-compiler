@@ -238,8 +238,8 @@
     const meta=PARTY_META[party];
     $('#inputPanelTitle').textContent=`Muat Naik Umum — ${meta.short}`;
     $('#reviewPanelTitle').textContent=`Dokumen — ${meta.short}`;
-    $('#partyBanner').innerHTML=`<b>${meta.label}</b><span>Masukkan dokumen ${party==='HIRER'?'peminjam':party==='GUARANTOR'?'penjamin':party==='TRADEIN'?'trade in (semua dokumen optional)':'untuk permohonan COP Rebate'} di bahagian ini.</span>`;
-    $('#dropTitle').textContent=party==='HIRER'?'Upload Dokumen Peminjam':party==='GUARANTOR'?'Upload Dokumen Penjamin':party==='TRADEIN'?'Upload Dokumen Trade in':'Upload Dokumen COP Rebate';
+    $('#partyBanner').innerHTML=`<b>${meta.label}</b><span>Masukkan dokumen ${party==='HIRER'?'peminjam':party==='GUARANTOR'?'penjamin':party==='TRADEIN'?'trade in (semua dokumen optional)':'untuk permohonan Corp & Gov Rebate'} di bahagian ini.</span>`;
+    $('#dropTitle').textContent=party==='HIRER'?'Upload Dokumen Peminjam':party==='GUARANTOR'?'Upload Dokumen Penjamin':party==='TRADEIN'?'Upload Dokumen Trade In - UCM Rebate':'Upload Dokumen Corp & Gov Rebate';
     $('#partyNameLabel').innerHTML=`Nama ${meta.short} <span class="optional">Optional</span>`;
     $('#partyName').value=partyNames[party]||'';
     $('#fileInput').value='';
@@ -420,6 +420,6 @@
   const count=parts.reduce((n,x)=>n+x.total,0);
   const desc=scopeLabel(scope);
   $('#compileScopeHint').textContent=`${desc} • ${count} fail dipilih`;
-  $('#checklist').innerHTML=block('HIRER / PEMINJAM',h,CATEGORIES)+block('GUARANTOR / PENJAMIN',g,CATEGORIES)+block('COP REBATE',r,REBATE_CATEGORIES)+block('TRADE IN',t,TRADEIN_CATEGORIES)+
+  $('#checklist').innerHTML=block('HIRER / PEMINJAM',h,CATEGORIES)+block('GUARANTOR / PENJAMIN',g,CATEGORIES)+block('Corp & Gov Rebate',r,REBATE_CATEGORIES)+block('Trade In - UCM Rebate',t,TRADEIN_CATEGORIES)+
     `<div class="merge-status ${count?'ready':''}">${count?'✓ '+count+' fail akan digabungkan: '+desc:'Masukkan dokumen pada tab yang dipilih untuk menjana PDF.'}</div>`;
 }
