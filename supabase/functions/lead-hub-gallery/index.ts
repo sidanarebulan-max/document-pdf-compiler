@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
-import {MAX_FILE,MODELS,isId,metadata,imageInfo} from "./validation.mjs";
+import {MAX_FILE,MODELS,isId,metadata,imageInfo,contentHash} from "./validation.mjs";
 const ROOT=Deno.env.get("SUPABASE_URL")!;
 const KEY=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS")||"{}").default;
 if(!KEY)throw Error("Server configuration missing");
@@ -30,6 +30,14 @@ async function bytesLimited(req:Request,max:number){
  const out=new Uint8Array(size);let offset=0;for(const c of chunks){out.set(c,offset);offset+=c.length}return out;
 }
 function checked<T>(fn:()=>T):T{try{return fn()}catch(e){throw new InputError(e.message)}}
+async function duplicate(req:Request,hash:string){
+ const {data:file,error}=await db.from("lead_hub_gallery").select("id,model,title,state").eq("content_sha256",hash).maybeSingle();
+ if(error)throw error;
+ if(!file)return null;
+ // A concurrent upload or deletion is not proof that a usable copy exists yet.
+ if(file.state!=="ready")return json(req,{ok:false,error:"Gambar sama sedang diproses. Cuba upload semula sebentar lagi."},409);
+ return json(req,{ok:true,id:file.id,duplicate:true,existing:{model:file.model,title:file.title}});
+}
 async function handler(req:Request){
  const origin=req.headers.get("origin")||"";
  if(origin&&!ORIGINS.has(origin))return json(req,{ok:false,error:"Origin tidak dibenarkan."},403);
@@ -43,13 +51,15 @@ async function handler(req:Request){
   const file=form.get("file");if(!(file instanceof File)||form.getAll("file").length!==1)throw new InputError("Pilih satu gambar untuk setiap upload.");
   const bytes=new Uint8Array(await file.arrayBuffer()),info=checked(()=>imageInfo(file.name,bytes));
   const meta=checked(()=>metadata({model:form.get("model"),title:form.get("title")},info.original_name.replace(/\.[^.]+$/,'')));
+  const content_sha256=await contentHash(bytes),found=await duplicate(req,content_sha256);if(found)return found;
   const id=crypto.randomUUID(),storage_path=a.id+"/"+id+"."+info.extension;
-  const {error:ie}=await db.from("lead_hub_gallery").insert({id,...meta,original_name:info.original_name,mime_type:info.mime_type,byte_size:bytes.length,storage_path,uploaded_by:a.id});if(ie)throw ie;
+  const {error:ie}=await db.from("lead_hub_gallery").insert({id,...meta,original_name:info.original_name,mime_type:info.mime_type,byte_size:bytes.length,storage_path,uploaded_by:a.id,content_sha256});
+  if(ie){if(ie.code==="23505"){const conflict=await duplicate(req,content_sha256);if(conflict)return conflict}throw ie}
   const {error:ue}=await db.storage.from(BUCKET).upload(storage_path,bytes,{contentType:info.mime_type,cacheControl:"60",upsert:false});
   if(ue){await db.from("lead_hub_gallery").delete().eq("id",id);throw ue}
   const {error:re}=await db.from("lead_hub_gallery").update({state:"ready"}).eq("id",id);
   if(re){await db.storage.from(BUCKET).remove([storage_path]);await db.from("lead_hub_gallery").delete().eq("id",id);throw re}
-  return json(req,{ok:true,id});
+  return json(req,{ok:true,id,duplicate:false});
  }
  const raw=await bytesLimited(req,8000);let body;
  try{body=JSON.parse(new TextDecoder().decode(raw));if(!body||Array.isArray(body)||typeof body!=="object")throw Error()}catch{throw new InputError("JSON tidak sah.")}

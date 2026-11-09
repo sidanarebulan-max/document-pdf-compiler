@@ -424,3 +424,13 @@ If the native Telegram slash-command list still shows older actions, an admin ca
 - **Status** menghantar fail gambar asal melalui Web Share API pada tap pengguna. Fail kecil yang disediakan lebih awal boleh terus membuka menu kongsi. Jika fail belum sedia, pratonton menyediakan tap **Kongsi Status** selepas muat turun selesai. Menu dan destinasi dikawal oleh telefon; web tidak memilih WhatsApp/Status Saya atau mengesahkan penerbitan.
 - Peranti tanpa sokongan kongsi fail mendapat download dan panduan WhatsApp. Tiada deep link Status tidak rasmi digunakan. Cache fail dibatasi tiga imej, luput selepas lima minit dan dibersihkan ketika logout.
 - Schema, pengesahan server dan bucket private tidak berubah. Ujian browser menggunakan tiga puluh poster, pagination, semua gaya, admin/staf, telefon/desktop, upload berbilang fail, edit/pindah/padam, user activation untuk kongsi dan fallback.
+
+
+## 9 Nov 2026 — Gallery exact-file deduplication
+
+- Apply `supabase/gallery-content-deduplication.sql` to existing or fresh Gallery installations, then deploy the Gallery Edge Function with `validation.mjs`. No RLS/grant/Storage-public changes.
+- The server computes SHA-256 from validated original bytes. A database unique index reserves one copy across all albums, including concurrent uploads. Renames and changed titles do not bypass it; different file contents are retained even when filenames match. Recompressed/resized images are treated as different files.
+- Existing ready copies return `duplicate:true` with the preserved record ID; no extra row or Storage object is created. A concurrent unfinished upload/deletion returns a retryable 409 rather than claiming a usable original exists.
+- The upload UI reports saved and skipped totals separately, consumes skipped files during partial-batch retries, and keeps the current album when the entire upload was duplicate.
+- `tests/gallery-dedupe.py` performs the one-time legacy cleanup using an authenticated admin session from stdin: dry run by default, `--apply` for deletion, `--manifest` for the internal fingerprint manifest. It hashes original bytes, retains the oldest copy, verifies the retained original before deleting extras via the existing Storage-aware API, and never writes tokens/URLs/image bytes. Backfill surviving IDs/hashes into `content_sha256`, then repeat the audit until every ready file is fingerprinted and no duplicates remain. Do not delete Storage objects using SQL.
+- Checks: cleanup grouping tests, Gallery validation and browser tests, and `tests/gallery-live.py` for renamed cross-album duplicates, same-name different content, concurrent uploads, staff permissions, sharing/download bytes and cleanup of synthetic fixtures.

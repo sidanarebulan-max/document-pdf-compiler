@@ -1,6 +1,10 @@
 export const MAX_FILE=20*1024*1024;
 export const MODELS=['emas7_phev','emas7_ev','emas5','poster_posting'];
 export const isId=value=>/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(String(value||''));
+export async function contentHash(bytes){
+ const digest=await crypto.subtle.digest('SHA-256',bytes);
+ return Array.from(new Uint8Array(digest),x=>x.toString(16).padStart(2,'0')).join('');
+}
 export function metadata(body,fallback=''){
  const model=String(body.model||'');
  const title=String(body.title||fallback).trim();

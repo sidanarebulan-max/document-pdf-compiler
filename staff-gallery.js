@@ -104,20 +104,20 @@ async function validateImage(file){
 async function upload(e){
  e.preventDefault();if(busy||user?.role!=="admin")return;
  const files=[...$("galleryUploadFiles").files];if(!files.length)return;
- const generation=version,originModel=model,payload={model:$("galleryUploadModel").value,title:$("galleryUploadTitleInput").value.trim()};let saved=0;
+ const generation=version,originModel=model,payload={model:$("galleryUploadModel").value,title:$("galleryUploadTitleInput").value.trim()};let saved=0,skipped=0,processed=0;
  busy=true;controls();
  try{
   for(const file of files){
    if(generation!==version)return;
-   notice("Menyimpan "+(saved+1)+" / "+files.length+": "+file.name);
+   notice("Menyemak "+(processed+1)+" / "+files.length+": "+file.name);
    await validateImage(file);if(generation!==version)return;
-   await api("upload",payload,file);saved++;
+   const result=await api("upload",payload,file);if(result.duplicate)skipped++;else saved++;processed++;
   }
-  if(generation===version){notice(saved+" gambar disimpan. Semua staff boleh lihat dalam Gallery.");$("galleryUploadFiles").value="";$("galleryUploadTitleInput").value="";if(model===originModel){model=payload.model;search="";$("gallerySearch").value=""}}
+  if(generation===version){notice(saved+" gambar baharu disimpan."+(skipped?" "+skipped+" gambar pendua dilangkau; salinan asal dikekalkan.":" Semua staff boleh lihat dalam Gallery."));$("galleryUploadFiles").value="";$("galleryUploadTitleInput").value="";if(saved&&model===originModel){model=payload.model;search="";$("gallerySearch").value=""}}
  }catch(e){if(generation===version){
   // Remove successful files from the selection so retry cannot silently duplicate them.
-  try{const remaining=new DataTransfer();for(const file of files.slice(saved))remaining.items.add(file);$("galleryUploadFiles").files=remaining.files}catch{$("galleryUploadFiles").value=""}
-  notice(saved+" gambar telah disimpan. "+e.message,true);
+  try{const remaining=new DataTransfer();for(const file of files.slice(processed))remaining.items.add(file);$("galleryUploadFiles").files=remaining.files}catch{$("galleryUploadFiles").value=""}
+  notice(saved+" gambar disimpan, "+skipped+" pendua dilangkau. "+e.message,true);
  }}finally{if(generation===version){busy=false;controls();await refresh()}}
 }
 function clearPreview(){previewVersion++;previewId=null;prepared=null;if(objectUrl)URL.revokeObjectURL(objectUrl);objectUrl=null;$("galleryPreviewImage").removeAttribute("src");$("galleryPreviewImage").alt="";$("galleryPreviewTitle").textContent=""}
