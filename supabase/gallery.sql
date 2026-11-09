@@ -1,7 +1,7 @@
 -- Shared sales images; custom Lead Hub sessions are checked in the Edge Function.
 create table public.lead_hub_gallery (
  id uuid primary key default gen_random_uuid(),
- model text not null check (model in ('emas7_phev','emas7_ev','emas5')),
+ model text not null check (model in ('emas7_phev','emas7_ev','emas5','poster_posting')),
  title text not null check (char_length(title) between 1 and 120),
  original_name text not null check (char_length(original_name) between 1 and 180),
  mime_type text not null check (mime_type in ('image/jpeg','image/png','image/webp')),

@@ -406,3 +406,11 @@ If the native Telegram slash-command list still shows older actions, an admin ca
 - Had simpanan Inbox kekal **20 MB setiap PDF**. PDF lebih besar perlu dikecilkan atau dijana berasingan; UI menerangkan had sebelum upload. Butang Download/Compiler/Google Drive sedia ada kekal tersedia.
 - Sumber: `generated-profile.js`, `generated-profile.css`, hook hasil dalam `app4.js` / `vso-exact.js`, pautan dalam `staff-customers.js`. Cache sumber menggunakan `generated-profile-v40-20261028`.
 - Pengesahan: `tests/generated-profile.browser.cjs` staff/admin × telefon/desktop menjalankan penjanaan PDF dua halaman dan VSO satu halaman daripada template asal, carian/pagination, upload/paut, retry tanpa pendua, semakan fail VSO sama dengan hasil download, had 20 MB serta perubahan input. Regresi profil termasuk pautan terus ke Dokumen; aliran import dua halaman Compiler turut lulus.
+
+
+## 9 Nov 2026 — Poster Posting dalam Gallery
+
+- Kategori `poster_posting` berlabel **Poster Posting** tersedia pada penapis, kolum, upload dan edit. Upload dari penapis aktif memilih kategori itu secara automatik.
+- Jalankan `supabase/gallery-poster-posting.sql` (migration `lead_hub_gallery_poster_posting`) dan deploy semula `lead-hub-gallery` bersama validator sebelum menerbitkan frontend. `supabase/gallery.sql` juga menyokong kategori ini untuk pemasangan baharu.
+- Sesi Lead Hub, pengesahan admin, RLS dan bucket private dikekalkan. Preview, kongsi, download dan upload berbilang gambar menggunakan aliran sedia ada.
+- Desktop mempunyai empat kategori; tablet dua dan telefon satu. Tiada poster diimport secara automatik.

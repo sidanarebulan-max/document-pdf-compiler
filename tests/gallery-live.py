@@ -13,7 +13,7 @@ def call(action,payload=None,role='admin',expect=200,raw=None,ctype=None,origin=
  except urllib.error.HTTPError as e:status=e.code;d=json.loads(e.read())
  assert status==expect,(action,status,d)
  return d
-def multipart(name='gallery-integration-test.png',data=png,model='emas7_phev',title='GALLERY INTEGRATION TEST'):
+def multipart(name='gallery-integration-test.png',data=png,model='poster_posting',title='GALLERY INTEGRATION TEST'):
  boundary='faris-'+uuid.uuid4().hex
  raw=b''
  for k,value in [('model',model),('title',title)]:raw+=f'--{boundary}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{value}\r\n'.encode()
@@ -28,8 +28,9 @@ try:
  bad,ct=multipart(name='spoof.jpg');call('upload',raw=bad,ctype=ct,expect=400)
  bad,ct=multipart(model='other');call('upload',raw=bad,ctype=ct,expect=400)
  id=call('upload',raw=raw,ctype=ctype)['id']
+ assert call('list',{'model':'poster_posting'},role='staff')['counts']['poster_posting']>=1
  d=call('list',role='staff');f=next(f for f in d['files'] if f['id']==id)
- assert f['title']=='GALLERY INTEGRATION TEST' and 'storage_path' not in f and f['model']=='emas7_phev'
+ assert f['title']=='GALLERY INTEGRATION TEST' and 'storage_path' not in f and f['model']=='poster_posting'
  with urllib.request.urlopen(f['url'],timeout=30) as r:assert r.read()==png
  link=call('download',{'id':id},role='staff')
  with urllib.request.urlopen(link['url'],timeout=30) as r:assert r.read()==png
@@ -38,6 +39,8 @@ try:
  call('delete',{'id':id,'confirmed':True},role='staff',expect=403)
  call('edit',{'id':id,'model':'emas5','title':'GALLERY TEST EDITED'})
  assert any(f['id']==id and f['title']=='GALLERY TEST EDITED' for f in call('list',{'model':'emas5'},role='staff')['files'])
+ call('edit',{'id':id,'model':'poster_posting','title':'GALLERY TEST POSTER'})
+ assert any(f['id']==id and f['title']=='GALLERY TEST POSTER' for f in call('list',{'model':'poster_posting'},role='staff')['files'])
  call('delete',{'id':id},expect=400)
  call('delete',{'id':id,'confirmed':True})
  call('download',{'id':id},role='staff',expect=404)

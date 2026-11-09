@@ -2,7 +2,7 @@ const uiAsset=require('./ui-assets.cjs');
 const {chromium}=require('playwright');
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=','base64');
-const initial=()=>['emas7_phev','emas7_ev','emas5'].map((model,i)=>({id:'00000000-0000-4000-8000-00000000000'+i,model,title:['PHEV Warna','EV Harga','e.MAS 5 Promosi'][i],original_name:'bahan-'+i+'.png',mime_type:'image/png',byte_size:png.length,created_at:'2026-10-28T02:00:00Z',url:'https://images.test/'+i+'.png'}));
+const initial=()=>['emas7_phev','emas7_ev','emas5','poster_posting'].map((model,i)=>({id:'00000000-0000-4000-8000-00000000000'+i,model,title:['PHEV Warna','EV Harga','e.MAS 5 Promosi','Tips Kereta Poster'][i],original_name:'bahan-'+i+'.png',mime_type:'image/png',byte_size:png.length,created_at:'2026-10-28T02:00:00Z',url:'https://images.test/'+i+'.png'}));
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.FARIS_TEST_CHROMIUM_PATH||undefined,args:['--no-sandbox','--disable-dev-shm-usage','--use-gl=angle','--use-angle=swiftshader','--disable-gpu-sandbox']});
  try{for(const role of ['staff','admin'])for(const mobile of [true,false]){
@@ -21,9 +21,9 @@ const initial=()=>['emas7_phev','emas7_ev','emas5'].map((model,i)=>({id:'0000000
     const gallery=url.pathname.endsWith('/lead-hub-gallery');
     const body=url.searchParams.has('action')?{}:req.postDataJSON();const action=url.searchParams.get('action')||body.action;calls.push({gallery,action});let result;
     if(gallery){
-     if(action==='list'){const files=rows.filter(r=>(!body.model||r.model===body.model)&&(!body.search||r.title.includes(body.search)));result={ok:true,files,total:files.length,next_offset:null,counts:Object.fromEntries(['emas7_phev','emas7_ev','emas5'].map(m=>[m,rows.filter(r=>r.model===m).length]))}}
+     if(action==='list'){const files=rows.filter(r=>(!body.model||r.model===body.model)&&(!body.search||r.title.includes(body.search)));result={ok:true,files,total:files.length,next_offset:null,counts:Object.fromEntries(['emas7_phev','emas7_ev','emas5','poster_posting'].map(m=>[m,rows.filter(r=>r.model===m).length]))}}
      if(action==='download')result={ok:true,file:rows.find(r=>r.id===body.id),url:'https://images.test/download.png'};
-     if(action==='upload'){uploadCount++;rows.unshift({...initial()[0],id:'10000000-0000-4000-8000-000000000001',model:'emas5',title:'Upload Baru'});result={ok:true,id:rows[0].id}}
+     if(action==='upload'){uploadCount++;rows.unshift({...initial()[0],id:'10000000-0000-4000-8000-000000000001',model:req.postData().match(/name="model"\r\n\r\n([^\r\n]+)/)?.[1],title:'Upload Baru'});result={ok:true,id:rows[0].id}}
      if(action==='edit'){Object.assign(rows.find(r=>r.id===body.id),{model:body.model,title:body.title});result={ok:true}}
      if(action==='delete'){rows=rows.filter(r=>r.id!==body.id);result={ok:true}}
     }else{result=action==='me'?{ok:true,user:{id:role,role,display_name:'Faris Test',staff_code:role==='admin'?'FARIS01':'SAZ0001'}}:action==='list'?{ok:true,leads:[],history:[],staff:[],available_count:0}:{ok:true,team:{},personal:{}}}
@@ -32,21 +32,22 @@ const initial=()=>['emas7_phev','emas7_ev','emas5'].map((model,i)=>({id:'0000000
    return route.fulfill({contentType:'text/javascript',body:''});
   });
   await page.goto('https://gallery.test/staff.html#gallery');
-  await page.waitForFunction(()=>document.getElementById('galleryCountAll').textContent==='3');
+  await page.waitForFunction(()=>document.getElementById('galleryCountAll').textContent==='4');
   const nav=page.locator(mobile?'#mobileDock':'#workspaceNav');
   assert.deepEqual(await nav.locator('button').evaluateAll(nodes=>nodes.map(n=>n.dataset.mobileNav||n.dataset.workspaceNav)),mobile?['home','customers','docs','whatsapp',undefined]:['home','gallery','whatsapp','customers','docs','telegram','settings']);
-  assert.equal(await page.locator('.gallery-category').count(),3);assert.equal(await page.locator('.gallery-card').count(),3);
-  assert.equal(await page.locator('#galleryUploadToggle').isVisible(),role==='admin');assert.equal(await page.locator('[data-gallery-edit]').count(),role==='admin'?3:0);
+  assert.equal(await page.locator('.gallery-category').count(),4);assert.equal(await page.locator('.gallery-card').count(),4);
+  assert.equal(await page.locator('#galleryCountPoster').textContent(),'1');assert.equal(await page.getByRole('heading',{name:'Poster Posting',exact:true}).count(),1);
+  assert.equal(await page.locator('#galleryUploadToggle').isVisible(),role==='admin');assert.equal(await page.locator('[data-gallery-edit]').count(),role==='admin'?4:0);
   await page.locator('[data-gallery-model="emas7_ev"]').click();await page.waitForFunction(()=>document.querySelectorAll('.gallery-card').length===1);assert.match(await page.locator('#galleryColumns').innerText(),/EV Harga/);
   await page.locator('[data-gallery-share]').click();await page.locator('#galleryPreviewShare:not([disabled])').waitFor();assert.equal(await page.locator('#galleryPreview').isVisible(),true);await page.locator('#galleryPreviewShare').click();assert.equal((await page.evaluate(()=>window.__shared))[0].type,'image/png');
   const [download]=await Promise.all([page.waitForEvent('download'),page.locator('#galleryPreviewDownload').click()]);assert.equal(download.suggestedFilename(),'bahan-1.png');await page.locator('#galleryPreviewClose').click();
-  await page.locator('[data-gallery-model=""]').click();await page.waitForFunction(()=>document.querySelectorAll('.gallery-card').length===3);
+  await page.locator('[data-gallery-model=""]').click();await page.waitForFunction(()=>document.querySelectorAll('.gallery-card').length===4);
   await page.locator('#gallerySearch').fill('PHEV');await page.locator('#gallerySearchForm button').click();await page.waitForFunction(()=>document.querySelectorAll('.gallery-card').length===1);
-  await page.locator('#gallerySearch').fill('');await page.locator('#gallerySearchForm button').click();await page.waitForFunction(()=>document.querySelectorAll('.gallery-card').length===3);
+  await page.locator('#gallerySearch').fill('');await page.locator('#gallerySearchForm button').click();await page.waitForFunction(()=>document.querySelectorAll('.gallery-card').length===4);
   if(role==='admin'){
-   await page.locator('#galleryUploadToggle').click();await page.locator('#galleryUploadModel').selectOption('emas5');await page.locator('#galleryUploadTitleInput').fill('Upload Baru');await page.locator('#galleryUploadFiles').setInputFiles({name:'upload-baru.png',mimeType:'image/png',buffer:png});await page.locator('#galleryUploadSubmit').click();await page.waitForFunction(()=>document.getElementById('galleryCountAll').textContent==='4');assert.equal(uploadCount,1);
-   await page.locator('[data-gallery-edit="10000000-0000-4000-8000-000000000001"]').click();await page.locator('#galleryEditName').fill('Tajuk Baharu');await page.locator('#galleryEditModel').selectOption('emas7_ev');await page.locator('#galleryEditSave').click();await page.waitForFunction(()=>!document.getElementById('galleryEdit').open);await page.getByRole('heading',{name:'Tajuk Baharu'}).waitFor();
-   page.once('dialog',d=>d.accept());await page.locator('[data-gallery-delete="10000000-0000-4000-8000-000000000001"]').click();await page.waitForFunction(()=>document.getElementById('galleryCountAll').textContent==='3');
+   await page.locator('[data-gallery-model="poster_posting"]').click();await page.waitForFunction(()=>document.querySelectorAll('.gallery-card').length===1);await page.locator('#galleryUploadToggle').click();assert.equal(await page.locator('#galleryUploadModel').inputValue(),'poster_posting');await page.locator('#galleryUploadTitleInput').fill('Upload Baru');await page.locator('#galleryUploadFiles').setInputFiles({name:'upload-baru.png',mimeType:'image/png',buffer:png});await page.locator('#galleryUploadSubmit').click();await page.waitForFunction(()=>document.getElementById('galleryCountAll').textContent==='5');assert.equal(uploadCount,1);assert.equal(rows[0].model,'poster_posting');assert.equal(await page.locator('#galleryCountPoster').textContent(),'2');
+   await page.locator('[data-gallery-edit="10000000-0000-4000-8000-000000000001"]').click();assert.equal(await page.locator('#galleryEditModel').inputValue(),'poster_posting');await page.locator('#galleryEditName').fill('Tajuk Baharu');await page.locator('#galleryEditModel').selectOption('emas7_ev');await page.locator('#galleryEditSave').click();await page.waitForFunction(()=>!document.getElementById('galleryEdit').open);await page.locator('[data-gallery-model=""]').click();await page.getByRole('heading',{name:'Tajuk Baharu'}).waitFor();
+   page.once('dialog',d=>d.accept());await page.locator('[data-gallery-delete="10000000-0000-4000-8000-000000000001"]').click();await page.waitForFunction(()=>document.getElementById('galleryCountAll').textContent==='4');
   }
   if(role==='staff'&&!mobile){await page.evaluate(()=>Object.defineProperty(navigator,'canShare',{value:()=>false}));await page.locator('[data-gallery-preview]').first().click();await page.locator('#galleryPreviewDownload:not([disabled])').waitFor();assert.equal(await page.locator('#galleryPreviewShare').isDisabled(),true);assert.match(await page.locator('#galleryPreviewStatus').innerText(),/Download gambar dahulu/);await page.locator('#galleryPreviewClose').click()}
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);

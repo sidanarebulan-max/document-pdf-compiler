@@ -1,10 +1,10 @@
 export const MAX_FILE=20*1024*1024;
-export const MODELS=['emas7_phev','emas7_ev','emas5'];
+export const MODELS=['emas7_phev','emas7_ev','emas5','poster_posting'];
 export const isId=value=>/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(String(value||''));
 export function metadata(body,fallback=''){
  const model=String(body.model||'');
  const title=String(body.title||fallback).trim();
- if(!MODELS.includes(model))throw Error('Pilih kategori kereta yang sah.');
+ if(!MODELS.includes(model))throw Error('Pilih kategori Gallery yang sah.');
  if(!title||title.length>120)throw Error('Tajuk gambar mesti antara 1–120 aksara.');
  return {model,title};
 }

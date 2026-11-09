@@ -2,7 +2,7 @@
 "use strict";
 const ROOT="https://qagsczjxzshjxmmxvkbq.supabase.co/functions/v1/lead-hub-gallery";
 const SESSION="faris_lead_hub_session_v2";
-const MODELS={emas7_phev:"e.MAS 7 PHEV",emas7_ev:"e.MAS 7 EV",emas5:"e.MAS 5"};
+const MODELS={emas7_phev:"e.MAS 7 PHEV",emas7_ev:"e.MAS 7 EV",emas5:"e.MAS 5",poster_posting:"Poster Posting"};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let user=null,rows=[],counts={},model="",search="",next=null,version=0,requestId=0,busy=false;
@@ -27,7 +27,7 @@ function controls(){
 }
 function render(){
  const all=Object.values(counts).reduce((n,x)=>n+Number(x),0);
- for(const [id,key] of [["galleryCountPhev","emas7_phev"],["galleryCountEv","emas7_ev"],["galleryCountFive","emas5"]])$(id).textContent=counts[key]||0;
+ for(const [id,key] of [["galleryCountPhev","emas7_phev"],["galleryCountEv","emas7_ev"],["galleryCountFive","emas5"],["galleryCountPoster","poster_posting"]])$(id).textContent=counts[key]||0;
  $("galleryCountAll").textContent=all;
  $("galleryColumns").classList.toggle("gallery-filtered",!!model);
  $("galleryColumns").innerHTML=Object.entries(MODELS).filter(([key])=>!model||key===model).map(([key,label])=>{
@@ -130,7 +130,7 @@ function reset(){
 window.FARIS_GALLERY={onLogin(account){reset();user=account;$("galleryUploadToggle").classList.toggle("hide",user.role!=="admin");render()},onLogout:reset,onShow(){refresh()}};
 document.addEventListener("DOMContentLoaded",()=>{
  $("galleryRefresh").addEventListener("click",()=>refresh());$("galleryLoadMore").addEventListener("click",()=>refresh(true));
- $("galleryUploadToggle").addEventListener("click",()=>{const open=$("galleryUploadPanel").classList.toggle("hide")===false;$("galleryUploadToggle").setAttribute("aria-expanded",String(open));if(open)$("galleryUploadModel").focus()});
+ $("galleryUploadToggle").addEventListener("click",()=>{const open=$("galleryUploadPanel").classList.toggle("hide")===false;$("galleryUploadToggle").setAttribute("aria-expanded",String(open));if(open){if(model)$("galleryUploadModel").value=model;$("galleryUploadModel").focus()}});
  $("galleryUploadForm").addEventListener("submit",upload);
  $("gallerySearchForm").addEventListener("submit",e=>{e.preventDefault();search=$("gallerySearch").value.trim();refresh()});
  $("gallerySearch").addEventListener("search",()=>{if(!$("gallerySearch").value){search="";refresh()}});
