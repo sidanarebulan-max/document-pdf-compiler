@@ -414,3 +414,13 @@ If the native Telegram slash-command list still shows older actions, an admin ca
 - Jalankan `supabase/gallery-poster-posting.sql` (migration `lead_hub_gallery_poster_posting`) dan deploy semula `lead-hub-gallery` bersama validator sebelum menerbitkan frontend. `supabase/gallery.sql` juga menyokong kategori ini untuk pemasangan baharu.
 - Sesi Lead Hub, pengesahan admin, RLS dan bucket private dikekalkan. Preview, kongsi, download dan upload berbilang gambar menggunakan aliran sedia ada.
 - Desktop mempunyai empat kategori; tablet dua dan telefon satu. Tiada poster diimport secara automatik.
+
+
+## 9 Nov 2026 — Gallery album dan gaya paparan
+
+- Halaman Gallery bermula dengan empat tajuk album dan jumlah gambar. Gambar hanya dipaparkan selepas pengguna membuka album; kembali melalui **Semua album**.
+- Dalam album, pengguna boleh memilih **Grid**, **Mendatar**, **Senarai** atau **Fokus**. Pilihan paparan disimpan bagi setiap akaun pada peranti itu. Paparan mendatar menyokong leretan serta butang sebelum/seterusnya. Gambar asal menggunakan `object-fit: contain`.
+- Carian tajuk album berfungsi pada halaman awal. Carian gambar dan pagination kekal di dalam album. Upload menggunakan album aktif dan boleh menerima beberapa gambar; nama fail dengan underscore dipaparkan sebagai tajuk yang lebih mudah dibaca.
+- **Status** menghantar fail gambar asal melalui Web Share API pada tap pengguna. Fail kecil yang disediakan lebih awal boleh terus membuka menu kongsi. Jika fail belum sedia, pratonton menyediakan tap **Kongsi Status** selepas muat turun selesai. Menu dan destinasi dikawal oleh telefon; web tidak memilih WhatsApp/Status Saya atau mengesahkan penerbitan.
+- Peranti tanpa sokongan kongsi fail mendapat download dan panduan WhatsApp. Tiada deep link Status tidak rasmi digunakan. Cache fail dibatasi tiga imej, luput selepas lima minit dan dibersihkan ketika logout.
+- Schema, pengesahan server dan bucket private tidak berubah. Ujian browser menggunakan tiga puluh poster, pagination, semua gaya, admin/staf, telefon/desktop, upload berbilang fail, edit/pindah/padam, user activation untuk kongsi dan fallback.
