@@ -86,18 +86,25 @@ async function directory(append=false){
  finally{if(gen===epoch&&id===listing){host.setAttribute('aria-busy','false');$('customersList').setAttribute('aria-busy','false');$('customersMore').disabled=false}}
 }
 let whatsappTrendListing=0;
-function whatsappTrendFilters(){return {from:$('whatsappTrendFrom').value,to:$('whatsappTrendTo').value,group:$('whatsappTrendGroup').value}}
-function whatsappTrendPreset(){const range=insightCore.preset($('whatsappTrendPeriod').value);$('whatsappTrendFrom').value=range.from;$('whatsappTrendTo').value=range.to}
+function whatsappTrendFilters(){const range=insightCore.calendarWeek($('whatsappWeekDate').value);return range?{from:range.from,to:range.to,group:'day'}:null}
+function whatsappWeekControls(){
+ const range=insightCore.calendarWeek($('whatsappWeekDate').value);
+ $('whatsappWeekRange').textContent=range?insightCore.bucketLabel(range.from)+' – '+insightCore.bucketLabel(range.to):'Pilih tarikh yang sah';
+ $('whatsappWeekPrevious').disabled=!range||!insightCore.calendarWeek(range.from,-1);
+ $('whatsappWeekNext').disabled=!range||!insightCore.calendarWeek(range.from,1);
+}
+function whatsappTrendPreset(){$('whatsappWeekDate').value=insightCore.localDate();whatsappWeekControls()}
+function whatsappShiftWeek(offset){const range=insightCore.calendarWeek($('whatsappWeekDate').value,offset);if(!range)return;$('whatsappWeekDate').value=range.from;loadWhatsappTrend()}
 function renderWhatsappTrend(d,filters){
- const trend=d.trend||[],max=Math.max(1,...trend.map(x=>Number(x.total)||0));
- $('whatsappTrendResult').innerHTML='<section class="insights-panel insights-trend"><div class="insights-panel-title"><h3 id="whatsappTrendTitle">Trend lead masuk</h3><span>Status semasa mengikut tarikh lead masuk</span></div>'+(trend.length?'<div class="insights-trend-scroll"><table><caption class="sr-only">Trend status semasa kumpulan lead masuk</caption><thead><tr><th>Tempoh</th><th>Jumlah</th><th>LOU</th><th>Deliver</th><th>Pending</th><th>Trade In</th><th class="insights-trend-bar-cell">Trend</th></tr></thead><tbody>'+trend.map(x=>'<tr><th>'+esc(insightCore.bucketLabel(x.bucket,filters.group))+'</th><td>'+countNumber(x.total)+'</td><td>'+countNumber(x.lou)+'</td><td>'+countNumber(x.delivered)+'</td><td>'+countNumber(x.pending)+'</td><td>'+countNumber(x.trade_in)+'</td><td class="insights-trend-bar-cell"><div class="insights-track"><span style="width:'+Math.min(100,Math.max(0,(Number(x.total)||0)/max*100)).toFixed(2)+'%"></span></div></td></tr>').join('')+'</tbody></table></div>':'<p class="insights-empty">Tiada lead dalam tapisan ini. Cuba tempoh atau tapisan lain.</p>')+'</section>';
- $('whatsappTrendContext').textContent='Dikemas kini '+when(d.generated_at)+' · '+(filters.from||'Awal rekod')+' → '+(filters.to||'Terkini')+' · Waktu Malaysia. Status semasa bagi lead yang masuk dalam tempoh ini; bukan tarikh status berubah.';
+ const trend=insightCore.weekRows(d.trend,insightCore.calendarWeek(filters.from)),max=Math.max(1,...trend.map(x=>Number(x.total)||0));
+ $('whatsappTrendResult').innerHTML='<section class="insights-panel insights-trend"><div class="insights-panel-title"><h3 id="whatsappTrendTitle">Jumlah harian · 7 hari</h3><span>Isnin–Ahad</span></div><div class="insights-trend-scroll"><table><caption class="sr-only">Jumlah harian dan status semasa lead bagi minggu '+esc(filters.from)+' hingga '+esc(filters.to)+'</caption><thead><tr><th>Tarikh</th><th>Jumlah</th><th>LOU</th><th>Deliver</th><th>Pending</th><th>Trade In</th><th class="insights-trend-bar-cell">Trend</th></tr></thead><tbody>'+trend.map(x=>'<tr><th scope="row">'+esc(insightCore.bucketLabel(x.bucket))+'</th><td>'+countNumber(x.total)+'</td><td>'+countNumber(x.lou)+'</td><td>'+countNumber(x.delivered)+'</td><td>'+countNumber(x.pending)+'</td><td>'+countNumber(x.trade_in)+'</td><td class="insights-trend-bar-cell"><div class="insights-track"><span style="width:'+Math.min(100,Math.max(0,(Number(x.total)||0)/max*100)).toFixed(2)+'%"></span></div></td></tr>').join('')+'</tbody></table></div></section>';
+ $('whatsappTrendContext').textContent='Dikemas kini '+when(d.generated_at)+' · Waktu Malaysia. Status semasa mengikut tarikh lead masuk.';
 }
 async function loadWhatsappTrend(){
  if(!user)return;
  const gen=epoch,id=++whatsappTrendListing,filters=whatsappTrendFilters(),host=$('whatsappTrendResult');
- $('whatsappTrendContext').textContent='';
- if(!insightCore.validRange(filters.from,filters.to)){host.innerHTML='<p class="insights-error" role="alert">Semak tarikh mula dan akhir.</p>';host.setAttribute('aria-busy','false');return}
+ $('whatsappTrendContext').textContent='';whatsappWeekControls();
+ if(!filters){host.innerHTML='<p class="insights-error" role="alert">Pilih tarikh dalam minggu yang sah.</p>';host.setAttribute('aria-busy','false');return}
  host.setAttribute('aria-busy','true');host.innerHTML='<p class="insights-empty">Memuatkan trend lead masuk…</p>';
  try{
   const d=await request('dashboard',{...filters,search:'',status:'',model:null,variant:null,colour:null,bucket:'',staff_id:'',offset:0});
@@ -220,9 +227,10 @@ window.FARIS_CUSTOMERS={onLogin(account){reset();user=account;$('customersStaff'
 document.addEventListener('DOMContentLoaded',()=>{
  insightPreset();whatsappTrendPreset();
  $('whatsappTrendForm').addEventListener('submit',e=>{e.preventDefault();loadWhatsappTrend()});
- $('whatsappTrendPeriod').addEventListener('change',()=>{if($('whatsappTrendPeriod').value!=='custom'){whatsappTrendPreset();loadWhatsappTrend()}});
- for(const id of ['whatsappTrendFrom','whatsappTrendTo'])$(id).addEventListener('change',()=>{$('whatsappTrendPeriod').value='custom';loadWhatsappTrend()});
- $('whatsappTrendGroup').addEventListener('change',loadWhatsappTrend);
+ $('whatsappWeekDate').addEventListener('change',loadWhatsappTrend);
+ $('whatsappWeekPrevious').addEventListener('click',()=>whatsappShiftWeek(-1));
+ $('whatsappWeekNext').addEventListener('click',()=>whatsappShiftWeek(1));
+ $('whatsappWeekCurrent').addEventListener('click',()=>{whatsappTrendPreset();loadWhatsappTrend()});
  $('customersClearFilters').addEventListener('click',()=>{$('customersFilterForm').reset();directory()});
  $('customerInsightsResult').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.hasAttribute('data-insight-bucket')){$('customersBucket').value=$('customersBucket').value===b.dataset.insightBucket?'':b.dataset.insightBucket}else if(b.hasAttribute('data-insight-model')){$('customersModel').value=b.dataset.insightModel;const v=$('customersVariant');if(![...v.options].some(o=>o.value===b.dataset.insightVariant))v.add(new Option(JSON.parse(b.dataset.insightVariant)||'Varian belum diisi',b.dataset.insightVariant));v.value=b.dataset.insightVariant}else if(b.hasAttribute('data-insight-colour')){$('customersColour').value=b.dataset.insightColour}else if(b.hasAttribute('data-insight-status')){$('customersStatus').value=b.dataset.insightStatus}else return;directory().then(()=>{if(user)$('customerListHeading').scrollIntoView({behavior:'smooth',block:'start'})})});
  $('customerInsightsForm').addEventListener('submit',e=>{e.preventDefault();loadInsights()});

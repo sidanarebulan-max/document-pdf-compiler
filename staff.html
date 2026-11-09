@@ -12,7 +12,7 @@
  <meta name="description" content="Portal staf Proton: masuk menggunakan ID dan passcode, ambil nombor pelanggan, buka WhatsApp dalam telefon.">
  <link rel="stylesheet" href="/staff.css?v=customers-v39-20261028">
  <link rel="stylesheet" href="/staff-gallery.css?v=gallery-dedupe-v3-20261109">
- <link rel="stylesheet" href="/staff-customers.css?v=customer-summary-v58-20261030">
+ <link rel="stylesheet" href="/staff-customers.css?v=whatsapp-week-v60-20261109">
  <style>
   .credential{border:1px solid #405e98;background:linear-gradient(135deg,#101d38,#1d3156);border-radius:14px;padding:16px;margin-top:10px}
   .credential strong{display:block;color:#96baff;font-size:10px;letter-spacing:1.5px}
@@ -316,35 +316,10 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
   <div class="metric"><span>Follow-up</span><strong id="metricFollow">0</strong></div>
   <div class="metric"><span>Booking</span><strong id="metricBooked">0</strong></div>
  </div><section id="whatsappTrend" class="customer-insights" aria-label="Trend lead masuk">
-  <form id="whatsappTrendForm" class="insights-filters">
-   <label>Tempoh<select id="whatsappTrendPeriod"><option value="today">Hari ini</option><option value="week">Minggu ini</option><option value="month" selected>Bulan ini</option><option value="all">Semua tarikh</option><option value="custom">Pilih tarikh</option></select></label>
-   <label>Dari tarikh<input id="whatsappTrendFrom" type="date" min="2000-01-01" max="2100-12-31"></label>
-   <label>Hingga tarikh<input id="whatsappTrendTo" type="date" min="2000-01-01" max="2100-12-31"></label>
-   <label>Paparan trend<select id="whatsappTrendGroup"><option value="day">Harian</option><option value="week">Mingguan</option><option value="month">Bulanan</option></select></label>
-   <button type="submit" class="primary">Lihat trend</button>
-  </form>
+  <div class="whatsapp-week-heading"><div><h3>Jumlah harian mengikut minggu</h3><p id="whatsappWeekRange" class="muted" aria-live="polite"></p></div><nav class="whatsapp-week-nav" aria-label="Pilih minggu"><button type="button" class="secondary" id="whatsappWeekPrevious" aria-label="Minggu sebelum">←</button><button type="button" class="secondary" id="whatsappWeekCurrent">Minggu ini</button><button type="button" class="secondary" id="whatsappWeekNext" aria-label="Minggu selepas">→</button></nav></div>
+  <form id="whatsappTrendForm" class="whatsapp-week-picker"><label>Pilih tarikh dalam minggu<input id="whatsappWeekDate" type="date" min="2000-01-03" max="2100-12-26" required></label><button type="submit" class="primary">Lihat minggu</button></form>
   <div id="whatsappTrendResult" aria-live="polite" aria-busy="false"></div>
   <p id="whatsappTrendContext" class="muted small insights-context"></p>
- </section><section id="leadSection" class="panel">
-  <div class="panelhead lead-section-head"><div><h2>WhatsApp · Senarai Pelanggan</h2><p class="muted">Tekan WhatsApp untuk mesej pelanggan. Tekan nama atau nombor untuk buka status, tarikh dan catatan.</p><p class="small muted" id="lastRefresh" aria-live="polite">Belum disegarkan.</p></div>
-      <button class="secondary lead-refresh" id="refreshBtn" type="button">↻ Refresh Nombor</button></div>
-  <div class="filters">
-   <input id="leadSearch" type="search" placeholder="Cari nama, nombor atau model...">
-   <select id="stageFilter"><option value="">Semua status</option><option value="new">Belum diambil</option><option value="claimed">Sudah diambil</option><option value="contacted">Dihubungi</option><option value="follow_up">Follow-up</option><option value="interested">Berminat</option><option value="booked">Booking</option><option value="not_interested">Tidak berminat</option></select>
-   <select id="messageTemplate"><option value="intro">Skrip: Pengenalan</option><option value="follow">Skrip: Follow-up</option><option value="price">Skrip: Harga / Loan</option></select>
-  </div>
-  <div class="pm-tabs" id="staffPmTabs" role="tablist" aria-label="Urusan WhatsApp">
-   <button type="button" class="pm-tab" role="tab" data-pm-tab="pending" aria-selected="true" aria-controls="leadList"><span>⏳ <span id="pmPendingLabel">Belum PM</span></span><span id="pmPendingCount" class="pm-count">0</span></button>
-   <button type="button" class="pm-tab" role="tab" data-pm-tab="sent" aria-selected="false" aria-controls="leadList"><span>✅ Dah PM</span><span id="pmSentCount" class="pm-count">0</span></button>
-   <button type="button" class="pm-tab" role="tab" data-pm-tab="history" aria-selected="false" aria-controls="pmHistoryList"><span>☏ Sejarah Nombor</span><span id="pmHistoryCount" class="pm-count">0</span></button>
-   <button type="button" class="pm-tab" role="tab" data-pm-tab="log" aria-selected="false" aria-controls="pmActivityList"><span>🕓 Log Aktiviti</span><span id="pmActivityCount" class="pm-count">0</span></button>
-  </div>
-  <p id="pmTabHint" class="small muted pm-tab-hint">Sejarah Nombor ialah senarai pelanggan yang boleh di-PM oleh staf lain. Log Aktiviti merekod siapa yang claim, buka WhatsApp dan sahkan PM. Buka WhatsApp sahaja belum bermaksud mesej dihantar.</p>
-  <p class="muted small" id="listMessage"></p>
-  <p class="small muted" id="queueCount" aria-live="polite"></p>
-  <div class="lead-list" id="leadList" aria-live="polite"></div>
-  <div class="pm-history-list hide" id="pmHistoryList" role="tabpanel" aria-live="polite" aria-label="Sejarah Nombor"></div>
-  <div class="pm-history-list hide" id="pmActivityList" role="tabpanel" aria-live="polite" aria-label="Log Aktiviti WhatsApp"></div>
  </section><section id="whatsappAdminPanel" class="panel hide" data-admin-only><div class="panelhead"><div><h2>Tambah & Import Nombor</h2><p class="muted">Masukkan nombor pelanggan dan agihkan kepada staf aktif.</p></div></div><div class="admin-grid"><section class="innerpanel">
     <h3>Tambah satu nombor pelanggan</h3>
     <form id="addLeadForm">
@@ -367,7 +342,27 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
     <label class="checkline"><input id="importAutoAssign" type="checkbox" checked> <span>Auto agihkan nombor kepada staf aktif.</span></label>
     <button class="primary full" id="importBtn" type="button">Import Lead</button>
     <p id="importResult" class="small muted"></p>
-   </section></div></section><section class="panel hide" id="messageSettingsPanel" aria-labelledby="messageSettingsTitle">
+   </section></div></section><section id="leadSection" class="panel">
+  <div class="panelhead lead-section-head"><div><h2>WhatsApp · Senarai Pelanggan</h2><p class="muted">Tekan WhatsApp untuk mesej pelanggan. Tekan nama atau nombor untuk buka status, tarikh dan catatan.</p><p class="small muted" id="lastRefresh" aria-live="polite">Belum disegarkan.</p></div>
+      <button class="secondary lead-refresh" id="refreshBtn" type="button">↻ Refresh Nombor</button></div>
+  <div class="filters">
+   <input id="leadSearch" type="search" placeholder="Cari nama, nombor atau model...">
+   <select id="stageFilter"><option value="">Semua status</option><option value="new">Belum diambil</option><option value="claimed">Sudah diambil</option><option value="contacted">Dihubungi</option><option value="follow_up">Follow-up</option><option value="interested">Berminat</option><option value="booked">Booking</option><option value="not_interested">Tidak berminat</option></select>
+   <select id="messageTemplate"><option value="intro">Skrip: Pengenalan</option><option value="follow">Skrip: Follow-up</option><option value="price">Skrip: Harga / Loan</option></select>
+  </div>
+  <div class="pm-tabs" id="staffPmTabs" role="tablist" aria-label="Urusan WhatsApp">
+   <button type="button" class="pm-tab" role="tab" data-pm-tab="pending" aria-selected="true" aria-controls="leadList"><span>⏳ <span id="pmPendingLabel">Belum PM</span></span><span id="pmPendingCount" class="pm-count">0</span></button>
+   <button type="button" class="pm-tab" role="tab" data-pm-tab="sent" aria-selected="false" aria-controls="leadList"><span>✅ Dah PM</span><span id="pmSentCount" class="pm-count">0</span></button>
+   <button type="button" class="pm-tab" role="tab" data-pm-tab="history" aria-selected="false" aria-controls="pmHistoryList"><span>☏ Sejarah Nombor</span><span id="pmHistoryCount" class="pm-count">0</span></button>
+   <button type="button" class="pm-tab" role="tab" data-pm-tab="log" aria-selected="false" aria-controls="pmActivityList"><span>🕓 Log Aktiviti</span><span id="pmActivityCount" class="pm-count">0</span></button>
+  </div>
+  <p id="pmTabHint" class="small muted pm-tab-hint">Sejarah Nombor ialah senarai pelanggan yang boleh di-PM oleh staf lain. Log Aktiviti merekod siapa yang claim, buka WhatsApp dan sahkan PM. Buka WhatsApp sahaja belum bermaksud mesej dihantar.</p>
+  <p class="muted small" id="listMessage"></p>
+  <p class="small muted" id="queueCount" aria-live="polite"></p>
+  <div class="lead-list" id="leadList" aria-live="polite"></div>
+  <div class="pm-history-list hide" id="pmHistoryList" role="tabpanel" aria-live="polite" aria-label="Sejarah Nombor"></div>
+  <div class="pm-history-list hide" id="pmActivityList" role="tabpanel" aria-live="polite" aria-label="Log Aktiviti WhatsApp"></div>
+ </section><section class="panel hide" id="messageSettingsPanel" aria-labelledby="messageSettingsTitle">
    <div class="panelhead msg-settings-head">
      <div>
        <h2 id="messageSettingsTitle">⚙ Tetapan Mesej WhatsApp</h2>
@@ -660,8 +655,8 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="/inbox-client.js?v=gallery-v38-20261028"></script>
 <script src="/staff-gallery.js?v=gallery-dedupe-v3-20261109"></script>
-<script src="/customer-insights-core.js?v=customer-summary-v58-20261030"></script>
-<script src="/staff-customers.js?v=customer-summary-v58-20261030"></script>
+<script src="/customer-insights-core.js?v=whatsapp-week-v60-20261109"></script>
+<script src="/staff-customers.js?v=whatsapp-week-v60-20261109"></script>
 <script src="/staff-inbox.js?v=customers-v39-20261028"></script>
 <script src="/staff-navigation.js?v=customers-v39-20261028"></script>
 <script src="/staff-passcode.js?v=application-v42-20261028-customers-v39-20261028"></script>

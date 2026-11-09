@@ -434,3 +434,10 @@ If the native Telegram slash-command list still shows older actions, an admin ca
 - The upload UI reports saved and skipped totals separately, consumes skipped files during partial-batch retries, and keeps the current album when the entire upload was duplicate.
 - `tests/gallery-dedupe.py` performs the one-time legacy cleanup using an authenticated admin session from stdin: dry run by default, `--apply` for deletion, `--manifest` for the internal fingerprint manifest. It hashes original bytes, retains the oldest copy, verifies the retained original before deleting extras via the existing Storage-aware API, and never writes tokens/URLs/image bytes. Backfill surviving IDs/hashes into `content_sha256`, then repeat the audit until every ready file is fingerprinted and no duplicates remain. Do not delete Storage objects using SQL.
 - Checks: cleanup grouping tests, Gallery validation and browser tests, and `tests/gallery-live.py` for renamed cross-album duplicates, same-name different content, concurrent uploads, staff permissions, sharing/download bytes and cleanup of synthetic fixtures.
+
+
+## 9 Nov 2026 — Weekly WhatsApp totals and number entry order
+
+- WhatsApp now displays one Monday–Sunday calendar week with exactly seven daily rows, including zero-count days. The initial week uses the Malaysia date; previous/next week, **Minggu ini**, and a date picker support other weeks. Backend dashboard requests always use the chosen week's inclusive start/end dates and `group: day`. Existing customer-directory filters and dashboard semantics remain unchanged.
+- **Tambah & Import Nombor** is immediately below weekly totals, before the customer list, on phone and desktop. Existing admin visibility, required consent, auto-assignment and upload/import actions remain intact.
+- Verification: `tests/customer-insights.test.cjs` covers week/year/leap boundaries and zero days; the workspace browser suite covers staff/admin on phone/desktop, seven rows, exact API date filters, previous/next/current week, invalid dates, form order, number submission and workspace/logout regression.

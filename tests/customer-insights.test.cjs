@@ -6,6 +6,16 @@ test('Malaysia date presets respect UTC midnight, Monday weeks and month boundar
  assert.deepEqual(core.preset('month',new Date('2026-12-31T16:00:00Z')),{from:'2027-01-01',to:'2027-01-01'});assert.deepEqual(core.preset('all'),{from:'',to:''});
  assert.ok(core.validRange('2028-02-29','2028-03-01'));assert.ok(!core.validRange('2026-02-29','2026-03-01'));assert.ok(!core.validRange('2026-11-01','2026-10-01'));assert.ok(!core.validRange('2026-02-31',''));assert.ok(core.bucketLabel('2026-10-26','week').startsWith('Minggu'));
 });
+test('WhatsApp weeks are seven Monday–Sunday dates across year and leap-day boundaries',()=>{
+ const year=core.calendarWeek('2027-01-01');assert.equal(year.from,'2026-12-28');assert.equal(year.to,'2027-01-03');assert.equal(year.days.length,7);
+ assert.deepEqual(core.calendarWeek('2026-11-09',-1).days,['2026-11-02','2026-11-03','2026-11-04','2026-11-05','2026-11-06','2026-11-07','2026-11-08']);
+ assert.equal(core.calendarWeek('2026-11-15',1).from,'2026-11-16');assert.ok(core.calendarWeek('2028-02-29').days.includes('2028-02-29'));
+ for(const invalid of ['', '2026-02-30','bad','2000-01-01','2100-12-31'])assert.equal(core.calendarWeek(invalid),null);
+});
+test('Weekly daily rows preserve counts, include zero days and exclude other weeks',()=>{
+ const range=core.calendarWeek('2026-11-09'),source=[{bucket:'2026-11-10',total:4,lou:1,delivered:0,pending:3,trade_in:2},{bucket:'2026-11-16',total:99}];
+ const rows=core.weekRows(source,range);assert.equal(rows.length,7);assert.equal(rows[0].total,0);assert.equal(rows[1].total,4);assert.equal(rows[1].trade_in,2);assert.equal(rows.reduce((n,r)=>n+r.total,0),4);assert.equal(source.length,2);assert.equal(core.weekRows([],range).every(r=>r.total===0),true);
+});
 test('Edge filters reject invalid ranges, status and account selectors; actor cannot be supplied by caller',async()=>{
  const {insightsFilters}=await import('../supabase/functions/lead-hub-customers/insights.mjs');const {STATUSES,isId}=await import('../supabase/functions/lead-hub-customers/validation.mjs');
  for(const b of [{from:'2026-02-30'},{to:'bad'},{from:'2027-01-01',to:'2026-01-01'},{group:'year'},{status:'made_up'},{staff_id:'bad'}])assert.throws(()=>insightsFilters(b,STATUSES,isId));
