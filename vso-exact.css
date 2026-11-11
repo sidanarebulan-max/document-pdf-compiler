@@ -20,3 +20,10 @@
 .vsoExactPanel.vso-template-loaded .vsoExactPill{background:#184b43;color:#b5ffe7}
 .vsoExactWord{display:inline-flex;margin:0 0 10px;color:#b5e7ff;font-size:11px;text-decoration:underline;text-underline-offset:3px}
 #vsoExactPlaceholder[hidden],#vsoExactCanvas[hidden]{display:none}
+.vsoExportFeedback{padding:12px;border:1px solid var(--ios-line,#40547a);border-radius:10px;background:var(--ios-surface-2,#14233e);color:var(--ios-text,#d7e8ff);font-size:12px;line-height:1.5}
+.vsoPreviewPanel>.vsoExportFeedback{margin:0 17px 15px}
+.vsoExportFeedback p{margin:0}
+.vsoExportFeedback.vsoExportError{color:var(--ios-red,#ffbbcb)}
+.vsoExportLinks{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.vsoExportFeedback[hidden],.vsoExportLinks[hidden]{display:none}
+.vsoExportLinks a{display:inline-flex;align-items:center;min-height:44px;box-sizing:border-box;text-decoration:none}
