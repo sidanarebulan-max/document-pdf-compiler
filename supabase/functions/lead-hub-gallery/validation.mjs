@@ -5,7 +5,11 @@ const VARIANTS={
  emas7_ev:['premium','premium_plus'],
  emas5:['prime','premium']
 };
-const COLOURS=['white','black','silver','grey','pink','blue','green','red','brown','yellow','purple','two_tone'];
+const COLOURS={
+ emas7_ev:['white','green','grey','silver','pink','black'],
+ emas7_phev:['black','white','silver','grey','blue','green'],
+ emas5:['white','silver','grey','cream','pink','green']
+};
 const VIEWS=['front','rear','side','exterior','interior','dashboard','seats','boot','wheels','charging','brochure','other'];
 const POSTER_TYPES=['car','general'];
 export const isId=value=>/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(String(value||''));
@@ -29,7 +33,7 @@ export function catalogue(model,body){
  const poster=model==='poster_posting';
  return {
   variant:optionalChoice(body.variant,VARIANTS[model]||[],'Varian'),
-  colour:optionalChoice(body.colour,poster||!model?[]:COLOURS,'Warna'),
+  colour:optionalChoice(body.colour,COLOURS[model]||[],'Warna'),
   view:optionalChoice(body.view,poster||!model?[]:VIEWS,'Bahagian gambar'),
   poster_type:optionalChoice(body.poster_type,poster?POSTER_TYPES:[],'Jenis poster')
  };

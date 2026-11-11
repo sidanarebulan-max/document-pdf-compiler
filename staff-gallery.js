@@ -9,15 +9,28 @@ const VARIANTS={
  emas5:{prime:"Prime",premium:"Premium"}
 };
 const COLOURS={
- white:["Putih","#f4f5f7"],black:["Hitam","#20242a"],silver:["Perak","#b6bec8"],
- grey:["Kelabu","#697581"],pink:["Pink","#ed9abf"],blue:["Biru","#4682c9"],
- green:["Hijau","#4a876b"],red:["Merah","#cc4854"],brown:["Coklat","#926649"],
- yellow:["Kuning","#e7b847"],purple:["Ungu","#9873b8"],two_tone:["Dua tona","linear-gradient(135deg,#eef2f7 50%,#263348 50%)"]
+ emas7_ev:{
+  white:["Lithium White","#f5f4ef"],green:["Turquoise Green","#427f77"],
+  grey:["Slate Grey","#60666d"],silver:["Platinum Silver","#bfc4ca"],
+  pink:["Quartz Rose","#d6a6b0"],black:["Obsidian Black","#222428"]
+ },
+ emas7_phev:{
+  black:["Obsidian Black","#222428"],white:["Lithium White","#f5f4ef"],
+  silver:["Mercury Silver","#c1c5ca"],grey:["Galena Grey","#64666a"],
+  blue:["Aquamarine Blue","#4b7d9b"],green:["Emerald Green","#266052"]
+ },
+ emas5:{
+  white:["Moonstone White","#f4f4ef"],silver:["Graphite Silver","#a5a9af"],
+  grey:["Slate Grey","#60666d"],cream:["Marble Cream","#e8d9bd"],
+  pink:["Quartz Rose","#d6a6b0"],green:["Jade Green","#77948a"]
+ }
 };
 const VIEWS={front:"Depan",rear:"Belakang",side:"Sisi",exterior:"Luaran",interior:"Dalaman",dashboard:"Papan pemuka",seats:"Tempat duduk",boot:"Ruang but",wheels:"Rim & tayar",charging:"Pengecasan",brochure:"Brosur",other:"Lain-lain"};
 const POSTER_TYPES={car:"Poster Kereta",general:"Poster Biasa"};
 const TAG_FIELDS=["variant","colour","view","poster_type"];
-const COLOUR_LABELS=Object.fromEntries(Object.entries(COLOURS).map(([key,[label]])=>[key,label]));
+const COLOUR_LABELS=Object.fromEntries(Object.entries(COLOURS).map(([model,colours])=>
+ [model,Object.fromEntries(Object.entries(colours).map(([key,[label]])=>[key,label]))]
+));
 const LAYOUTS=["grid","horizontal","list","focus"];
 const LAYOUT_KEY="faris_gallery_layout_v2:";
 const $=id=>document.getElementById(id);
@@ -62,11 +75,13 @@ function configureTags(kind,values={}){
  const group=$("gallery"+kind+"Tags");
  const fields=selectedModel==="poster_posting"
   ?[["poster_type","Jenis poster",POSTER_TYPES,null]]
-  :[["variant","Varian",VARIANTS[selectedModel]||{},"Belum ditag"],["colour","Warna",COLOUR_LABELS,"Belum ditag"],["view","Bahagian gambar",VIEWS,"Belum ditag"]];
+  :[["variant","Varian",VARIANTS[selectedModel]||{},"Belum ditag"],["colour","Warna",COLOUR_LABELS[selectedModel]||{},"Belum ditag"],["view","Bahagian gambar",VIEWS,"Belum ditag"]];
  group.innerHTML=fields.map(([key,label,options,empty])=>
   '<label>'+label+'<select name="'+key+'">'+choices(options,empty)+'</select></label>'
  ).join("");
- for(const [key,,,empty] of fields)group.querySelector('[name="'+key+'"]').value=values[key]||(empty?"":"general");
+ for(const [key,,options,empty] of fields){
+  group.querySelector('[name="'+key+'"]').value=Object.hasOwn(options,values[key])?values[key]:empty?"":"general";
+ }
 }
 function formTags(kind){
  const group=$("gallery"+kind+"Tags");
@@ -89,7 +104,7 @@ function renderCatalogue(){
     Object.entries(POSTER_TYPES).map(([key,label])=>filterButton("poster_type",key,label)).join("")+'</div>';
   }else{
    const variants=Object.entries(VARIANTS[model]||{}).map(([key,label])=>filterButton("variant",key,label)).join("");
-   const colours=Object.entries(COLOURS).map(([key,[label,swatch]])=>filterButton("colour",key,label,swatch)).join("");
+   const colours=Object.entries(COLOURS[model]||{}).map(([key,[label,swatch]])=>filterButton("colour",key,label,swatch)).join("");
    root.innerHTML='<fieldset><legend>Varian</legend><div class="gallery-filter-options">'+filterButton("variant","","Semua varian")+variants+'</div></fieldset>'+
     '<fieldset class="gallery-colour-filter"><legend>Warna</legend><div class="gallery-filter-options">'+filterButton("colour","","Semua warna")+colours+'</div></fieldset>'+
     '<div class="gallery-filter-footer"><label>Bahagian gambar<select id="galleryView">'+choices(VIEWS,"Semua bahagian")+'</select></label>'+
@@ -103,7 +118,8 @@ function renderCatalogue(){
 }
 function imageTags(file){
  if(file.model==="poster_posting")return POSTER_TYPES[file.poster_type||"general"]||"";
- return [VARIANTS[file.model]?.[file.variant],COLOUR_LABELS[file.colour],VIEWS[file.view]].filter(Boolean).join(" · ");
+ const colour=COLOUR_LABELS[file.model]?.[file.colour]||pretty(file.colour);
+ return [VARIANTS[file.model]?.[file.variant],colour,VIEWS[file.view]].filter(Boolean).join(" · ");
 }
 function imageCard(f){
  const title=pretty(f.title),tags=imageTags(f);

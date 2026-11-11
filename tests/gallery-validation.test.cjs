@@ -2,15 +2,19 @@ const test=require('node:test'),assert=require('node:assert/strict');
 const mod=import('../supabase/functions/lead-hub-gallery/validation.mjs');
 test('gallery catalogue accepts model-specific variants and rejects incompatible tags',async()=>{
  const {metadata,catalogue}=await mod;
- const tags={variant:'premium_plus',colour:'pink',view:'front'};
+ const tags={variant:'premium_plus',colour:'blue',view:'front'};
  assert.deepEqual(catalogue('emas7_phev',tags),{...tags,poster_type:null});
- assert.deepEqual(catalogue('emas7_ev',tags),{...tags,poster_type:null});
+ assert.deepEqual(catalogue('emas7_ev',{...tags,colour:'pink'}),{...tags,colour:'pink',poster_type:null});
+ assert.equal(catalogue('emas5',{colour:'cream'}).colour,'cream');
  assert.equal(metadata({model:'emas5',title:'Dalaman',variant:'prime',view:'interior'}).variant,'prime');
  assert.equal(metadata({model:'poster_posting',title:'Poster',poster_type:'car'}).poster_type,'car');
  for(const [model,invalid] of [
   ['emas7_ev',{variant:'prime'}],
   ['emas5',{variant:'premium_plus'}],
   ['emas5',{colour:'p!nk'}],
+  ['emas7_phev',{colour:'pink'}],
+  ['emas7_ev',{colour:'blue'}],
+  ['emas7_ev',{colour:'cream'}],
   ['emas7_phev',{view:'unknown'}],
   ['poster_posting',{variant:'premium'}],
   ['emas5',{poster_type:'car'}]
