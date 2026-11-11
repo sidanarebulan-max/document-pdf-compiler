@@ -1,12 +1,12 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
-import {MAX_FILE,MODELS,isId,metadata,imageInfo,contentHash} from "./validation.mjs";
+import {MAX_FILE,MODELS,isId,metadata,catalogue,imageInfo,contentHash} from "./validation.mjs";
 const ROOT=Deno.env.get("SUPABASE_URL")!;
 const KEY=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS")||"{}").default;
 if(!KEY)throw Error("Server configuration missing");
 const db=createClient(ROOT,KEY,{auth:{persistSession:false,autoRefreshToken:false}});
 const BUCKET="lead-hub-gallery-private";
 const ORIGINS=new Set(["https://document-pdf-compiler.vercel.app","https://document-pdf-compiler-makanaman.vercel.app","https://document-pdf-compiler-git-main-makanaman.vercel.app"]);
-const FIELDS="id,model,title,original_name,mime_type,byte_size,created_at,updated_at";
+const FIELDS="id,model,title,original_name,mime_type,byte_size,created_at,updated_at,variant,colour,view,poster_type";
 class InputError extends Error {}
 function json(req:Request,value:unknown,status=200){
  const origin=req.headers.get("origin")||"";
@@ -50,7 +50,8 @@ async function handler(req:Request){
   let form:FormData;try{form=await new Request(req.url,{method:"POST",headers:{"content-type":req.headers.get("content-type")||""},body:raw}).formData()}catch{throw new InputError("Format upload tidak sah.")}
   const file=form.get("file");if(!(file instanceof File)||form.getAll("file").length!==1)throw new InputError("Pilih satu gambar untuk setiap upload.");
   const bytes=new Uint8Array(await file.arrayBuffer()),info=checked(()=>imageInfo(file.name,bytes));
-  const meta=checked(()=>metadata({model:form.get("model"),title:form.get("title")},info.original_name.replace(/\.[^.]+$/,'')));
+  const tags=Object.fromEntries(["model","title","variant","colour","view","poster_type"].map(key=>[key,form.get(key)]));
+  const meta=checked(()=>metadata(tags,info.original_name.replace(/\.[^.]+$/,'')));
   const content_sha256=await contentHash(bytes),found=await duplicate(req,content_sha256);if(found)return found;
   const id=crypto.randomUUID(),storage_path=a.id+"/"+id+"."+info.extension;
   const {error:ie}=await db.from("lead_hub_gallery").insert({id,...meta,original_name:info.original_name,mime_type:info.mime_type,byte_size:bytes.length,storage_path,uploaded_by:a.id,content_sha256});
@@ -68,6 +69,12 @@ async function handler(req:Request){
   const offset=Math.max(0,Math.min(100000,Math.floor(Number(body.offset)||0)));
   let q=db.from("lead_hub_gallery").select(FIELDS+",storage_path",{count:"exact"}).eq("state","ready").order("created_at",{ascending:false}).order("id");
   if(body.model)q=q.eq("model",body.model);
+  const filters=checked(()=>catalogue(body.model,body));
+  if(filters.variant)q=q.eq("variant",filters.variant);
+  if(filters.colour)q=q.eq("colour",filters.colour);
+  if(filters.view)q=q.eq("view",filters.view);
+  if(filters.poster_type==="general")q=q.or("poster_type.eq.general,poster_type.is.null");
+  if(filters.poster_type==="car")q=q.eq("poster_type","car");
   const search=String(body.search||"").trim().slice(0,100);
   if(search)q=q.ilike("title","%"+search.replace(/[\\%_]/g,"\\$&")+"%");
   const [result,...totals]=await Promise.all([q.range(offset,offset+59),...MODELS.map(model=>db.from("lead_hub_gallery").select("id",{count:"exact",head:true}).eq("state","ready").eq("model",model))]);
@@ -94,7 +101,10 @@ async function handler(req:Request){
  const {data:file,error}=await db.from("lead_hub_gallery").select(FIELDS+",storage_path").eq("id",body.id).eq("state","ready").maybeSingle();
  if(error)throw error;if(!file)return json(req,{ok:false,error:"Gambar tidak ditemui. Refresh Gallery."},404);
  if(body.action==="edit"){
-  const meta=checked(()=>metadata(body));
+  const sameModel=body.model===file.model;
+  const fields=["variant","colour","view","poster_type"] as const;
+  const tags=Object.fromEntries(fields.map(key=>[key,Object.hasOwn(body,key)?body[key]:sameModel?file[key]:null]));
+  const meta=checked(()=>metadata({...body,...tags}));
   const {data,error:ue}=await db.from("lead_hub_gallery").update({...meta,updated_at:new Date().toISOString()}).eq("id",file.id).eq("state","ready").select("id").maybeSingle();
   if(ue)throw ue;if(!data)return json(req,{ok:false,error:"Gambar telah berubah. Refresh Gallery."},409);
   return json(req,{ok:true});

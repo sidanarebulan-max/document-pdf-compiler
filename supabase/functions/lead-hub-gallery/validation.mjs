@@ -1,5 +1,13 @@
 export const MAX_FILE=20*1024*1024;
 export const MODELS=['emas7_phev','emas7_ev','emas5','poster_posting'];
+const VARIANTS={
+ emas7_phev:['prime','premium','premium_plus'],
+ emas7_ev:['premium','premium_plus'],
+ emas5:['prime','premium']
+};
+const COLOURS=['white','black','silver','grey','pink','blue','green','red','brown','yellow','purple','two_tone'];
+const VIEWS=['front','rear','side','exterior','interior','dashboard','seats','boot','wheels','charging','brochure','other'];
+const POSTER_TYPES=['car','general'];
 export const isId=value=>/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(String(value||''));
 export async function contentHash(bytes){
  const digest=await crypto.subtle.digest('SHA-256',bytes);
@@ -10,7 +18,21 @@ export function metadata(body,fallback=''){
  const title=String(body.title||fallback).trim();
  if(!MODELS.includes(model))throw Error('Pilih kategori Gallery yang sah.');
  if(!title||title.length>120)throw Error('Tajuk gambar mesti antara 1–120 aksara.');
- return {model,title};
+ return {model,title,...catalogue(model,body)};
+}
+function optionalChoice(value,allowed,label){
+ if(value==null||value==='')return null;
+ if(!allowed.includes(value))throw Error(label+' tidak sah.');
+ return value;
+}
+export function catalogue(model,body){
+ const poster=model==='poster_posting';
+ return {
+  variant:optionalChoice(body.variant,VARIANTS[model]||[],'Varian'),
+  colour:optionalChoice(body.colour,poster||!model?[]:COLOURS,'Warna'),
+  view:optionalChoice(body.view,poster||!model?[]:VIEWS,'Bahagian gambar'),
+  poster_type:optionalChoice(body.poster_type,poster?POSTER_TYPES:[],'Jenis poster')
+ };
 }
 export function imageInfo(name,bytes){
  if(!bytes.length||bytes.length>MAX_FILE)throw Error('Setiap gambar maksimum 20 MB dan tidak boleh kosong.');
