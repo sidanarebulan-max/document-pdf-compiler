@@ -6,9 +6,12 @@ const {stripTypeScriptTypes}=require('node:module'),PDFLib=require('pdf-lib');
  for(const [id,anchor,net,fees,insurance] of [['EMAS7_PHEV_PRIME_2026',113611,109430,4181,3811],['EMAS7_PHEV_PREMIUM_2026',127995,123430,4565,4195]]){
   const v=api.get(id);assert.equal(v.id,id);assert.equal(v.baseOtr,anchor);assert.equal(v.baseNet,net);assert.equal(api.charges(v),fees);assert.equal(v.fees.insurance,insurance);assert.equal(v.fees.handling,null);assert.equal(api.calculate(80000,'AUTO',id).net,net);
  }
- const handoff=fs.readFileSync('staff-handoff.js','utf8'),match=vm.runInNewContext(handoff.slice(handoff.indexOf('function variantId('),handoff.indexOf('function warn('))+';variantId');
- for(const v of api.list)assert.equal(match(v.display),v.id);
- assert.equal(match('e.MAS 7 PHEV'),null);assert.equal(match('e.MAS 7 PHEV Premium Plus'),'EMAS7_PHEV_PREMIUM_PLUS_2026');
+ for(const variant of api.list)assert.equal(api.match(variant.display)?.id,variant.id);
+ assert.equal(api.match('e.MAS 7 PHEV'),undefined);
+ assert.equal(api.match('e.MAS 7 PHEV Premium Plus')?.id,'EMAS7_PHEV_PREMIUM_PLUS_2026');
+ const quote=api.customerQuote({model:'e.MAS 5',variant:'Prime'},{deposit:10000,rebate_amount:3000});
+ assert.equal(quote.loan_amount,49600);
+ assert.equal(quote.otr_price,62600);
  for(const kind of ['AUTO','PLAIN','MARKUP'])for(const [loan,otr] of [[60000,75800],[68220,75800],[68220.01,75800.01],[72800,80888.89],[75800,84222.22]]){
   const r=api.calculate(loan,kind);assert.equal(r.otr,otr);assert.equal(r.loanLimit,68220);assert.equal(r.anchorPrice,75800);assert.equal(r.net,Math.round((otr-3708)*100)/100);assert.equal(r.adjusted,loan>68220);
  }

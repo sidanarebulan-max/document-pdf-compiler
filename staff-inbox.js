@@ -33,17 +33,25 @@ async function upload(){
  const files=[...$("inboxUpload").files];if(!files.length||busy)return;
  busy=true;$("inboxUploadButton").disabled=true;let saved=0;
  const version=generation;
+ const phone=$("inboxUploadPhone")?.value.trim()||"";
+ let profile;
  try{
+  if(phone && window.FARIS_CUSTOMER_WORKFLOW){
+   const result=await window.FARIS_CUSTOMER_WORKFLOW.fetchProfile({phone,account_id:user.id});
+   profile=result.customer.lead.id;
+  }
   for(const file of files){
    if(version!==generation)throw Error("Akaun telah berubah. Penghantaran dihentikan.");
    if(file.size>20*1048576)throw Error(file.name+" melebihi 20 MB.");
    notice("Menyimpan "+(saved+1)+" / "+files.length+": "+file.name);
-   await api().upload(file);saved++;
+   const metadata=profile?{customer_id:profile,account_id:user.id,party:$("inboxParty").value,category:$("inboxCategory").value}:{};
+   await api().upload(file,metadata);saved++;
   }
   if(version!==generation)return;
-  notice(saved+" fail disimpan dalam Fail Masuk. Belum diagihkan kepada pelanggan.");
+  if(profile&&$("inboxUploadPhone"))$("inboxUploadPhone").value="";
+  notice(saved+(profile?" fail disimpan dalam Dokumen Pelanggan.":" fail disimpan dalam Fail Masuk."));
  }catch(e){if(version===generation)notice(saved+" fail sudah disimpan. "+e.message,true)}
- finally{if(version===generation){busy=false;$("inboxUploadButton").disabled=false;$("inboxUpload").value="";$("inboxState").value="inbox";await refresh()}}
+ finally{if(version===generation){busy=false;$("inboxUploadButton").disabled=false;$("inboxUpload").value="";$("inboxState").value=profile?"assigned":"inbox";await refresh()}}
 }
 function categories(){
  $("inboxCategory").innerHTML=cats[$("inboxParty").value].map(c=>'<option value="'+c+'">'+(c==="AUTO"?"Semak kategori dalam Compiler":c.replaceAll("_"," "))+'</option>').join("");
@@ -56,11 +64,11 @@ async function assign(open){
  busy=true;selection();
  const version=generation;
  try{
-  await api().request("assign",payload);
+  const result=await api().request("assign",payload);
   if(version!==generation)return;
   if(open){
    sessionStorage.setItem("faris_inbox_compiler_v1",JSON.stringify({ids,account_id:user.id,created_at:Date.now()}));
-   location.assign("/?tool=COMPILER&origin=staff&inbox=1");
+   location.assign(window.FARIS_CUSTOMER_WORKFLOW?.url("COMPILER",result.customer_id,"&inbox=1")||"/?tool=COMPILER&origin=staff&inbox=1");
   }else{notice("Agihan fail disimpan. Fail asal kekal dalam simpanan.");await refresh()}
  }catch(e){if(version===generation)notice(e.message,true)}finally{if(version===generation){busy=false;selection()}}
 }
@@ -105,7 +113,7 @@ function wire(){
 window.FARIS_INBOX={
  onLogin(account){generation++;user=account;rows=[];selected.clear();loading=false;busy=false;$("inboxRefresh").disabled=false;$("inboxUploadButton").disabled=false;$("inboxTeamLabel").classList.toggle("hide",user.role!=="admin");$("inboxOwnerLabel").classList.toggle("hide",user.role!=="admin");$("inboxTeam").checked=false;render()},
  onShow(){refresh()},
- onLogout(){generation++;user=null;rows=[];selected.clear();loading=false;busy=false;$("inboxList").innerHTML="";$("inboxUploadKey").value="";$("inboxKeyResult").classList.add("hide");$("inboxIphoneGuide").open=false;for(const id of ["inboxCustomer","inboxPhone","inboxSearch"])$(id).value=""}
+ onLogout(){if($("inboxUploadPhone"))$("inboxUploadPhone").value="";generation++;user=null;rows=[];selected.clear();loading=false;busy=false;$("inboxList").innerHTML="";$("inboxUploadKey").value="";$("inboxKeyResult").classList.add("hide");$("inboxIphoneGuide").open=false;for(const id of ["inboxCustomer","inboxPhone","inboxSearch"])$(id).value=""}
 };
 document.addEventListener("DOMContentLoaded",wire);
 })();

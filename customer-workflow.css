@@ -1,0 +1,15 @@
+.staff-workflow-banner {
+ box-sizing:border-box;max-width:1580px;margin:12px auto 16px;padding:14px 16px;border:1px solid #37619d;
+ border-radius:12px;background:#10223e;color:#eaf3ff;font:14px/1.5 system-ui,sans-serif;
+}
+.staff-workflow-banner p {margin:8px 0}
+.staff-workflow-banner .workflow-error {color:#ffd0b9}
+.staff-workflow-banner label {display:inline-flex;flex-wrap:wrap;align-items:center;gap:8px}
+.staff-workflow-banner input {padding:8px;border-radius:6px;max-width:100%;box-sizing:border-box}
+.staff-workflow-actions,.customer-workflow-actions {display:flex;flex-wrap:wrap;gap:10px;margin:10px 0}
+.staff-workflow-banner a,.staff-workflow-banner button {
+ color:white;background:#223b68;border:1px solid #5275b6;border-radius:8px;padding:8px 12px;font:inherit;cursor:pointer;
+}
+.staff-workflow-banner [hidden] {display:none}
+#customerSharedTrading summary,#customerSharedPersonal summary {cursor:pointer;padding:10px 0;font-weight:650}
+#customerWorkflowStatus {font-size:.875rem;margin:8px 0}

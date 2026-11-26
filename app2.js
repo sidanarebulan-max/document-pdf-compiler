@@ -137,15 +137,25 @@
     render();
     // Jana thumbnail secara berperingkat, bebas daripada analisis pengelasan.
     for(const item of newlyAdded)makeSourceThumbnail(item);
+    if(options.profileUpload!==false)window.FARIS_WORKSPACE_PROFILE?.trackInputs(newlyAdded).catch(e=>log(e.message));
     if(files.length&&options.analyze!==false){ await analyzeAll(false,uploadParty); }
     return newlyAdded;
   }
 
-  window.FARIS_COMPILER={async importInbox(entries){
+  window.FARIS_COMPILER={
+   pendingFiles(){return items.filter(item=>!item.profileFileId)},
+   currentNameKey(){return {HIRER:'customer_name',GUARANTOR:'guarantor_name',REBATE:'rebate_name',TRADEIN:'tradein_name'}[activeParty]},
+   customerNames(data){
+    Object.assign(partyNames,{HIRER:data.customer_name||'',GUARANTOR:data.guarantor_name||'',REBATE:data.rebate_name||'',TRADEIN:data.tradein_name||''});
+    $('#partyName').value=partyNames[activeParty];
+   },
+   async importInbox(entries){
     for(const {file,metadata} of entries){
       const party=['HIRER','GUARANTOR','REBATE','TRADEIN'].includes(metadata.party)?metadata.party:'HIRER';
       switchParty(party);
-      const added=await addFiles([file],{analyze:false});
+      if(metadata.id&&items.some(item=>item.profileFileId===metadata.id))continue;
+      const added=await addFiles([file],{analyze:false,profileUpload:false});
+      if(metadata.id){added[0].profileFileId=metadata.id;added[0].profileCustomerId=metadata.customer_id||null;}
       if(added.length!==1)throw Error('Format fail tidak boleh dibuka dalam Compiler: '+file.name);
       const item=added[0],valid=categoriesFor(party).map(x=>x.id);
       const manual=valid.includes(metadata.category);
@@ -154,10 +164,12 @@
       item.manualCategory=manual;
       item.confidence=manual?100:guess.confidence;item.review=!manual;item.analyzed=manual;
       item.note=manual?'Kategori dipilih daripada Fail Masuk':'Dari Fail Masuk — semak kategori atau tekan Analisis';
-      partyNames[party]=metadata.customer_name||'';
+      if(!window.FARIS_WORKSPACE_PROFILE?.active)partyNames[party]=metadata.customer_name||'';
       $('#partyName').value=partyNames[party];
-      if(metadata.customer_name)$('#customerName').value=metadata.customer_name;
-      if(metadata.customer_phone)$('#customerPhone').value=metadata.customer_phone;
+      if(!window.FARIS_WORKSPACE_PROFILE?.active){
+       if(metadata.customer_name)$('#customerName').value=metadata.customer_name;
+       if(metadata.customer_phone)$('#customerPhone').value=metadata.customer_phone;
+      }
     }
     render();log(entries.length+' fail dimuatkan daripada Fail Masuk. Fail asal kekal disimpan.');
   }};

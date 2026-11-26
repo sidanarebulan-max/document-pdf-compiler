@@ -154,5 +154,40 @@ const present=(result,placement='NET')=>{
  return {...result,placement:accessoriesMode?'ACCESSORIES':'NET',accessoriesExcess:extraCents/100,
   net:extraCents?(Math.round(result.net*100)-extraCents)/100:result.net};
 };
-window.VSO_VARIANTS=Object.freeze({list,get,charges,calculate,present});
+const norm=value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,'');
+const vehicleVariants=list.map(v=>({
+ ...v,
+ family:v.id.startsWith('EMAS5')?'e.MAS 5':v.id.includes('PHEV')?'e.MAS 7 PHEV':'e.MAS 7 EV',
+ grade:v.model.match(/(Premium Plus|Premium|Prime)$/i)?.[0]||''
+}));
+function match(model,grade=''){
+ const name=norm(model).replace(/^proton/,'').replace(/20[0-9]{2}$/,'');
+ const family=name==='emas7'?'emas7ev':name;
+ return vehicleVariants.find(v=>
+  norm(v.family)===family&&norm(v.grade)===norm(grade) ||
+  (norm(v.model)===name||norm(v.family+v.grade)===name)&&(!grade||norm(v.grade)===norm(grade))
+ );
+}
+function customerQuote(previous,patch){
+ const updated={...previous,...patch};
+ const vehicle=match(updated.model,updated.variant);
+ const changedVehicle=vehicle?.id!==match(previous.model,previous.variant)?.id;
+ if(changedVehicle&&vehicle){
+  if(!('selling_price' in patch))patch.selling_price=vehicle.baseNet;
+  if(!('vehicle_year' in patch))patch.vehicle_year=String(vehicle.year);
+  if(!('insurance_amount' in patch))patch.insurance_amount=null;
+ }
+ const insurance=patch.insurance_amount!==undefined?patch.insurance_amount:updated.insurance_amount;
+ const quote=vehicle?vehicle.baseOtr+Number(insurance??vehicle.fees.insurance??0)-Number(vehicle.fees.insurance??0):updated.otr_price;
+ const adjust=['deposit','rebate_amount','insurance_amount','otr_price','selling_price'].some(key=>key in patch);
+ if(!('loan_amount' in patch)&&quote!=null&&(adjust||changedVehicle&&(updated.deposit!=null||updated.rebate_amount!=null))){
+  patch.loan_amount=Math.max(0,Math.round((quote-Number(updated.deposit||0)-Number(updated.rebate_amount||0))*100)/100);
+ }
+ if(vehicle&&('loan_amount' in patch||changedVehicle||updated.otr_price==null)&&!('otr_price' in patch)){
+  const result=calculate(Number(patch.loan_amount??updated.loan_amount??0),'AUTO',vehicle.id);
+  if(Number.isFinite(result.otr))patch.otr_price=result.otr;
+ }
+ return patch;
+}
+window.VSO_VARIANTS=Object.freeze({list,get,charges,calculate,present,match,vehicleVariants,customerQuote});
 })();

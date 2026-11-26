@@ -70,7 +70,10 @@ function prepareDownload(out){
 function data(){
  const value=id=>E(id)?.value?.trim()||'';
  const loan=Number(value('vsoLoan')),variant=window.VSO_VARIANTS.get(value('vsoModel')),placement=E('vsoAccessoriesMode')?.checked?'ACCESSORIES':'NET',r=window.VSO_VARIANTS.present(window.VSO_VARIANTS.calculate(loan,'AUTO',variant.id),placement);
- return {customer:value('vsoCustomer'),nric:value('vsoNric'),address:value('vsoAddress'),phone:value('vsoPhone'),email:value('vsoEmail'),year:value('vsoYear'),color:value('vsoColor'),period:value('vsoPeriod'),model:variant.model,fees:variant.fees,loan,otr:r.otr,net:r.net,placement,accessoriesExcess:r.accessoriesExcess,date:core.dateInMalaysia()};
+ const insurance=value('vsoInsurance');
+ const fees=insurance!==''?{...variant.fees,insurance:Number(insurance)}:variant.fees;
+ const net=Math.round((r.net+Number(variant.fees.insurance??0)-Number(fees.insurance??0))*100)/100;
+ return {customer:value('vsoCustomer'),nric:value('vsoNric'),address:value('vsoAddress'),phone:value('vsoPhone'),email:value('vsoEmail'),year:value('vsoYear'),color:value('vsoColor'),period:value('vsoPeriod'),model:variant.model,fees,loan,otr:r.otr,net,placement,accessoriesExcess:r.accessoriesExcess,date:core.dateInMalaysia()};
 }
 const stamp=d=>JSON.stringify(d);
 async function assets(){
@@ -131,14 +134,16 @@ async function drawPreview(){
 }
 async function createExact(){
  if(buildBusy)return null;
+ if(!data().customer)return exportError('Sila isi nama penuh pelanggan.');
  const d=data();
- if(!d.customer)return exportError('Sila isi nama penuh pelanggan.');
  if(!window.VSO_VARIANTS.list.some(variant=>variant.id===E('vsoModel').value))return exportError('Pilih model dan varian kereta.');
  if(!Number.isFinite(d.loan)||d.loan<=0)return exportError('Loan Amount mesti lebih daripada RM0.');
  if(!d.color||!/^\d{4}$/.test(d.year))return exportError('Lengkapkan warna dan tahun pembuatan.');
  exportMessage('Sedang menjana PDF…');
  buildBusy=true;const buttons=['vsoDownload','vsoDownloadBottom','vsoToCompiler'].map(E);buttons.forEach(b=>b.disabled=true);
  try{
+  await window.FARIS_WORKSPACE_PROFILE?.flush();
+  const d=data();
   const next=await generate(d);
   if(stamp(data())!==next.stamp)return exportError('Maklumat berubah semasa PDF dijana. Tekan jana semula.');
   window.FARIS_GENERATED?.publish('vso',{blob:next.blob,name:next.fname,party:'HIRER',category:'VSO',valid:()=>next.stamp===stamp(data())});
@@ -159,10 +164,10 @@ async function download(event){
 }
 async function toCompiler(){
  const out=await createExact();if(!out)return;
- try{if(typeof addFiles!=='function'||typeof switchParty!=='function')throw Error('Modul Compiler belum sedia.');switchParty('HIRER');await addFiles([new File([out.blob],out.fname,{type:'application/pdf'})]);window.VSO_CENTER.openCompiler();showStatus('✓ VSO sudah dihantar ke Compiler.',true);exportMessage('VSO sudah dihantar ke Compiler.')}
+ try{const stored=await window.FARIS_GENERATED?.saveCurrent('vso');await window.FARIS_COMPILER.importInbox([{file:new File([out.blob],out.fname,{type:'application/pdf'}),metadata:{id:stored?.files?.[0]?.id,customer_id:stored?.files?.[0]?.customer_id,party:'HIRER',category:'VSO'}}]);window.VSO_CENTER.openCompiler();showStatus('✓ VSO sudah dihantar ke Compiler.',true);exportMessage('VSO sudah dihantar ke Compiler.')}
  catch(error){exportError('Tidak berjaya hantar ke Compiler: '+error.message)}
 }
-window.FARIS_VSO_GENERATOR={create:createExact};
+window.FARIS_VSO_GENERATOR={create:createExact,refresh:invalidate};
 E('vsoDownload').onclick=download;E('vsoDownloadBottom').onclick=download;E('vsoToCompiler').onclick=toCompiler;
 controlledFields.forEach(id=>{E(id)?.addEventListener('input',invalidate);E(id)?.addEventListener('change',invalidate)});
 let resizeTimer=null;const fit=()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{if(previewDoc)renderDocument(previewDoc,drawSeq).catch(e=>{if(e.name!=='RenderingCancelledException')showStatus('Pratonton: '+e.message)})},120)};

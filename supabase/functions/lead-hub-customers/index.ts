@@ -1,5 +1,5 @@
 import {createClient} from "npm:@supabase/supabase-js@2.57.4";
-import {isId,validate,STATUSES,BANK_STATUSES} from "./validation.mjs";
+import {isId,validate,STATUSES,BANK_STATUSES,sharedPatch,normalPhone} from "./validation.mjs";
 import {insightsFilters,dashboardFilters,trackingFilters} from "./insights.mjs";
 const URL=Deno.env.get("SUPABASE_URL")!;
 const KEY=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS")||"{}").default;
@@ -15,7 +15,7 @@ async function account(req:Request){
 }
 async function body(req:Request){
  const reader=req.body?.getReader();if(!reader)throw Error('JSON');let size=0;const chunks=[];
- try{for(;;){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>24000){await reader.cancel();throw Error('JSON')}chunks.push(value)}}finally{reader.releaseLock()}
+ try{for(;;){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>64000){await reader.cancel();throw Error('JSON')}chunks.push(value)}}finally{reader.releaseLock()}
  const b=new Uint8Array(size);let at=0;for(const c of chunks){b.set(c,at);at+=c.length}const d=JSON.parse(new TextDecoder().decode(b));if(!d||Array.isArray(d)||typeof d!=="object")throw Error('JSON');return d;
 }
 async function handler(req:Request){
@@ -24,6 +24,22 @@ async function handler(req:Request){
  if(req.method!=="POST")return json(req,{ok:false,error:"Gunakan POST."},405);
  const a=await account(req);if(!a)return json(req,{ok:false,error:"Sesi tamat. Log masuk semula."},401);
  let b;try{b=await body(req)}catch{return json(req,{ok:false,error:"Permintaan JSON tidak sah atau terlalu besar."},400)}
+ if(b.action==="shared_profile"){
+  const lead=isId(b.lead_id)?b.lead_id:null,phone=normalPhone(b.phone);
+  if(!lead&&!phone)return json(req,{ok:false,error:"Nombor pelanggan tidak sah."},400);
+  if(b.account_id&&b.account_id!==a.id)return json(req,{ok:false,error:"Akaun telah berubah. Buka profil semula."},403);
+  let changes=null,previous=null;
+  try{
+   if(b.changes!==undefined){
+    if(!lead)throw Error("Pilih profil pelanggan dahulu.");
+    changes=sharedPatch(b.changes);
+    previous=sharedPatch(b.previous,true);
+   }
+  }catch(e){return json(req,{ok:false,error:e.message},400)}
+  const {data,error}=await db.rpc("lead_hub_customer_share",{_actor:a.id,_lead:lead,_phone:phone,_changes:changes,_previous:previous});
+  if(error)throw error;
+  return json(req,{ok:true,customer:data,account_id:a.id});
+ }
  if(b.action==="dashboard"){
   const tracking=b.tracking===true;
   let filters;try{filters=tracking?trackingFilters(b,STATUSES,BANK_STATUSES,isId):dashboardFilters(b,STATUSES,isId)}catch(e){return json(req,{ok:false,error:e.message},400)}

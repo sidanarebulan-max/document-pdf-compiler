@@ -1,130 +1,268 @@
-(()=>{
-"use strict";
-const key="faris_lead_handoff_v1";
-const params=new URLSearchParams(location.search);
-const origin=params.get("origin");
-const tool=params.get("tool");
-if(origin!=="staff"||!["COMPILER","VSO","APPLICATION"].includes(tool))return;
-const $=id=>document.getElementById(id);
-const templateIds=()=>Array.from($("vsoModel")?.options||[]).map(o=>o.value);
-const HANDOFF_TTL=10*60*1000;
-let lead=null;
-try{
- const raw=sessionStorage.getItem(key);
- sessionStorage.removeItem(key); // per-customer data is one-time; never placed in the URL
- if(raw){
-  const data=JSON.parse(raw);
-  if(Number.isFinite(data.created_at)&&Date.now()-data.created_at>=0&&Date.now()-data.created_at<HANDOFF_TTL){
-   const phone=String(data.phone_e164||"");
-   if(/^601\d{8,9}$/.test(phone)&&String(data.customer_name||"").trim()){
-    lead={name:String(data.customer_name).trim().slice(0,120),phone,model:String(data.model||"").slice(0,120)};
+(() => {
+'use strict';
+const params = new URLSearchParams(location.search);
+if (params.get('origin') !== 'staff') return;
+const tool = params.get('tool');
+if (!['COMPILER','VSO','APPLICATION'].includes(tool)) return;
+const api = window.FARIS_CUSTOMER_WORKFLOW;
+const $ = id => document.getElementById(id);
+const section = document.createElement('section');
+section.id = 'staffContextBanner';
+section.className = 'staff-workflow-banner';
+section.innerHTML = '<strong id="staffWorkflowName">Profil pelanggan</strong>'+
+ '<form id="staffWorkflowLookup"><label>Nombor telefon pelanggan <input id="staffWorkflowPhone" inputmode="tel" required placeholder="Contoh 0123456789"></label> <button type="submit">Pautkan profil</button></form>'+
+ '<p id="staffWorkflowStatus" role="status" aria-live="polite"></p>'+
+ '<div class="staff-workflow-actions"><a id="staffWorkflowBack" href="/staff#customers">Kembali ke Lead Hub</a> <button id="staffWorkflowFiles" type="button" hidden>Buka dokumen pelanggan</button> <button id="staffWorkflowRetry" type="button" hidden>Cuba simpan semula</button></div>';
+document.body.prepend(section);
+const {vehicleVariants:lookups,match:findVariant,customerQuote}=window.VSO_VARIANTS;
+const quoteFields = document.createElement('div');
+quoteFields.className = 'vsoModeGrid';
+quoteFields.innerHTML = '<label class="vsoField"><span>Deposit (RM)</span><input id="vsoDeposit" type="number" min="0" step="0.01"></label>'+
+ '<label class="vsoField"><span>Rebat (RM)</span><input id="vsoRebate" type="number" min="0" step="0.01"></label>'+
+ '<label class="vsoField"><span>Insurans (RM)</span><input id="vsoInsurance" type="number" min="0" step="0.01"></label>';
+$('vsoLoan').closest('.vsoField').parentElement.insertAdjacentElement('afterend',quoteFields);
+const ids = {
+ customerName:'customer_name',vsoCustomer:'customer_name',vsoNric:'applicant_nric',
+ vsoAddress:'applicant_permanent_address',vsoEmail:'applicant_email',vsoYear:'vehicle_year',
+ vsoColor:'colour',vsoLoan:'loan_amount',vsoPeriod:'loan_term',vsoAccessoriesMode:'vso_accessories',
+ vsoDeposit:'deposit',vsoRebate:'rebate_amount',vsoInsurance:'insurance_amount',
+ application_applicant_name:'customer_name',application_financing_color:'colour',application_financing_term:'loan_term'
+};
+const phoneFields = ['customerPhone','vsoPhone','application_applicant_phone'];
+for (const field of window.FARIS_APPLICATION_CORE.fields) {
+ if (!['applicant_phone','financing_model'].includes(field.id)) ids['application_'+field.id] ??= field.id;
+}
+let flow, syncing = false, lookupGeneration = 0;
+const status = (message, error = false) => {
+ $('staffWorkflowStatus').textContent = message;
+ $('staffWorkflowStatus').classList.toggle('workflow-error',error);
+ $('staffWorkflowRetry').hidden = !error || !flow?.dirty;
+};
+function setField(id, value, type = 'input') {
+ const field = $(id);
+ if (!field) return;
+ if (field.type === 'checkbox') {
+  if (field.checked === (value==='ACCESSORIES')) return;
+  field.checked = value==='ACCESSORIES';
+ } else {
+  const next = value == null ? '' : String(value);
+  if (field.value === next) return;
+  field.value = next;
+  if(id==='vsoInsurance')window.FARIS_VSO_GENERATOR?.refresh();
+ }
+ field.dispatchEvent(new Event(type,{bubbles:true}));
+}
+function render(values) {
+ syncing = true;
+ try {
+  const variant = findVariant(values.model, values.variant);
+  const model = variant ? variant.family+' '+variant.grade : [values.model,values.variant].filter(Boolean).join(' ');
+  const selection = $('vsoModel');
+  if (selection && !selection.querySelector('option[value=""]')) selection.prepend(new Option('Pilih model & varian',''));
+  if (selection && selection.value !== (variant?.id ?? '')) setField('vsoModel',variant?.id,'change');
+  for (const [id,key] of Object.entries(ids)) {
+   let value = values[key];
+   if (id === 'vsoYear') value ||= variant?.year || '';
+   if (id === 'vsoInsurance' && value == null) value = variant?.fees.insurance;
+   if (id === 'vsoPeriod') {
+    const match = String(value ?? '').match(/^(\d+)\s*(?:tahun)?$/i);
+    value = match?.[1] ?? '';
+   }
+   if (id === 'application_financing_term' && /^\d+$/.test(String(value ?? ''))) value += ' tahun';
+   if (id==='vsoPeriod' && value && !$(id).querySelector('option[value="'+value+'"]')) $(id).add(new Option(value+' tahun',value));
+   setField(id,value);
+  }
+  for (const id of phoneFields) {
+   setField(id,values.phone ? '0'+values.phone.slice(2) : '');
+   if ($(id)) $(id).readOnly = true;
+  }
+  setField('application_financing_model',model);
+  window.FARIS_COMPILER?.customerNames?.(values);
+  $('staffWorkflowName').textContent = values.customer_name+' · +'+values.phone;
+  $('staffWorkflowFiles').hidden = false;
+ } finally { syncing = false; }
+}
+function modelPatch(label, fromVso) {
+ const option = fromVso ? lookups.find(v=>v.id===label) : findVariant(label);
+ if (!option) return fromVso ? {} : {model:label,variant:''};
+ return {model:option.family,variant:option.grade,vehicle_year:String(option.year)};
+}
+function accept(patch, recalculate = false) {
+ if (!flow || syncing || !Object.keys(patch).length) return;
+ if(recalculate) customerQuote(flow.data,patch);
+ flow.queue(patch);
+}
+function handleField(event) {
+ if (!flow || syncing) return;
+ const {id, value, checked} = event.target;
+ if (id === 'vsoModel') {
+  if (event.type==='change') {
+   const patch = modelPatch(value,true);
+   if (Object.keys(patch).length) {
+    accept(patch,true);
+    render(flow.data);
    }
   }
- }
-}catch(e){console.warn("Invalid staff context:",e)}
-const banner=document.createElement("div");
-banner.id="staffContextBanner";
-banner.style.cssText="position:relative;z-index:40;background:#10223e;border:1px solid #37619d;border-radius:14px;margin:12px auto 16px;padding:13px 15px;max-width:1580px;color:#eaf3ff;font-family:system-ui,Arial,sans-serif;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap";
-const detail=document.createElement("div");
-detail.style.cssText="display:grid;gap:4px;line-height:1.45;min-width:210px";
-const title=document.createElement("strong");
-title.style.fontSize="14px";
-title.textContent=tool==="VSO"?"🚘 Ruang Kerja Staf — Buat VSO":tool==="APPLICATION"?"📝 Ruang Kerja Staf — Application Form":"📑 Ruang Kerja Staf — Urus Dokumen";
-const info=document.createElement("span");
-info.style.cssText="font-size:12px;color:#bdd0ed;overflow-wrap:anywhere";
-info.textContent=lead?"Pelanggan: "+lead.name+" · +"+lead.phone+" · "+(lead.model||"Model belum pasti"):"Tiada pelanggan dipilih. Isi butiran pelanggan secara manual.";
-detail.append(title,info);
-const back=document.createElement("a");
-back.href="/staff.html#docs";
-back.style.cssText="display:inline-flex;border:1px solid #5275b6;background:#223b68;color:white;border-radius:10px;padding:10px 14px;text-decoration:none;font-weight:700;font-size:12px";
-back.textContent="← Kembali ke Lead Hub";
-banner.append(detail,back);
-document.body.insertBefore(banner,document.body.firstChild);
-function put(id,value){
- const node=$(id);
- if(!node||!value)return;
- node.value=value;
- node.dispatchEvent(new Event("input",{bubbles:true}));
-}
-function variantId(label){
- const s=String(label||"").toLowerCase().replace(/[^a-z0-9]+/g," ");
- const is5=/e\s*mas\s*5/.test(s);
- const is7=/e\s*mas\s*7/.test(s);
- if(is7&&/(phev|hybrid|plug\s*in)/.test(s)){
-  if(/premium\s*plus/.test(s))return "EMAS7_PHEV_PREMIUM_PLUS_2026";
-  if(/\bprime\b/.test(s))return "EMAS7_PHEV_PRIME_2026";
-  if(/\bpremium\b/.test(s))return "EMAS7_PHEV_PREMIUM_2026";
-  return null;
- }
- if(is5){
-  if(/\bprime\b/.test(s))return "EMAS5_PRIME_2026";
-  if(/\bpremium\b/.test(s))return "EMAS5_PREMIUM_2026";
- }
- if(is7){
-  if(/premium\s*plus/.test(s))return "EMAS7_PREMIUM_PLUS_2026";
-  if(/\bpremium\b/.test(s))return "EMAS7_PREMIUM_2026";
- }
- return null;
-}
-function warn(message){
- const p=document.createElement("p");
- p.style.cssText="font-size:12px;color:#fbe2a6;margin:5px 0 0;line-height:1.55";
- p.textContent=message;
- detail.appendChild(p);
- return p;
-}
-function prefill(){
- if(!window.VSO_CENTER){
-  warn("Modul VSO tidak dapat dimuatkan. Refresh halaman dan cuba lagi.");
   return;
  }
- if(lead){
-  const localPhone=lead.phone.startsWith("60")?"0"+lead.phone.slice(2):lead.phone;
-  if(tool==="APPLICATION"){
-   window.FARIS_APPLICATION?.prefill({...lead,phone:localPhone});
-   window.VSO_CENTER.openApplication();return;
-  }
-  put("customerName",lead.name);
-  put("customerPhone",localPhone);
-  put("vsoCustomer",lead.name);
-  put("vsoPhone",localPhone);
-  // Default loan/colour in original VSO are examples, never carry them to a real customer.
-  $("vsoLoan").value="";
-  $("vsoLoan").dispatchEvent(new Event("input",{bubbles:true}));
-  $("vsoColor").value="";
-  $("vsoColor").placeholder="Isi warna sebenar pelanggan";
-  $("vsoColor").dispatchEvent(new Event("input",{bubbles:true}));
-  const select=$("vsoModel");
-  const match=variantId(lead.model);
-  const ids=templateIds();
-  const original=match&&ids.includes(match)?match:null;
-  const buttons=["vsoDownload","vsoDownloadBottom","vsoToCompiler"].map($).filter(Boolean);
-  if(original){
-   select.value=original;
-   select.dispatchEvent(new Event("change",{bubbles:true}));
-   select.dispatchEvent(new Event("input",{bubbles:true}));
-   warn("Nama dan nombor telah diisi. Sahkan varian, tahun, IC, alamat, warna dan jumlah pinjaman sebelum menjana VSO.");
-  }else{
-   const placeholder=document.createElement("option");
-   placeholder.value="";placeholder.textContent="⚠ PILIH VARIAN KERETA SEBENAR";
-   select.insertBefore(placeholder,select.firstChild);
-   select.value="";
-   warn("Model asal: "+(lead.model||"Belum pasti")+". Varian tepat belum dikenal pasti. Pilih varian sebenar; JANGAN guna harga varian lain.");
-   select.dispatchEvent(new Event("input",{bubbles:true}));
-   buttons.forEach(b=>b.disabled=true);
-   const enforce=()=>{
-    if(ids.includes(select.value)){
-     buttons.forEach(b=>b.disabled=false);
-     placeholder.remove();
-     select.removeEventListener("change",enforce);
-    }else buttons.forEach(b=>b.disabled=true);
-   };
-   select.addEventListener("change",enforce);
-  }
+ if (id === 'application_financing_model') {
+  if (event.type==='change') accept(modelPatch(value.trim(),false),true);
+  return;
  }
- if(tool==="APPLICATION")window.VSO_CENTER.openApplication();
- else if(tool==="COMPILER")window.VSO_CENTER.openCompiler();
- else window.VSO_CENTER.openVso();
+ if (id === 'partyName') {
+  const key = window.FARIS_COMPILER?.currentNameKey?.();
+  if (key) accept({[key]:value});
+  return;
+ }
+ const key = ids[id];
+ if (!key) return;
+ if (['vsoDeposit','vsoRebate','vsoInsurance','vsoLoan'].includes(id)) {
+  if (value && (!/^\d+(?:\.\d{1,2})?$/.test(value) || Number(value)>100000000)) return;
+  if (event.type==='change') {
+   accept({[key]:value===''?null:Number(value)},true);
+   render(flow.data);
+   if(id==='vsoInsurance')window.FARIS_VSO_GENERATOR?.refresh();
+  } else if (id==='vsoLoan') {
+   accept({[key]:value===''?null:Number(value)},true);
+  }
+  return;
+ }
+ let text = value;
+ if (id==='vsoAccessoriesMode') text=checked?'ACCESSORIES':'NET';
+ if (key==='loan_term') text = value.trim().replace(/^(\d+)\s+tahun$/i,'$1');
+ accept({[key]:text});
 }
-prefill();
+document.addEventListener('input',handleField);
+document.addEventListener('change',handleField);
+async function start(selector, initial = {}) {
+ const sequence = ++lookupGeneration;
+ status('Memuatkan profil…');
+ const response = await api.fetchProfile(selector);
+ if (sequence !== lookupGeneration) return;
+ const {customer,account_id:accountId} = response;
+ flow?.close();
+ flow = api.create({customer,accountId,render,notify:status});
+ render(flow.data,customer);
+ const safeDraft = Object.fromEntries(Object.entries(initial).filter(([key,value])=>value && (key==='customer_name' ? !flow.data[key]||flow.data[key]==='Pelanggan' : flow.data[key]==null||flow.data[key]==='')));
+ if (Object.keys(safeDraft).length) accept(safeDraft,Object.hasOwn(safeDraft,'model'));
+ $('staffWorkflowLookup').hidden = true;
+ $('staffWorkflowBack').href = '/staff?customer='+encodeURIComponent(flow.id)+'#customers';
+ params.set('customer',flow.id);
+ history.replaceState(null,'','/?'+params+location.hash);
+ status('Profil dipautkan. Maklumat disimpan automatik.');
+ queueMicrotask(()=>window.FARIS_WORKSPACE_PROFILE?.trackInputs(window.FARIS_COMPILER?.pendingFiles?.()||[]).catch(()=>{}));
+}
+$('staffWorkflowLookup').addEventListener('submit',async e => {
+ e.preventDefault();
+ const phone = api.normalizePhone($('staffWorkflowPhone').value);
+ if (!phone) return status('Semak nombor telefon pelanggan.',true);
+ const activePhone=tool==='APPLICATION'?'application_applicant_phone':tool==='VSO'?'vsoPhone':'customerPhone';
+ if ($(activePhone)?.value && api.normalizePhone($(activePhone).value)!==phone) {
+  return status('Nombor dalam borang berbeza daripada nombor yang hendak dipautkan.',true);
+ }
+ const draft=Object.fromEntries(Object.entries(ids).filter(([id])=>tool==='APPLICATION'?id.startsWith('application_'):tool==='VSO'?id.startsWith('vso'):id==='customerName').map(([id,key])=>[key,$(id)?.value]));
+ for (const key of ['vehicle_year','loan_term','vso_accessories','loan_amount','colour','deposit','rebate_amount','insurance_amount']) {
+  if (tool==='VSO' && !document.getElementById(Object.keys(ids).find(id=>id.startsWith('vso')&&ids[id]===key))?.dataset.workflowEdited) delete draft[key];
+ }
+ const model=tool==='APPLICATION'?$('application_financing_model').value:'';
+ if(tool==='VSO'&&$('vsoModel').dataset.workflowEdited)Object.assign(draft,modelPatch($('vsoModel').value,true));
+ if(model) Object.assign(draft,modelPatch(model,false));
+ try { ready=start({phone},draft); await ready; }
+ catch(error){ status(error.status===403?'Profil nombor ini tiada dalam akses kau. Ambil nombor di Lead Hub dahulu.':error.message,true); }
+});
+document.addEventListener('input',e=>{if(!syncing&&(e.target.id in ids||e.target.id==='vsoModel'))e.target.dataset.workflowEdited='1'});
+document.addEventListener('change',e=>{
+ if(!syncing&&!flow&&phoneFields.includes(e.target.id)&&api.normalizePhone(e.target.value)){
+  $('staffWorkflowPhone').value=e.target.value;
+  $('staffWorkflowLookup').requestSubmit();
+ }
+});
+$('staffWorkflowBack').addEventListener('click',async e=>{
+ if(!flow?.dirty&&!window.FARIS_WORKSPACE_PROFILE.uploading)return;
+ e.preventDefault();
+ try{await window.FARIS_WORKSPACE_PROFILE.flush(); location.assign(e.currentTarget?.href || $('staffWorkflowBack').href);}
+ catch{}
+});
+$('staffWorkflowRetry').addEventListener('click',()=>flow?.flush().catch(()=>{}));
+$('staffWorkflowFiles').addEventListener('click',async ()=>{
+ try{await window.FARIS_WORKSPACE_PROFILE.flush(); location.assign('/staff?customer='+encodeURIComponent(flow.id)+'&customer_tab=documents#customers');}
+ catch{}
+});
+window.addEventListener('focus',()=>flow?.refresh());
+window.addEventListener('storage',e=>{
+ if(e.key==='faris_lead_hub_session_v2'&&!e.newValue&&flow){
+  flow.close();
+  location.replace('/staff#customers');
+ }
+});
+const uploads = new Set();
+async function saveFile(file,party,category){
+ await ready;
+ if(!flow)return null;
+ const target=flow;
+ const promise=target.upload(file,party,category);
+ uploads.add(promise);
+ try{
+  const reply=await promise;
+  if(target===flow)status('Disimpan dalam Dokumen Pelanggan · '+file.name);
+  return reply;
+ }catch(error){status('Simpanan '+file.name+' gagal. '+error.message,true);throw error;}
+ finally{uploads.delete(promise);}
+}
+window.FARIS_WORKSPACE_PROFILE = {
+ get active(){return !!flow;},
+ get uploading(){return !!uploads.size;},
+ get id(){return flow?.id;},
+ async ensureFilesBelong(entries){
+  await ready;
+  if(flow&&entries.some(({metadata})=>metadata.customer_id!==flow.id))throw Error('Fail ini tidak dipautkan kepada profil yang sedang dibuka.');
+ },
+ async flush(){await ready;await flow?.flush();await Promise.all([...uploads]);},
+ async saveFile(file,party,category){return saveFile(file,party,category);},
+ async trackInputs(items){
+  await ready;
+  if (!flow) {if(items.some(item=>!item.profileFileId))status('Pautkan nombor pelanggan untuk simpan fail ini dalam profil.');return;}
+  const results=await Promise.allSettled(items.map(async item=>{
+   if(item.profileFileId){
+    if(item.profileCustomerId!==flow.id)throw Error('Pautkan fail sedia ada melalui Dokumen Pelanggan sebelum menggabungkannya.');
+    return;
+   }
+   if(!item.profileUpload)item.profileUpload=saveFile(item.file,item.party,item.manualCategory?item.category:'OTHER');
+   try{
+    const record=(await item.profileUpload)?.files?.[0];
+    if(record){item.profileFileId=record.id;item.profileCustomerId=record.customer_id;}
+   }
+   finally{item.profileUpload=null;}
+  }));
+  const error=results.find(result=>result.status==='rejected');
+  if(error)throw error.reason;
+ },
+ applyApplication(fields) {
+  const patch={};
+  for(const [key,value] of Object.entries(fields)) {
+   if(!value||key==='applicant_phone')continue;
+   if(key==='financing_model')Object.assign(patch,modelPatch(value,false));
+   else patch[ids['application_'+key]||key] = key==='financing_term' ? value.replace(/^(\d+)\s+tahun$/i,'$1') : value;
+  }
+  accept(patch,Object.hasOwn(patch,'model'));
+  if(flow)render(flow.data);
+ },
+ samePhone(phone){return !flow || !phone || api.normalizePhone(phone)===flow.data.phone;}
+};
+window.addEventListener('beforeunload',e=>{if(uploads.size){e.preventDefault();e.returnValue='';}});
+let initialId=params.get('customer');
+try {
+ const raw=sessionStorage.getItem('faris_lead_handoff_v1');
+ sessionStorage.removeItem('faris_lead_handoff_v1');
+ if(raw){const data=JSON.parse(raw);if(!initialId&&Date.now()-data.created_at<600000)initialId=data.lead_id;}
+}catch{}
+let ready=initialId?start({lead_id:initialId}).catch(error=>{
+ status(error.message,true);
+ $('staffWorkflowLookup').hidden=false;
+}):Promise.resolve();
+ready.catch(()=>{});
+if(initialId)$('staffWorkflowLookup').hidden=true;
+if(tool==='APPLICATION')window.VSO_CENTER.openApplication();
+else if(tool==='COMPILER')window.VSO_CENTER.openCompiler();
+else window.VSO_CENTER.openVso();
 })();

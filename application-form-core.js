@@ -27,7 +27,8 @@ const sections=[
   ['appointment','Lantikan : ',['lantikan','status lantikan','status pekerjaan','jenis pekerjaan','employment status']],
   ['start_date','Tarikh Mula Kerja : ',['tarikh mula kerja','tarikh mula bekerja','mula kerja','employment date','start date']],
   ['job_scope','Skop kerja : ',['skop kerja','job scope','nature of work']],
-  ['business_scope','Skop syarikat : ',['skop syarikat','jenis perniagaan','nature of business','business scope']]
+  ['business_scope','Skop syarikat : ',['skop syarikat','jenis perniagaan','nature of business','business scope']],
+  ['income','Pendapatan bulanan : ',['pendapatan bulanan','gaji bulanan','pendapatan','gaji','monthly income']]
  ]},
  {id:'spouse',title:'MAKLUMAT PASANGAN (jika berkahwin)',aliases:['maklumat pasangan','pasangan','butiran pasangan','spouse details','spouse'],fields:[
   ['name','Nama : ',['nama','nama pasangan','nama penuh','spouse name']],
@@ -78,7 +79,7 @@ const plans=[[
  ['#applicant',111],...fields.filter(f=>f.section==='applicant').map((f,i)=>[f.id,[141.75,171.75,202.5,232.5,262.5,293.25,323.25,354,384,414,444.75,474.75,504.75,535.5,565.5][i]]),
  ['#employment',626.25],['employment_employer',656.25],['employment_address',687,2],['employment_phone',735.75],['employment_position',765.75],['employment_department',795.75]
 ],[
- ['employment_appointment',40.5],['employment_start_date',70.5],['employment_job_scope',101.25],['employment_business_scope',131.25],
+ ['employment_appointment',40.5],['employment_start_date',70.5],['employment_job_scope',101.25],['employment_business_scope',131.25],['employment_income',161.25],
  ['#spouse',192],...fields.filter(f=>f.section==='spouse').map((f,i)=>[f.id,[222,252.75,282.75,313.5,343.5,373.5][i]]),
  ['#reference',434.25],...fields.filter(f=>f.section==='reference').map((f,i)=>[f.id,[464.25,495,525,555.75][i]]),
  ['#financing',615.75],...fields.filter(f=>f.section==='financing').map((f,i)=>[f.id,[646.5,676.5,707.25][i]])

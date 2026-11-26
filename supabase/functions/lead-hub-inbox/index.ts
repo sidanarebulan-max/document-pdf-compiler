@@ -48,6 +48,15 @@ async function receive(req:Request,a:any){
  const files=[...form.getAll("file"),...form.getAll("files")].filter(x=>x instanceof File) as File[];
  if(!files.length||files.length>10)return json(req,{ok:false,error:"Sertakan 1–10 fail dalam medan file atau files."},400);
  if(files.some(f=>f.size>MAX_FILE)||files.reduce((n,f)=>n+f.size,0)>MAX_FILE)return json(req,{ok:false,error:"Jumlah fail dalam satu penghantaran maksimum 20 MB."},413);
+ const customer=String(form.get("customer_id")||"");
+ const expectedAccount=String(form.get("account_id")||"");
+ const party=String(form.get("party")||"HIRER"),category=String(form.get("category")||"OTHER");
+ if(expectedAccount&&expectedAccount!==a.id)return json(req,{ok:false,error:"Akaun telah berubah. Buka profil semula."},403);
+ if(customer){
+  if(a.viaKey||!isId(customer))return json(req,{ok:false,error:"Profil upload tidak sah."},400);
+  const {error}=await db.rpc("lead_hub_customer_get",{_actor:a.id,_lead:customer});
+  if(error)throw error;
+ }
  const checked=[];
  for(const f of files){const bytes=new Uint8Array(await f.arrayBuffer());checked.push({bytes,info:fileInfo(f.name,bytes)})}
  const saved=[];
@@ -57,9 +66,21 @@ async function receive(req:Request,a:any){
   if(insertError)throw insertError;
   const {error:uploadError}=await db.storage.from(BUCKET).upload(path,bytes,{contentType:info.mime,upsert:false});
   if(uploadError){await db.from("lead_hub_inbox_files").delete().eq("id",id);throw uploadError}
-  const {error:readyError}=await db.from("lead_hub_inbox_files").update({state:"inbox"}).eq("id",id);
-  if(readyError){await db.storage.from(BUCKET).remove([path]);await db.from("lead_hub_inbox_files").delete().eq("id",id);throw readyError}
-  saved.push({id,name:info.name,size:bytes.length});
+  let savedId=id;
+  if(customer){
+   const {data,error}=await db.rpc("lead_hub_customer_finish_upload",{_actor:a.id,_lead:customer,_file:id,_party:party,_category:category});
+   if(error||data!==id){
+    const {data:staged}=await db.from("lead_hub_inbox_files").delete()
+     .eq("id",id).eq("state","uploading").select("id").maybeSingle();
+    if(staged)await db.storage.from(BUCKET).remove([path]);
+   }
+   if(error)throw error;
+   savedId=data;
+  }else{
+   const {error}=await db.from("lead_hub_inbox_files").update({state:"inbox"}).eq("id",id);
+   if(error){await db.storage.from(BUCKET).remove([path]);await db.from("lead_hub_inbox_files").delete().eq("id",id);throw error}
+  }
+  saved.push({id:savedId,name:info.name,size:bytes.length,customer_id:customer||null});
  }
  return json(req,{ok:true,files:saved,open_url:"https://document-pdf-compiler.vercel.app/staff.html#docs"});
 }
@@ -115,6 +136,16 @@ async function handler(req:Request){
   const {data:current,error:lookupError}=await owned(db.from("lead_hub_inbox_files").select("id").in("id",ids).neq("state","uploading"),a);
   if(lookupError)throw lookupError;
   if(current?.length!==ids.length)return json(req,{ok:false,error:"Sebahagian fail tidak ditemui atau akses telah berubah."},403);
+  if(metadata.customer_phone&&!target){
+   const {data:lead,error:leadError}=await db.from("lead_hub_leads").select("id").eq("phone_e164",metadata.customer_phone).maybeSingle();
+   if(leadError)throw leadError;
+   if(lead){
+    const {error}=await db.rpc("lead_hub_customer_write",{_actor:a.id,_lead:lead.id,_action:"link_files",
+     _data:{ids,party:metadata.party,category:metadata.category},_operation:crypto.randomUUID()});
+    if(error)throw error;
+    return json(req,{ok:true,ids,customer_id:lead.id});
+   }
+  }
   const {data,error}=await db.rpc("lead_hub_inbox_assign",{_actor:a.id,_ids:ids,_customer:metadata.customer_name,_phone:metadata.customer_phone,_party:metadata.party,_category:metadata.category,_target:target});
   if(error)throw error;if(data?.length!==ids.length)return json(req,{ok:false,error:"Agihan berubah. Refresh dan semak semula."},409);
   return json(req,{ok:true,ids:data});

@@ -18,6 +18,7 @@ document.body.insertBefore(box,document.body.firstChild);
   loaded.push(await client.file(id));
  }
  if(!window.FARIS_COMPILER)throw Error("Compiler belum tersedia. Refresh halaman dan cuba lagi.");
+ await window.FARIS_WORKSPACE_PROFILE?.ensureFilesBelong(loaded);
  await window.FARIS_COMPILER.importInbox(loaded);
  sessionStorage.removeItem(key);
  box.textContent=loaded.length+" fail dari Fail Masuk sudah berada dalam Compiler. Semak kategori dan susunan sebelum menjana PDF. Fail asal kekal disimpan.";

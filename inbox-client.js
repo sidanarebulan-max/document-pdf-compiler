@@ -19,7 +19,7 @@ async function send(action,payload={},file=null,retried=false){
  const token=localStorage.getItem(SESSION);if(!token)throw Error("Log masuk dahulu untuk menggunakan Fail Masuk.");
  const headers={Authorization:"Bearer "+token};
  let body;
- if(file){body=new FormData();body.append("file",file,file.name)}
+ if(file){body=new FormData();body.append("file",file,file.name);for(const [key,value] of Object.entries(payload))if(value)body.append(key,value)}
  else{headers["Content-Type"]="application/json";body=JSON.stringify({action,...payload})}
  const r=await fetch(ROOT+"lead-hub-inbox"+(file?"?action=receive":""),{method:"POST",headers,body,cache:"no-store"});
  if(r.status===401&&!retried){
@@ -29,7 +29,7 @@ async function send(action,payload={},file=null,retried=false){
  const d=await r.json().catch(()=>null);if(!r.ok||!d?.ok)throw Error(d?.error||"Fail Masuk tidak dapat dihubungi. Cuba lagi.");
  return d;
 }
-window.FARIS_INBOX_CLIENT={request:send,renewSession:renew,upload:file=>send("receive",{},file),
+window.FARIS_INBOX_CLIENT={request:send,renewSession:renew,upload:(file,metadata={})=>send("receive",metadata,file),
  async file(id){
   const d=await send("download",{id});
   const r=await fetch(d.url,{cache:"no-store"});

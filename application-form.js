@@ -48,6 +48,7 @@ async function generate(){
  if(busy||pasteDirty)return;const data=values();if(!data.applicant_name){status('Isi nama pemohon dahulu.',true);$('application_applicant_name').focus();return}
  invalidate();const snapshot=stamp(),generation=epoch,name=filename();busy=true;controls();status('Menjana Application Form…');
  try{
+  await window.FARIS_WORKSPACE_PROFILE?.flush();
   const assets=await loadAssets(),built=await core.buildPdf({PDFLib:window.PDFLib,...assets,values:data});
   if(snapshot!==stamp()||generation!==epoch){status('Maklumat berubah semasa menjana. Jana PDF semula.',true);return}
   const blob=new Blob([built.bytes],{type:'application/pdf'});result={blob,name,stamp:snapshot,url:URL.createObjectURL(blob)};
@@ -58,7 +59,17 @@ async function generate(){
 }
 $('applicationRead').addEventListener('click',()=>{
  if(!$('applicationPaste').value.trim()){$('applicationReadStatus').textContent='Paste maklumat borang dari Word dahulu.';return}
- pasteDirty=false;invalidate();const parsed=core.parse($('applicationPaste').value);for(const f of core.fields)$('application_'+f.id).value=parsed.values[f.id]||'';
+ const parsed=core.parse($('applicationPaste').value), workflow=window.FARIS_WORKSPACE_PROFILE;
+ if(workflow&&!workflow.samePhone(parsed.values.applicant_phone)){
+  $('applicationReadStatus').textContent='Nombor dalam teks berbeza daripada profil yang sedang dibuka.';
+  return;
+ }
+ pasteDirty=false;invalidate();
+ if(workflow?.active)workflow.applyApplication(parsed.values);
+ else {
+  for(const f of core.fields)$('application_'+f.id).value=parsed.values[f.id]||'';
+  if(parsed.values.applicant_phone)$('application_applicant_phone').dispatchEvent(new Event('change',{bubbles:true}));
+ }
  $('applicationReadStatus').textContent=parsed.count+' daripada '+core.fields.length+' medan dibaca. Semak nama, nombor dan alamat sebelum jana.';
  const issues=[...parsed.conflicts.map(id=>'Label berulang dengan nilai berbeza: '+core.fields.find(f=>f.id===id).label+' — nilai pertama dikekalkan.'),...parsed.unparsed.map(line=>'Belum dipadankan: '+line)];
  $('applicationIssueList').replaceChildren();for(const text of issues){const li=document.createElement('li');li.textContent=text;$('applicationIssueList').append(li)}$('applicationIssues').hidden=!issues.length;
@@ -67,7 +78,7 @@ $('applicationRead').addEventListener('click',()=>{
 });
 $('applicationClear').addEventListener('click',()=>{
  if(!confirm('Kosongkan semua maklumat Application Form ini?'))return;
- pasteDirty=false;invalidate();for(const f of core.fields)$('application_'+f.id).value='';$('applicationPaste').value='';$('applicationOutputName').value='';$('applicationReadStatus').textContent='';$('applicationIssues').hidden=true;$('applicationIssueList').replaceChildren();status('Borang dikosongkan.');$('applicationFilename').textContent='Nama fail: '+filename();
+ pasteDirty=false;invalidate();for(const f of core.fields)if(!window.FARIS_WORKSPACE_PROFILE?.active)$('application_'+f.id).value='';$('applicationPaste').value='';$('applicationOutputName').value='';$('applicationReadStatus').textContent='';$('applicationIssues').hidden=true;$('applicationIssueList').replaceChildren();status('Borang dikosongkan.');$('applicationFilename').textContent='Nama fail: '+filename();
 });
 host.addEventListener('input',e=>{if(e.target.matches('[data-application-field],#applicationOutputName'))invalidate()});
 $('applicationPaste').addEventListener('input',()=>{pasteDirty=!!$('applicationPaste').value.trim();invalidate();if(pasteDirty)status('Teks sumber berubah. Tekan Baca Maklumat dahulu untuk mengisi borang terkini.')});
@@ -75,7 +86,8 @@ $('applicationGenerate').addEventListener('click',generate);
 $('applicationDownload').addEventListener('click',()=>{if(!result||result.stamp!==stamp())return;const a=document.createElement('a');a.href=result.url;a.download=result.name;document.body.append(a);a.click();a.remove()});
 $('applicationToCompiler').addEventListener('click',async()=>{
  if(!result||result.stamp!==stamp()||busy)return;const snapshot=result,data=values();busy=true;controls();
- try{await window.FARIS_COMPILER.importInbox([{file:new File([snapshot.blob],snapshot.name,{type:'application/pdf'}),metadata:{party:'HIRER',category:'OTHER',customer_name:data.applicant_name,customer_phone:data.applicant_phone}}]);window.VSO_CENTER.openCompiler();status('Application Form telah dimasukkan ke Compiler.')}catch(e){status(e.message,true)}finally{busy=false;controls()}
+ try{const stored=await window.FARIS_GENERATED?.saveCurrent('application');
+ await window.FARIS_COMPILER.importInbox([{file:new File([snapshot.blob],snapshot.name,{type:'application/pdf'}),metadata:{id:stored?.files?.[0]?.id,customer_id:stored?.files?.[0]?.customer_id,party:'HIRER',category:'OTHER',customer_name:data.applicant_name,customer_phone:data.applicant_phone}}]);window.VSO_CENTER.openCompiler();status('Application Form telah dimasukkan ke Compiler.')}catch(e){status(e.message,true)}finally{busy=false;controls()}
 });
 window.FARIS_APPLICATION={onShow(){},prefill(lead){for(const [id,v] of Object.entries({applicant_name:lead.name,applicant_phone:lead.phone,financing_model:lead.model}))if(v)$('application_'+id).value=v;invalidate()}};
 $('applicationFilename').textContent='Nama fail: '+filename();

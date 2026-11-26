@@ -56,3 +56,40 @@ export function validate(action,d={}){
  }
  throw Error('Tindakan tidak dikenali.');
 }
+
+export function normalPhone(value){
+ let phone=String(value??'').replace(/[^0-9]/g,'');
+ if(phone.startsWith('0'))phone='6'+phone;
+ else if(phone.startsWith('1'))phone='60'+phone;
+ return /^601[0-9]{8,9}$/.test(phone)?phone:null;
+}
+const sharedText={
+ customer_name:120,model:120,variant:120,colour:80,vehicle_year:4,loan_term:120,
+ vso_accessories:8,guarantor_name:120,guarantor_nric:40,guarantor_phone:40,
+ guarantor_address:2000,guarantor_note:500,rebate_name:120,tradein_name:120,
+ applicant_nric:300,applicant_email:300,applicant_permanent_address:2000,applicant_current_address:2000,
+ applicant_residence_years:300,applicant_home:300,applicant_race:300,applicant_religion:300,
+ applicant_marital:300,applicant_education:300,applicant_graduation:300,applicant_children:300,applicant_mother:300,
+ employment_employer:300,employment_address:2000,employment_phone:300,employment_position:300,
+ employment_department:300,employment_appointment:300,employment_start_date:300,
+ employment_job_scope:2000,employment_business_scope:2000,employment_income:300,
+ spouse_name:300,spouse_nric:300,spouse_phone:300,spouse_employer:300,spouse_position:300,spouse_income:300,
+ reference_name:300,reference_address:2000,reference_phone:300,reference_relation:300
+};
+const sharedMoney=new Set(['selling_price','deposit','loan_amount','otr_price','rebate_amount','insurance_amount']);
+export function sharedPatch(value,previous=false){
+ if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Maklumat profil tidak sah.');
+ const fields={};
+ for(const [key,raw] of Object.entries(value)){
+  if(sharedMoney.has(key)){
+   const amount=money(raw);
+   // Canonical strings for JSON-only money match PostgREST and numeric profile values by value in SQL.
+   fields[key]=amount;
+  }else if(Object.hasOwn(sharedText,key)){
+   if(previous&&raw===null){fields[key]=null;continue}
+   if(typeof raw!=='string')throw Error('Maklumat profil tidak sah.');
+   fields[key]=text(raw,sharedText[key],key,key==='customer_name'&&!previous);
+  }else throw Error('Medan profil tidak sah.');
+ }
+ return fields;
+}

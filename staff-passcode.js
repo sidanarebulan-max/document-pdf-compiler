@@ -247,25 +247,11 @@ function insertMessageToken(value){
 function waUrl(lead){
  return "https://wa.me/"+lead.phone_e164+"?text="+encodeURIComponent(textMessage(lead));
 }
-const HANDOFF_KEY="faris_lead_handoff_v1";
 function openWorkspace(tool,leadId=null){
  if(!user||!token){viewAuth();notice("authNotice","Log masuk sebelum urus dokumen atau VSO.",true);return}
- // Data pelanggan tidak dihantar dalam URL; disimpan sementara pada tab semasa sahaja.
- sessionStorage.removeItem(HANDOFF_KEY);
- if(leadId){
-  const lead=leads.find(x=>x.id===leadId);
-  if(!lead){notice("appNotice","Lead ini tidak lagi tersedia dalam senarai anda.",true);return}
-  if(!/^601\d{8,9}$/.test(String(lead.phone_e164||""))){
-   notice("appNotice","Nombor pelanggan tidak sah. Semak dengan admin dahulu.",true);return;
-  }
-  sessionStorage.setItem(HANDOFF_KEY,JSON.stringify({
-    lead_id:lead.id,customer_name:lead.customer_name,
-    phone_e164:lead.phone_e164,model:lead.model,
-    staff_code:user.staff_code,account_id:user.id,created_at:Date.now()
-  }));
- }
  const mode=["COMPILER","APPLICATION"].includes(tool)?tool:"VSO";
- window.location.assign("/?tool="+mode+"&origin=staff");
+ const target=window.FARIS_CUSTOMER_WORKFLOW?.url(mode,leadId)||"/?tool="+mode+"&origin=staff";
+ location.assign(target);
 }
 function isStaffPmView(){return Boolean(user)}
 let numberCacheSource=null,numberCache=[],numberById=new Map(),pmCacheSource=null,pmById=new Map();
@@ -462,6 +448,7 @@ async function claim(){
   const r=await call("claim");
   notice("appNotice",r.lead_id?"Nombor sudah diambil dan dikunci kepada ID staf anda.":"Tiada lead baharu belum diagihkan.");
   await reload();
+  if(r.lead_id)await window.FARIS_CUSTOMERS?.open(r.lead_id);
  }catch(e){notice("appNotice",e.message,true)}
  finally{button.disabled=false}
 }

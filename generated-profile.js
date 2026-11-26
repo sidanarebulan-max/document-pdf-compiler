@@ -13,9 +13,28 @@ function controls(){
  $('generatedProfileClose').disabled=busy;$('generatedProfileSearch').disabled=busy;$('generatedProfileSearchForm').querySelector('button').disabled=busy;$('generatedProfileMore').disabled=busy;
  dialog.querySelectorAll('[data-generated-target]').forEach(b=>b.disabled=busy);
 }
+function saveCurrent(source){
+ const result=results.get(source),workspace=window.FARIS_WORKSPACE_PROFILE;
+ if(!workspace?.active||!result||!result.valid())return Promise.resolve(null);
+ if(!result.profileUpload){
+  const file=new File([result.blob],result.name,{type:'application/pdf'});
+  result.profileUpload=workspace.saveFile(file,result.party,result.category).catch(error=>{
+   result.profileUpload=null;
+   throw error;
+  });
+ }
+ return result.profileUpload;
+}
 window.FARIS_GENERATED={
- publish(source,data){if(!buttons[source]||!(data.blob instanceof Blob)||data.blob.type!=='application/pdf')return;results.set(source,{...data,source,valid:data.valid||(()=>true),uploaded:null,saved:null,operation:null,target:null});controls()},
- clear(source){results.delete(source);controls()}
+ publish(source,data){
+  if(!buttons[source]||!(data.blob instanceof Blob)||data.blob.type!=='application/pdf')return;
+  const previous=results.get(source);
+  if(previous?.blob!==data.blob)results.set(source,{...data,source,valid:data.valid||(()=>true),uploaded:null,saved:null,operation:null,target:null});
+  controls();
+  saveCurrent(source).catch(()=>{});
+ },
+ clear(source){results.delete(source);controls()},
+ saveCurrent
 };
 async function api(action,payload={},retried=false){
  const token=localStorage.getItem(SESSION);if(!token)throw Error('Log masuk ke Lead Hub dahulu, kemudian buka semula pemilih profil.');
@@ -35,6 +54,7 @@ async function load(append=false){
 }
 async function open(source){
  const r=results.get(source);if(!r||busy)return;
+ if(window.FARIS_WORKSPACE_PROFILE?.active){await saveCurrent(source).catch(()=>{});return;}
  if(!r.valid()){results.delete(source);controls();alert('Maklumat atau dokumen telah berubah. Jana PDF semula sebelum simpan ke profil.');return}
  current=r;identity=null;rows=[];next=null;epoch++;seq++;const generation=epoch;
  $('generatedProfileFile').textContent=r.name+' · '+(r.blob.size/1048576).toFixed(2)+' MB\n'+(r.source==='application'?'Application Form · Pemohon / Lain-lain':r.source==='vso'?'VSO DRAF · Pemohon / VSO':r.party==='REBATE'?'PDF gabungan · Corp & Gov Rebate / Lain-lain':r.party==='GUARANTOR'?'Dokumen lengkap · Penjamin':'Dokumen lengkap · Pemohon (termasuk bahagian penjamin jika digabung)');

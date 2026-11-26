@@ -157,6 +157,11 @@
   setProgress(1,'Menjana PDF: '+scopeLabel(scope)+'...');
   lastProcessingName='';
   try{
+    const workflow=window.FARIS_WORKSPACE_PROFILE;
+    if(workflow){
+     await workflow.trackInputs([...hirerDocs,...guarantorDocs,...rebateDocs,...tradeinDocs]);
+     await workflow.flush();
+    }
     const doc=await PDFDocument.create();
     const state={done:0,total:allCount};
     if(hirerDocs.length){
