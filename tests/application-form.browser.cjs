@@ -10,6 +10,8 @@ const {fixture}=require('./application-form.test.cjs');
   const fileId='30000000-0000-4000-8000-000000000001';
   const ctx=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:1000},isMobile:mobile,hasTouch:mobile,acceptDownloads:true});await ctx.addInitScript(()=>localStorage.setItem('faris_lead_hub_session_v2','application-fixture'));
   const page=await ctx.newPage(),errors=[],uploads=[],links=[],network=[];page.on('pageerror',e=>errors.push(e.message));
+  let profileDelay;
+  const lookups=[];
   await page.route('**/*',async route=>{
    const req=route.request(),u=new URL(req.url());if(await uiAsset(route,u))return;network.push(u.hostname+u.pathname);
    if(u.hostname==='application.test'){
@@ -27,6 +29,7 @@ const {fixture}=require('./application-form.test.cjs');
      const b=req.postDataJSON();if(b.action==='me')result={ok:true,user};
      else if(b.action==='list'&&u.pathname.endsWith('/lead-hub-customers'))result={ok:true,customers:[target],total:1,next_offset:null};
      else if(b.action==='shared_profile'){
+      if(!b.changes){lookups.push(b.lead_id||b.phone);if(profileDelay)await profileDelay;}
       assert.ok(b.lead_id===target.id||b.phone===target.phone_e164);
       for(const [key,value] of Object.entries(b.changes||{})){
        if(['customer_name','model'].includes(key))target[key]=value;
@@ -58,6 +61,15 @@ const {fixture}=require('./application-form.test.cjs');
   assert.match(await page.locator('#applicationReadStatus').innerText(),/berbeza daripada profil/);
   assert.equal(await page.locator('#application_applicant_name').inputValue(),'Nor Farah');
   assert.equal(await page.locator('#application_applicant_nric').inputValue(),'000101010001');
+  await page.locator('#applicationPaste').fill('Nama: Pelanggan Lain\nNo. IC: 000101010002');
+  await page.locator('#applicationRead').click();
+  assert.match(await page.locator('#applicationReadStatus').innerText(),/Nombor IC berbeza/);
+  assert.equal(await page.locator('#application_applicant_name').inputValue(),'Nor Farah');
+  await page.locator('#applicationPaste').fill('Nama pasangan: Pasangan Contoh\nNo. IC: 000101010002\nNo. HP: 0100000002');
+  await page.locator('#applicationRead').click();
+  assert.equal(await page.locator('#application_applicant_nric').inputValue(),'000101010001');
+  assert.equal(await page.locator('#application_applicant_phone').inputValue(),'0100000001');
+  assert.equal(await page.locator('#application_spouse_nric').inputValue(),'000101010002');
   await page.locator('#applicationPaste').fill(pasted);await page.locator('#applicationRead').click();
   await page.locator('#applicationOutputName').fill('Nor_Farah - Application Form');
   await page.locator('#applicationGenerate').click();
@@ -81,6 +93,24 @@ const {fixture}=require('./application-form.test.cjs');
   await page.locator('#application_applicant_name').fill('Nama Baru');assert.equal(await page.locator('#applicationDownload').isDisabled(),true);assert.equal(await page.locator('#applicationSaveProfile').isDisabled(),true);
   await page.locator('#applicationPaste').fill('MAKLUMAT PEMOHON\nNama: Customer Baharu\nLabel Lain: Semak saya');await page.locator('#applicationRead').click();assert.equal(await page.locator('#application_spouse_name').inputValue(),'Pasangan Contoh');assert.equal(await page.locator('#application_applicant_phone').inputValue(),'0100000001');assert.equal(await page.locator('#applicationIssues').isVisible(),true);
   page.once('dialog',d=>d.accept());await page.locator('#applicationClear').click();assert.equal(await page.locator('#application_applicant_name').inputValue(),'Customer Baharu');assert.equal(await page.locator('#applicationPaste').inputValue(),'');assert.deepEqual(errors,[]);
+  await page.evaluate(()=>window.FARIS_WORKSPACE_PROFILE.flush());
+  let releaseProfile;
+  profileDelay=new Promise(resolve=>{releaseProfile=resolve});
+  const lookupCount=lookups.length;
+  try{
+   await page.goto('https://application.test/?tool=APPLICATION&origin=staff&customer='+target.id,{waitUntil:'domcontentloaded'});
+   await page.waitForFunction(()=>window.FARIS_WORKSPACE_PROFILE?.loading);
+   await page.locator('#applicationPaste').fill('Nama: Pelanggan Lain\nNombor telefon: 0190000001');
+   await page.locator('#applicationRead').click();
+   assert.match(await page.locator('#applicationReadStatus').innerText(),/Tunggu profil pelanggan/);
+   assert.equal(await page.locator('#application_applicant_name').inputValue(),'');
+  }finally{releaseProfile();profileDelay=null;}
+  await page.locator('#application_applicant_phone[readonly]').waitFor();
+  assert.deepEqual(lookups.slice(lookupCount),[target.id]);
+  await page.locator('#applicationRead').click();
+  assert.match(await page.locator('#applicationReadStatus').innerText(),/berbeza daripada profil/);
+  assert.equal(await page.locator('#application_applicant_name').inputValue(),'Customer Baharu');
+  assert.deepEqual(errors,[]);
   console.log('PASS staff/'+(mobile?'phone':'desktop')+': Word and WhatsApp parse, phone-matched profile, wrong phone blocked, PDF preview/download/auto-save, Compiler import and VSO with linked identity, no overflow/errors');await ctx.close();
  }}finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exitCode=1});

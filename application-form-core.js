@@ -80,12 +80,12 @@ for(const field of fields){
  }
 }
 function fieldFor(label,section){
- const key=normalize(label),matches=allLabels.get(key);
+ const key=normalize(label.replace(/\s*\(\+?60\)\s*$/,'')),matches=allLabels.get(key);
  return qualifiedLabels.get(key)||bySection.get(section)?.get(key)||(matches?.length===1?matches[0]:undefined);
 }
 const labelPattern=[...new Set([...allLabels.keys(),...qualifiedLabels.keys()])]
  .sort((a,b)=>b.length-a.length).map(label=>label.replace(/ /g,'[ .()\\/\\-]*')).join('|');
-const inlineField=new RegExp('(?:^|[\\s|;])(?:'+labelPattern+')\\s*[:：=]','giu');
+const inlineField=new RegExp('(?:^|[\\s|;])(?:'+labelPattern+')(?:\\s*\\(\\+?60\\))?\\s*[:：=]','giu');
 const boldLabel=new RegExp('(^|[\\s|;])\\*{1,2}(?=(?:'+labelPattern+')\\s*[:：=])','giu');
 const spacedField=new RegExp('^('+labelPattern+')(?:\\s*[–—-]\\s*|\\s+)(\\S.*)$','iu');
 function cleanValue(raw){return raw.trim().replace(/^\*{1,2}|\*{1,2}$/g,'').trim()}
@@ -122,13 +122,17 @@ function parse(text){
   const heading=sectionFor(line.replace(/[:：]\s*$/,''));
   if(heading){flush();section=contactScope=heading.id;return}
   if(/^(?:application form|borang permohonan)(?:\s|$)/i.test(line))return;
-  if(/^(?:maklumat|butiran)\b/i.test(line)){flush();section=contactScope='unknown';unparsed.push(line);return}
-  const match=line.match(/^([^:：=\t]+?)\s*[:：=\t]+\s*(.*)$/);
+  if(/^(?:maklumat|butiran)\b|^(?:penjamin|guarantor)\s*(?:\([^)]*\))?\s*:?$/i.test(line)){flush();section=contactScope='unknown';unparsed.push(line);return}
+  const rawPhone=phoneValue(line);
+  const match=rawPhone?null:line.match(/^([^:：=\t]+?)\s*[:：=\t]+\s*(.*)$/);
   const exact=match?null:fieldFor(line,section);
   const spaced=match||exact?null:line.match(spacedField);
   const field=exact||((match||spaced)&&fieldFor((match||spaced)[1],section));
   if(field){
    flush();
+   const label=normalize((match||spaced)?.[1]||line);
+   // A named person starts their own block even when the pasted text omits its heading.
+   if(field.id.endsWith('_name')&&personLabels[field.section]&&qualifiedLabels.get(label)===field)section=field.section;
    contactScope=field.section;
    pending={field,parts:[(match||spaced)?.[2]||'']};
    return;
@@ -143,15 +147,21 @@ function parse(text){
    unlabelled.get(contactScope).push(line);
   }else unparsed.push(line);
  }
+ function readInline(line){
+  const hits=[...line.matchAll(inlineField)];
+  if(hits.length>1&&hits[0].index===0){
+   for(let i=0;i<hits.length;i++)read(line.slice(hits[i].index,hits[i+1]?.index).trim().replace(/[|;]\s*$/,'').trim());
+  }else read(line);
+ }
  const input=String(text||'').normalize('NFKC').replace(/[\u200b-\u200f\u202a-\u202e\u2060\ufeff]/g,'').replace(/\r\n?|[\u2028\u2029]/g,'\n');
  for(const source of input.split('\n')){
   const line=cleanValue(source).replace(/^(?:[•▪●]\s*|-\s+|\d{1,2}[.)](?=\s|\p{L})\s*)/u,'')
    .replace(/\*{1,2}(?=\s*[:：=])|(?<=[:：=])\*{1,2}/g,'').replace(boldLabel,'$1');
   if(!line)continue;
-  const hits=[...line.matchAll(inlineField)];
-  if(hits.length>1&&hits[0].index===0){
-   for(let i=0;i<hits.length;i++)read(line.slice(hits[i].index,hits[i+1]?.index).trim().replace(/[|;]\s*$/,'').trim());
-  }else read(line);
+  const pieces=line.split(/\s*[|;]\s*/);
+  if(pieces.length>1&&pieces.every(piece=>spacedField.test(piece)||fieldFor(piece.split(/[:：=\t]/,1)[0],section))){
+   for(const piece of pieces)readInline(piece);
+  }else readInline(line);
  }
  flush();
  for(const [scope,lines] of unlabelled){
@@ -211,5 +221,5 @@ async function buildPdf({PDFLib,fontkit,fontBytes,titleBytes,values}){
  doc.setTitle('Application Form');doc.setAuthor('FARIS R+PROTON');doc.setCreator('FARIS Application Form Generator');
  return {bytes:await doc.save(),pages:doc.getPageCount()};
 }
-return {sections,fields,normalize,phoneValue,parse,buildPdf};
+return {sections,fields,normalize,phoneValue,nricValue,parse,buildPdf};
 });

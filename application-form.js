@@ -45,7 +45,9 @@ async function preview(blob,generation){
  }
 }
 async function generate(){
- if(busy||pasteDirty)return;const data=values();if(!data.applicant_name){status('Isi nama pemohon dahulu.',true);$('application_applicant_name').focus();return}
+ if(busy||pasteDirty)return;
+ if(window.FARIS_WORKSPACE_PROFILE?.loading){status('Tunggu profil pelanggan selesai dimuatkan sebelum jana PDF.',true);return}
+ const data=values();if(!data.applicant_name){status('Isi nama pemohon dahulu.',true);$('application_applicant_name').focus();return}
  invalidate();const snapshot=stamp(),generation=epoch,name=filename();busy=true;controls();status('Menjana Application Form…');
  try{
   await window.FARIS_WORKSPACE_PROFILE?.flush();
@@ -65,7 +67,9 @@ function showIssues(issues){
 $('applicationRead').addEventListener('click',()=>{
  const readStatus=$('applicationReadStatus');
  if(!$('applicationPaste').value.trim()){readStatus.textContent='Paste maklumat pelanggan dahulu.';return}
- const parsed=core.parse($('applicationPaste').value), workflow=window.FARIS_WORKSPACE_PROFILE;
+ const workflow=window.FARIS_WORKSPACE_PROFILE;
+ if(workflow?.loading){readStatus.textContent='Tunggu profil pelanggan selesai dimuatkan, kemudian tekan Baca Maklumat semula.';return}
+ const parsed=core.parse($('applicationPaste').value);
  const issues=[...parsed.conflicts.map(id=>'Dua nilai berbeza untuk '+core.fields.find(f=>f.id===id).label.trim().replace(/:$/,'')+'. Semak teks sumber.'),...parsed.unparsed.map(line=>'Belum dipadankan: '+line)];
  showIssues(issues);
  if(!parsed.count){
@@ -83,6 +87,12 @@ $('applicationRead').addEventListener('click',()=>{
  }
  if(workflow&&!workflow.samePhone(phone)){
   readStatus.textContent='Nombor dalam teks berbeza daripada profil yang sedang dibuka.';
+  return;
+ }
+ const pastedIc=core.nricValue(parsed.values.applicant_nric||'');
+ const profileIc=core.nricValue($('application_applicant_nric').value.trim());
+ if(workflow?.active&&pastedIc&&profileIc&&pastedIc!==profileIc){
+  readStatus.textContent='Nombor IC berbeza daripada profil yang sedang dibuka. Semak pelanggan atau betulkan IC pada medan borang.';
   return;
  }
  pasteDirty=false;invalidate();

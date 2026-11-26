@@ -32,7 +32,7 @@ const phoneFields = ['customerPhone','vsoPhone','application_applicant_phone'];
 for (const field of window.FARIS_APPLICATION_CORE.fields) {
  if (!['applicant_phone','financing_model'].includes(field.id)) ids['application_'+field.id] ??= field.id;
 }
-let flow, syncing = false, lookupGeneration = 0;
+let flow, syncing = false, lookupGeneration = 0, loadingProfile = false;
 const status = (message, error = false) => {
  $('staffWorkflowStatus').textContent = message;
  $('staffWorkflowStatus').classList.toggle('workflow-error',error);
@@ -136,8 +136,11 @@ document.addEventListener('input',handleField);
 document.addEventListener('change',handleField);
 async function start(selector, initial = {}) {
  const sequence = ++lookupGeneration;
+ loadingProfile = true;
  status('Memuatkan profil…');
- const response = await api.fetchProfile(selector);
+ let response;
+ try { response = await api.fetchProfile(selector); }
+ finally { if(sequence===lookupGeneration)loadingProfile=false; }
  if (sequence !== lookupGeneration) return;
  const {customer,account_id:accountId} = response;
  flow?.close();
@@ -157,6 +160,7 @@ async function start(selector, initial = {}) {
 }
 $('staffWorkflowLookup').addEventListener('submit',async e => {
  e.preventDefault();
+ if(loadingProfile)return;
  const phone = api.normalizePhone($('staffWorkflowPhone').value);
  if (!phone) return status('Semak nombor telefon pelanggan.',true);
  const activePhone=tool==='APPLICATION'?'application_applicant_phone':tool==='VSO'?'vsoPhone':'customerPhone';
@@ -175,7 +179,7 @@ $('staffWorkflowLookup').addEventListener('submit',async e => {
 });
 document.addEventListener('input',e=>{if(!syncing&&(e.target.id in ids||e.target.id==='vsoModel'))e.target.dataset.workflowEdited='1'});
 document.addEventListener('change',e=>{
- if(!syncing&&!flow&&phoneFields.includes(e.target.id)&&api.normalizePhone(e.target.value)){
+ if(!syncing&&!loadingProfile&&!flow&&phoneFields.includes(e.target.id)&&api.normalizePhone(e.target.value)){
   $('staffWorkflowPhone').value=e.target.value;
   $('staffWorkflowLookup').requestSubmit();
  }
@@ -214,6 +218,7 @@ async function saveFile(file,party,category){
 }
 window.FARIS_WORKSPACE_PROFILE = {
  get active(){return !!flow;},
+ get loading(){return loadingProfile;},
  get uploading(){return !!uploads.size;},
  get id(){return flow?.id;},
  async ensureFilesBelong(entries){

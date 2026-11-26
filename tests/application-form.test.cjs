@@ -54,6 +54,14 @@ if(require.main===module)(async()=>{
  assert.deepEqual(core.parse('Alamat Tetap: No 12 Jalan Ujian\nBandar Contoh\nNo. IC - 000101-01-0101\nNo. telefon 010-000 0001').values,{applicant_permanent_address:'No 12 Jalan Ujian Bandar Contoh',applicant_nric:'000101010101',applicant_phone:'0100000001'});
  assert.deepEqual(core.parse('No tel: 0100000001\nMAKLUMAT PEKERJAAN\nNo tel: +603-0000 0000\nMAKLUMAT PASANGAN\nNo tel: 0100000002').values,{applicant_phone:'0100000001',employment_phone:'0300000000',spouse_phone:'0100000002'});
  assert.deepEqual(core.parse('1)Nama seperti dalam MyKad: Nur Aina\nBinti Ujian\n•MyKad: 000101-01-0101\n2)No. telefon 011 0000 0101').values,{applicant_name:'Nur Aina Binti Ujian',applicant_nric:'000101010101',applicant_phone:'01100000101'});
+ const mixed=core.parse('Nama Pemohon: Pemohon Ujian\nNama Pasangan: Pasangan Ujian\nNo. IC: 000101-01-0002\nNo. HP: 0100000002\nNama Rujukan: Rujukan Ujian\nNo. Telefon: 0100000003');
+ assert.deepEqual(mixed.values,{applicant_name:'Pemohon Ujian',spouse_name:'Pasangan Ujian',spouse_nric:'000101010002',spouse_phone:'0100000002',reference_name:'Rujukan Ujian',reference_phone:'0100000003'});
+ const guarantor=core.parse('Nama: Pemohon Ujian\nPENJAMIN (jika ada):\nNama: Penjamin Ujian\nNo. IC: 000101-01-0002\nNo. HP: 0100000002');
+ assert.deepEqual(guarantor.values,{applicant_name:'Pemohon Ujian'});
+ assert.equal(guarantor.unparsed.length,4);
+ assert.deepEqual(core.parse('Nama Penuh – Pemohon Ujian | No IC – 000101010001 | No HP – 0100000001').values,{applicant_name:'Pemohon Ujian',applicant_nric:'000101010001',applicant_phone:'0100000001'});
+ assert.deepEqual(core.parse('Nama: Pemohon Ujian | No Telefon (+60): 011-0000-0001').values,{applicant_name:'Pemohon Ujian',applicant_phone:'01100000001'});
+ assert.deepEqual(core.parse('Nama: Pemohon Ujian\nhttps://wa.me/60100000001').values,{applicant_name:'Pemohon Ujian',applicant_phone:'0100000001'});
  const assets={PDFLib,fontkit,fontBytes:fs.readFileSync('assets/application-form/CanvaSans-Regular.ttf'),titleBytes:fs.readFileSync('assets/application-form/title.png')};
  const out=await core.buildPdf({...assets,values:p.values});assert.equal(out.pages,2);const doc=await PDFLib.PDFDocument.load(out.bytes);assert.equal(doc.getPageCount(),2);assert.equal(doc.getTitle(),'Application Form');
  const long={...p.values,applicant_permanent_address:'Alamat sangat panjang '.repeat(90),employment_job_scope:'Tugas kerja panjang '.repeat(70),spouse_employer:'Syarikat '.repeat(130)};const overflow=await core.buildPdf({...assets,values:long});assert.ok(overflow.pages>2);fs.writeFileSync('/tmp/faris-application-long-output.pdf',overflow.bytes);
