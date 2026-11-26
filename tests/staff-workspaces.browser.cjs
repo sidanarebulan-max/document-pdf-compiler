@@ -20,7 +20,7 @@ const insightCore=require('../customer-insights-core');
     const url=new URL(route.request().url());if(await uiAsset(route,url))return;
     if(url.hostname==='workspace.test'){
      const file=url.pathname==='/staff.html'?'staff.html':url.pathname.slice(1);
-     if(['staff.html','staff.css','staff-navigation.js','staff-passcode.js','telegram-hub.js','inbox-client.js','staff-inbox.js','staff-gallery.js','staff-gallery.css','staff-customers.js','staff-customers.css','customer-insights-core.js'].includes(file)){
+     if(['staff.html','staff.css','staff-navigation.js','staff-passcode.js','telegram-hub.js','inbox-client.js','staff-inbox.js','staff-gallery.js','staff-gallery.css','staff-customers.js','customer-catalogue.js','staff-customers.css','customer-insights-core.js'].includes(file)){
       return route.fulfill({status:200,contentType:file.endsWith('.html')?'text/html':file.endsWith('.css')?'text/css':'text/javascript',body:fs.readFileSync(path.join(process.cwd(),file),'utf8')});
      }
     }

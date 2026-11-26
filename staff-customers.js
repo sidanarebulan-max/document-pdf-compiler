@@ -11,6 +11,7 @@ const day=v=>v?new Date(v.slice(0,10)+'T12:00:00+08:00').toLocaleDateString('ms-
 const money=v=>v===null||v===undefined||v===''?'—':'RM '+Number(v).toLocaleString('ms-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
 let user=null,epoch=0,listing=0,opening=0,rows=[],next=null,customer=null,tab='summary',selected=new Set(),busy=false,dirty=false,editRevision=0,editStamp='';
 let sharedFlow=null;
+const catalogue=window.FARIS_CUSTOMER_CATALOGUE;
 const sharedProfileFields={cpName:'customer_name',cpModel:'model',cpVariant:'variant',cpColour:'colour'};
 function mountSharedProfile(){
  const details=$('customerSharedDetails'), finance=$('customerSharedFinance');
@@ -64,9 +65,10 @@ function attachSharedProfile(){
  $('customerWorkflowStatus').textContent='Maklumat yang dikongsi disimpan automatik.';
 }
 function renderSharedValues(data){
+ renderVehicleChoices(data.model,data.variant,data.colour);
  for(const [id,key] of Object.entries(sharedProfileFields)){
   const field=$(id);
-  if(field&&field!==document.activeElement)field.value=data[key]??'';
+  if(field&&field!==document.activeElement&&!['cpModel','cpVariant','cpColour'].includes(id))field.value=data[key]??'';
  }
 }
 async function leaveForTool(tool,suffix=''){
@@ -211,7 +213,7 @@ function renderProfile(fill=true){
  $('customerFinishFollow').classList.toggle('hide',!l.follow_up_at);$('customerRescheduleFollow').classList.toggle('hide',!l.follow_up_at);
  renderBanks(customer.banks||[]);
  const wa=$('customerWhatsapp');wa.setAttribute('aria-disabled',String(!l.consent_confirmed));if(l.consent_confirmed)wa.href='https://wa.me/'+l.phone_e164;else wa.removeAttribute('href');
- if(fill){for(const [id,value] of Object.entries({cpName:l.customer_name,cpPhone:l.phone_e164,cpModel:l.model,cpVariant:p.variant,cpColour:p.colour||'',cpStatus:p.sales_status,cpFollow:l.follow_up_at,cpFollowTime:profileFollowStamp(l,p).slice(11),cpReceived:malaysiaInput(p.lead_received_at),cpDelivered:p.sales_status==='delivered'?malaysiaInput(p.delivered_at):'',cpNext:p.next_action,cpReason:p.closure_reason}))$(id).value=value??'';$('cpGuarantor').checked=p.guarantor_required;$('cpLou').checked=p.lou_received===true;$('cpTradeIn').checked=p.trade_in===true;editRevision=p.revision;editStamp=l.updated_at;dirty=false;reasonRequired();syncVehicleOptions();toggleDelivered()}
+ if(fill){renderVehicleChoices(l.model,p.variant,p.colour);for(const [id,value] of Object.entries({cpName:l.customer_name,cpPhone:l.phone_e164,cpStatus:p.sales_status,cpFollow:l.follow_up_at,cpFollowTime:profileFollowStamp(l,p).slice(11),cpReceived:malaysiaInput(p.lead_received_at),cpDelivered:p.sales_status==='delivered'?malaysiaInput(p.delivered_at):'',cpNext:p.next_action,cpReason:p.closure_reason}))$(id).value=value??'';$('cpGuarantor').checked=p.guarantor_required;$('cpLou').checked=p.lou_received===true;$('cpTradeIn').checked=p.trade_in===true;editRevision=p.revision;editStamp=l.updated_at;dirty=false;reasonRequired();toggleDelivered()}
  $('customerLastUpdated').innerHTML='<span>Terakhir Dikemas Kini</span><time datetime="'+esc(customer.tracking?.updated_at||p.updated_at||l.updated_at||'')+'">'+esc(when(customer.tracking?.updated_at||p.updated_at||l.updated_at))+'</time><small>Waktu Malaysia</small>';
  $('customerSourceInfo').textContent='Sumber: '+(l.source||'—')+'\nLead diterima: '+when(p.lead_received_at||l.created_at)+'\nRekod dimasukkan: '+when(l.created_at)+
  '\nKemas kini terakhir: '+when(customer.tracking?.updated_at||p.updated_at||l.updated_at)+(customer.tracking?.updated_by?' · '+customer.tracking.updated_by:'')+
@@ -330,11 +332,6 @@ function forgetCustomer(){
 function reset(){
  sharedFlow?.close();sharedFlow=null;epoch++;whatsappTrendListing++;$('whatsappTrendResult').innerHTML='';$('whatsappTrendResult').setAttribute('aria-busy','false');$('whatsappTrendContext').textContent='';$('whatsappTrendForm').reset();whatsappTrendPreset();$('customerInsightsResult').innerHTML='';$('customerInsightsContext').textContent='';listing++;opening++;historySeq++;pickerSeq++;user=null;customer=null;rows=[];next=null;historyRows=[];historyNext=null;historyLoaded=false;selected.clear();pickerRows=[];pickerSelected.clear();operations.clear();linkHandoff=null;busy=false;dirty=false;
  for(const id of ['customerPreview','customerInboxDialog','customerCaseDialog','customerBankDialog','customerActionDialog'])if($(id).open)$(id).close();clearPreview();$('customerDetail').classList.add('hide');$('customersDirectory').classList.remove('hide');$('customersList').innerHTML='';$('customerFiles').innerHTML='';$('customerHistory').innerHTML='';$('customerNotes').innerHTML='';$('customerInboxList').innerHTML='';$('customerName').textContent='';$('customerIdentity').textContent='';$('customerOwner').textContent='';$('customerNextAction').textContent='';$('customerSourceInfo').textContent='';$('customerLastUpdated').textContent='';$('customerLegacyNotes').textContent='';$('customerWhatsapp').removeAttribute('href');$('customerProfileForm').reset();$('customerCaseForm').reset();$('customerCaseFeedback').textContent='';$('customerNoteForm').reset();$('customersFilterForm').reset();$('customerDateBasis').value='received';$('customerReminders').open=false;$('customerReminderItems').replaceChildren();$('customerReminderCounts').textContent='';$('customerBankList').replaceChildren();$('customerBankForm').reset();$('customerActionForm').reset();$('customerActiveFilters').textContent='';$('customersTotal').textContent='';$('customerUpload').value='';$('customersNotice').classList.add('hide');$('customersLinkBanner').classList.add('hide');$('customersRefresh').disabled=false;busyState(false)}
-const vehicleOptions={
- 'e.MAS 7 EV':{variants:['Premium','Premium Plus'],colours:['Lithium White','Turquoise Green','Slate Grey','Platinum Silver','Quartz Rose','Obsidian Black']},
- 'e.MAS 7 PHEV':{variants:['Prime','Premium','Premium Plus'],colours:['Obsidian Black','Lithium White','Mercury Silver','Galena Grey','Aquamarine Blue','Emerald Green']},
- 'e.MAS 5':{variants:['Prime','Premium'],colours:['Moonstone White','Graphite Silver','Slate Grey','Marble Cream','Quartz Rose','Jade Green']}
-};
 const malaysiaFormDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
 function malaysiaInput(value){
  if(!value)return '';
@@ -346,12 +343,29 @@ function profileFollowStamp(lead,profile){
  const stamp=malaysiaInput(profile.follow_up_due_at);
  return stamp&&stamp.slice(0,10)===lead.follow_up_at?stamp:'';
 }
-function syncVehicleOptions(){
- const model=$('cpModel').value.trim().toLowerCase();
- const options=Object.entries(vehicleOptions).find(([name])=>name.toLowerCase()===model)?.[1];
- for(const [id,items] of [['customerVariantOptions',options?.variants],['customerColourOptions',options?.colours]]){
-  $(id).replaceChildren(...(items||[]).map(value=>new Option(value)));
+function fillCatalogueSelect(id,placeholder,choices,saved=''){
+ const field=$(id);
+ const selected=saved??'';
+ const options=[['',placeholder],...catalogue.optionsWithSaved(choices,selected)];
+ if(field.options.length!==options.length||options.some(([value,label],index)=>{
+  const current=field.options[index];
+  return current.value!==value||current.text!==label;
+ })){
+  field.replaceChildren(...options.map(([value,label])=>new Option(label,value)));
  }
+ if(field.value!==selected)field.value=selected;
+}
+function renderVehicleChoices(model='',variant='',colour=''){
+ const vehicle=catalogue.vehicleFor(model);
+ fillCatalogueSelect('cpModel','Pilih model',catalogue.vehicles.map(item=>[item.model,item.name]),model);
+ fillCatalogueSelect('cpVariant',model?'Pilih varian':'Pilih model dahulu',vehicle?.variants||[],variant);
+ fillCatalogueSelect('cpColour',model?'Pilih warna':'Pilih model dahulu',vehicle?.colours||[],colour);
+}
+function changeCustomerModel(){
+ const previous=sharedFlow?.data.model??customer?.lead.model??'';
+ const patch=catalogue.selectionAfterModelChange(previous,$('cpModel').value,$('cpVariant').value,$('cpColour').value);
+ renderVehicleChoices(patch.model,patch.variant,patch.colour);
+ if(sharedFlow)sharedFlow.queue(window.VSO_VARIANTS?.customerQuote(sharedFlow.data,patch)||patch);
 }
 function toggleDelivered(){
  $('customerDeliveredField').classList.toggle('hide',$('cpStatus').value!=='delivered');
@@ -414,6 +428,7 @@ function showBankEditor(bank=null,reschedule=false){
  if(!customer||busy)return;
  editingBank=bank;
  $('customerBankForm').reset();
+ fillCatalogueSelect('cbName','Pilih nama bank',catalogue.banks,bank?.bank_name);
  for(const [id,key] of Object.entries(bankFields)){
   let value=bank?.[key]??'';
   if(key==='status')value=value||'draft';
@@ -455,7 +470,7 @@ function bindTracking(){
   $('customersFollow').value=button.dataset.trackingFilter;
   directory().then(()=>{if(user&&!customer)$('customerListHeading').scrollIntoView({block:'start',behavior:'smooth'})});
  });
- $('cpModel').addEventListener('input',syncVehicleOptions);
+ $('cpModel').addEventListener('change',changeCustomerModel);
  $('cpStatus').addEventListener('change',toggleDelivered);
  $('customerAddBank').addEventListener('click',()=>showBankEditor());
  $('customerBankClose').addEventListener('click',()=>$('customerBankDialog').close());
@@ -495,9 +510,10 @@ document.addEventListener('DOMContentLoaded',()=>{
  insightPreset();whatsappTrendPreset();bindTracking();
  document.querySelectorAll('[data-customer-tool]').forEach(button=>button.addEventListener('click',()=>leaveForTool(button.dataset.customerTool)));
  for(const id of Object.keys(sharedProfileFields)){
+  if(id==='cpModel')continue;
   const key=sharedProfileFields[id];
   const financial=['selling_price','otr_price','insurance_amount','rebate_amount','deposit','loan_amount'].includes(key);
-  if(!financial&&!['model','variant'].includes(key))$(id)?.addEventListener('input',e=>sharedFlow?.queue({[key]:e.target.value}));
+  if(!financial&&!['variant','colour'].includes(key))$(id)?.addEventListener('input',e=>sharedFlow?.queue({[key]:e.target.value}));
   else {
    const save=e=>{
     if(!sharedFlow||!e.target.validity.valid)return;
@@ -507,7 +523,6 @@ document.addEventListener('DOMContentLoaded',()=>{
     renderSharedValues(sharedFlow.data);
    };
    $(id)?.addEventListener('change',save);
-
   }
  }
  window.addEventListener('focus',()=>sharedFlow?.refresh());

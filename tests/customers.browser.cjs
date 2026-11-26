@@ -13,7 +13,7 @@ try{for(const role of ['staff','admin'])for(const mobile of [true,false]){
  await page.route('**/*',async route=>{
   const req=route.request(),url=new URL(req.url());if(await uiAsset(route,url))return;
   if(url.hostname==='customers.test'){
-   const f=url.pathname.slice(1);if(/^(staff\.html|staff\.css|staff-gallery\.css|staff-gallery\.js|staff-customers\.css|staff-customers\.js|customer-insights-core\.js|staff-navigation\.js|staff-passcode\.js|telegram-hub\.js|inbox-client\.js|staff-inbox\.js)$/.test(f))return route.fulfill({contentType:f.endsWith('html')?'text/html':f.endsWith('css')?'text/css':'text/javascript',body:fs.readFileSync(path.join(process.cwd(),f))});
+   const f=url.pathname.slice(1);if(/^(staff\.html|staff\.css|staff-gallery\.css|staff-gallery\.js|staff-customers\.css|staff-customers\.js|customer-insights-core\.js|customer-catalogue\.js|staff-navigation\.js|staff-passcode\.js|telegram-hub\.js|inbox-client\.js|staff-inbox\.js)$/.test(f))return route.fulfill({contentType:f.endsWith('html')?'text/html':f.endsWith('css')?'text/css':'text/javascript',body:fs.readFileSync(path.join(process.cwd(),f))});
   }
   if(url.hostname==='files.test')return route.fulfill({contentType:'image/png',headers:{'Access-Control-Allow-Origin':'*'},body:png});
   if(url.hostname.endsWith('.supabase.co')){
@@ -65,8 +65,25 @@ try{for(const role of ['staff','admin'])for(const mobile of [true,false]){
  await page.locator('[data-insight-bucket=\"lou\"]').click();await page.waitForFunction(()=>document.getElementById('customersTotal').textContent==='0 daripada 0 pelanggan sepadan');assert.equal(await page.locator('#customersList .customer-name-open').count(),0);
  await page.locator('#customersClearFilters').click();await page.locator('#customersList .customer-name-open').waitFor();
  await page.locator('#customersList .customer-name-open').click();await page.locator('#cpName').waitFor();assert.equal(await page.locator('#cpName').inputValue(),'Customer Ujian');assert.match(await page.locator('#customerLegacyNotes').innerText(),/Catatan WhatsApp asal/);
- await page.locator('#cpStatus').selectOption('documents');await page.locator('#cpNext').fill('Minta penyata bank');await page.locator('#cpFollow').fill('2026-11-01');await page.locator('#cpVariant').fill('Premium');await page.locator('#cpGuarantor').check();await page.locator('#cpLou').check();await page.locator('#cpTradeIn').check();await page.locator('#customerProfileForm [data-profile-save]').click();await page.waitForFunction(()=>document.getElementById('customerStatusBadge').textContent==='Mengumpul dokumen');assert.match(await page.locator('#customerNextAction').innerText(),/Minta penyata bank/);
+ await page.locator('#cpStatus').selectOption('documents');await page.locator('#cpNext').fill('Minta penyata bank');await page.locator('#cpFollow').fill('2026-11-01');await page.locator('#cpVariant').selectOption('Premium');await page.locator('#cpGuarantor').check();await page.locator('#cpLou').check();await page.locator('#cpTradeIn').check();await page.locator('#customerProfileForm [data-profile-save]').click();await page.waitForFunction(()=>document.getElementById('customerStatusBadge').textContent==='Mengumpul dokumen');assert.match(await page.locator('#customerNextAction').innerText(),/Minta penyata bank/);
  await page.locator('#customerNote').fill('Customer mahu warna hijau <script>');await page.locator('#customerNoteSave').click();await page.getByText('Customer mahu warna hijau <script>',{exact:true}).waitFor();assert.equal(await page.locator('#customerNotes script').count(),0);
+ assert.equal(await page.locator('#cpModel option').count(),9);
+ assert.equal(await page.locator('#cpColour').inputValue(),'White');
+ await page.locator('#cpModel').selectOption('Proton S70');
+ assert.equal(await page.locator('#cpVariant option').count(),6);
+ assert.equal(await page.locator('#cpVariant').inputValue(),'');
+ assert.equal(await page.locator('#cpColour option').count(),6);
+ await page.locator('#cpModel').selectOption('e.MAS 5');
+ await page.locator('#cpVariant').selectOption('Premium');
+ await page.locator('#customerProfileForm [data-profile-save]').click();
+ await page.locator('[data-customer-tab="banks"]').click();
+ await page.locator('#customerAddBank').click();
+ assert.equal(await page.locator('#cbName option').count(),20);
+ assert.equal(await page.locator('#cbName').inputValue(),'');
+ await page.locator('#cbName').selectOption('CIMB Islamic Bank Berhad');
+ await page.locator('#cbStatus').selectOption('review');
+ await page.locator('#customerBankForm button[type="submit"]').click();
+ await page.locator('#customerBankList').getByText('CIMB Islamic Bank Berhad',{exact:true}).waitFor();
  assert.equal(await page.locator('[data-customer-tab]').count(),4);assert.equal(await page.locator('[data-customer-panel="summary"] #customerNoteForm').count(),1);
  await page.locator('[data-customer-tab="documents"]').click();assert.equal(await page.locator('.customer-checklist-group').count(),0);await page.locator('#customerStatusBadge').click();await page.locator('#customerCaseStatus').selectOption('on_hold');assert.equal(await page.locator('#customerCaseReason').getAttribute('required'),'');await page.locator('#customerCaseCancel').click();assert.equal(await page.locator('#customerStatusBadge').innerText(),'Mengumpul dokumen');await page.locator('#customerStatusBadge').click();await page.locator('#customerCaseStatus').selectOption('bank_submitted');await page.locator('#customerCaseSave').click();await page.waitForFunction(()=>!document.getElementById('customerCaseDialog').open);assert.equal(await page.locator('#customerStatusBadge').innerText(),'Permohonan bank');
  await page.locator('#customerPickInbox').click();await page.locator('[data-customer-inbox="'+unlinkedId+'"]').check();await page.locator('#customerInboxLink').click();await page.waitForFunction(()=>!document.getElementById('customerInboxDialog').open);assert.equal(await page.locator('.customer-file').count(),2);
