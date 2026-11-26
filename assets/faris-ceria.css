@@ -1,0 +1,151 @@
+/* FARIS "Ceria" theme: warm cream base, calm teal for actions, coral + sun for joy.
+   Active only when <html data-palette="ceria"> (set by faris-appearance.js); resolves to light mode,
+   so every light rule still applies and this file only layers colour, depth and gentle motion on top.
+   Selector prefix html[data-palette=ceria][data-ios-theme] outranks faris-glass.css by one attribute. */
+html[data-palette=ceria][data-ios-theme]{
+ color-scheme:light;
+ --ios-bg:#fff8ef;--ios-surface:#ffffff;--ios-surface-2:#fffbf6;--ios-fill:#f7efe4;
+ --ios-text:#2a2733;--ios-secondary:#6b6577;--ios-line:#f0e5d6;--ios-edge:#ffffff;
+ --ios-primary:#0f766e;--ios-primary-end:#0d8075;--ios-on-primary:#ffffff;--ios-tint:#e3f6f2;
+ --ios-green:#166534;--ios-green-bg:#e3f6e9;--ios-orange:#a15c00;--ios-orange-bg:#fff2d2;
+ --ios-blue:#1d4ed8;--ios-blue-bg:#e8f0ff;--ios-red:#be123c;--ios-red-bg:#ffe8ee;
+ --ios-lilac:#ffe3d3;--ios-mint:#d6f4ec;--ios-pink:#ffe4ec;
+ --ios-shadow:rgba(124,86,38,.08);--ios-deep-shadow:rgba(15,118,110,.24);
+ --ios-glass:rgba(255,252,247,.86);--ios-scrim:rgba(42,39,51,.36);--ios-focus:#0f766e;
+ --ceria-coral:#ff7a59;--ceria-coral-ink:#c2410c;--ceria-sun:#ffc94d;--ceria-sun-soft:#fff3cf;
+ --ceria-violet:#6d28d9;--ceria-violet-bg:#f1ebff;--ceria-sky:#0369a1;--ceria-sky-bg:#e0f2fe;
+ --ceria-rose:#be185d;--ceria-rose-bg:#fde8f1;
+ --ceria-ribbon:linear-gradient(90deg,#14b8a6,#ffc94d 52%,#ff7a59);
+ --ceria-soft:0 1px 2px rgba(124,86,38,.06),0 10px 28px rgba(124,86,38,.08);
+ --ceria-lift:0 2px 4px rgba(124,86,38,.08),0 18px 36px rgba(124,86,38,.13);
+ --ceria-ease:cubic-bezier(.2,.8,.2,1);
+}
+html[data-palette=ceria][data-ios-theme] ::selection{background:#ffe3a3;color:#2a2733}
+
+/* Background: cream with three soft blobs that drift very slowly. */
+html[data-palette=ceria][data-ios-theme] body.faris-ui{background:#fff8ef}
+html[data-palette=ceria][data-ios-theme] body.faris-ui::before{content:'';position:fixed;inset:-12vmax;z-index:-1;pointer-events:none;
+ background:radial-gradient(38vmax 30vmax at 86% 8%,rgba(255,170,130,.30),transparent 70%),
+  radial-gradient(40vmax 34vmax at 4% 62%,rgba(45,212,191,.20),transparent 70%),
+  radial-gradient(34vmax 28vmax at 62% 104%,rgba(255,201,77,.24),transparent 70%);
+ animation:ceria-drift 26s ease-in-out infinite alternate}
+@keyframes ceria-drift{to{transform:translate3d(2.5vmax,-2vmax,0) rotate(2deg)}}
+
+/* Header: glass card with signature ribbon and a sunny R+ tile. */
+html[data-palette=ceria][data-ios-theme] .faris-ui :is(.header,#mainWorkspaceNav){position:relative;overflow:hidden;border-color:#fff;box-shadow:var(--ceria-soft)}
+html[data-palette=ceria][data-ios-theme] .faris-staff .header::after{content:'';position:absolute;left:0;right:0;top:0;height:5px;background:var(--ceria-ribbon);background-size:200% 100%;animation:ceria-ribbon 9s linear infinite}
+@keyframes ceria-ribbon{to{background-position:200% 0}}
+html[data-palette=ceria][data-ios-theme] .faris-staff .header>div::before,
+html[data-palette=ceria][data-ios-theme] .faris-staff .mark,
+html[data-palette=ceria][data-ios-theme] .faris-documents .hubEmblem{background:linear-gradient(140deg,#ffb547,#ff7a59);color:#3b1d0f;border-color:#fff;box-shadow:0 6px 16px rgba(255,122,89,.35);transition:transform .35s var(--ceria-ease)}
+html[data-palette=ceria][data-ios-theme] .faris-staff .header:hover>div::before{transform:rotate(-6deg) scale(1.05)}
+html[data-palette=ceria][data-ios-theme] .faris-staff .header h1 span{background:linear-gradient(90deg,#0f766e,#c2410c);-webkit-background-clip:text;background-clip:text;color:transparent}
+html[data-palette=ceria][data-ios-theme] .faris-staff .header .eyebrow{color:var(--ceria-coral-ink)}
+
+/* Theme switch: Ceria gets its own sunny pill. */
+html[data-palette=ceria][data-ios-theme] .faris-ui .theme-switch{background:#f7efe4;border-color:#f0e5d6}
+html[data-palette=ceria][data-ios-theme] .faris-ui .theme-choice[aria-pressed=true]{background:linear-gradient(135deg,#ffd76a,#ff9b6b);color:#3b1d0f;box-shadow:0 3px 10px rgba(255,122,89,.32)}
+html[data-ios-theme] .faris-ui .theme-choice[data-theme-choice=ceria]:not([aria-pressed=true]):hover{color:#c2410c}
+
+/* Sidebar + phone dock: every workspace keeps its own colour, so places are easy to remember. */
+html[data-palette=ceria][data-ios-theme] .faris-staff #workspaceNav{box-shadow:var(--ceria-soft);border-color:#fff}
+html[data-palette=ceria][data-ios-theme] .faris-staff #workspaceNav::before{color:#9a8f86}
+html[data-palette=ceria][data-ios-theme] .faris-staff :is([data-workspace-nav],[data-mobile-nav]){--nav:var(--ios-primary);--nav-bg:var(--ios-tint)}
+html[data-palette=ceria][data-ios-theme] .faris-staff :is([data-workspace-nav=home],[data-mobile-nav=home]){--nav:#0f766e;--nav-bg:#e3f6f2}
+html[data-palette=ceria][data-ios-theme] .faris-staff :is([data-workspace-nav=gallery],[data-mobile-nav=gallery]){--nav:#c2410c;--nav-bg:#ffeadf}
+html[data-palette=ceria][data-ios-theme] .faris-staff :is([data-workspace-nav=whatsapp],[data-mobile-nav=whatsapp]){--nav:#166534;--nav-bg:#e3f6e9}
+html[data-palette=ceria][data-ios-theme] .faris-staff :is([data-workspace-nav=customers],[data-mobile-nav=customers]){--nav:#1d4ed8;--nav-bg:#e8f0ff}
+html[data-palette=ceria][data-ios-theme] .faris-staff :is([data-workspace-nav=docs],[data-mobile-nav=docs]){--nav:#6d28d9;--nav-bg:#f1ebff}
+html[data-palette=ceria][data-ios-theme] .faris-staff :is([data-workspace-nav=telegram],[data-mobile-nav=telegram]){--nav:#0369a1;--nav-bg:#e0f2fe}
+html[data-palette=ceria][data-ios-theme] .faris-staff :is([data-workspace-nav=settings],[data-mobile-nav=settings]){--nav:#a15c00;--nav-bg:#fff2d2}
+html[data-palette=ceria][data-ios-theme] .faris-staff #workspaceNav button{position:relative;transition:background-color .2s,color .2s,transform .25s var(--ceria-ease)}
+html[data-palette=ceria][data-ios-theme] .faris-staff #workspaceNav button>span[aria-hidden]{display:grid;place-items:center;width:34px;height:34px;flex:none;border-radius:11px;background:var(--nav-bg);color:var(--nav);transition:transform .3s var(--ceria-ease)}
+html[data-palette=ceria][data-ios-theme] .faris-staff #workspaceNav button:hover{background:#fffaf3;color:var(--ios-text);transform:translateX(3px)}
+html[data-palette=ceria][data-ios-theme] .faris-staff #workspaceNav button:hover>span[aria-hidden]{transform:rotate(-8deg) scale(1.08)}
+html[data-palette=ceria][data-ios-theme] .faris-staff #workspaceNav button[aria-current=page]{background:var(--nav-bg);color:var(--nav);font-weight:700}
+html[data-palette=ceria][data-ios-theme] .faris-staff #workspaceNav button[aria-current=page]::before{content:'';position:absolute;left:-10px;top:10px;bottom:10px;width:5px;border-radius:0 6px 6px 0;background:var(--nav)}
+html[data-palette=ceria][data-ios-theme] .faris-staff #workspaceNav button[aria-current=page]>span[aria-hidden]{background:#fff;box-shadow:0 3px 8px rgba(124,86,38,.12)}
+html[data-palette=ceria][data-ios-theme] .faris-staff #mobileDock{box-shadow:0 12px 30px rgba(124,86,38,.16);border-color:#fff}
+html[data-palette=ceria][data-ios-theme] .faris-staff #mobileDock button[aria-current=page]{background:var(--nav-bg);color:var(--nav)}
+html[data-palette=ceria][data-ios-theme] .faris-staff #farisMoreButton[aria-current=page]{background:#fff2d2;color:#a15c00}
+
+/* Welcome: a light sunrise banner instead of a plain white box. */
+html[data-palette=ceria][data-ios-theme] .faris-staff #appSection>.welcome{position:relative;overflow:hidden;border-color:#fff;
+ background:radial-gradient(circle at calc(100% - 46px) -18px,rgba(255,201,77,.62) 0 64px,transparent 65px),radial-gradient(circle at calc(100% - 150px) 110%,rgba(255,122,89,.20) 0 34px,transparent 35px),linear-gradient(115deg,#e3f6f2 0%,#fff6e3 55%,#ffe8dc 100%);box-shadow:var(--ceria-soft)}
+html[data-palette=ceria][data-ios-theme] .faris-staff .welcome h2::after{content:'👋'/'';display:inline-block;margin-left:6px;transform-origin:70% 80%;animation:ceria-wave 2.4s ease-in-out .4s 2}
+@keyframes ceria-wave{0%,60%,100%{transform:rotate(0)}10%,30%{transform:rotate(14deg)}20%,40%{transform:rotate(-8deg)}}
+html[data-palette=ceria][data-ios-theme] .faris-staff .welcome .pill,
+html[data-palette=ceria][data-ios-theme] .faris-staff .welcome :is(.badge,.role,.status){background:#fff;color:#0f766e}
+
+/* Headings: coral eyebrow, ribbon underline. */
+html[data-palette=ceria][data-ios-theme] .faris-ui :is(.eyebrow,.afEyebrow,.vsoEyebrow){color:var(--ceria-coral-ink);letter-spacing:1.2px}
+html[data-palette=ceria][data-ios-theme] .faris-staff .workspace-heading h2{position:relative;padding-bottom:10px}
+html[data-palette=ceria][data-ios-theme] .faris-staff .workspace-heading h2::after{content:'';position:absolute;left:0;bottom:0;width:56px;height:5px;border-radius:5px;background:var(--ceria-ribbon);animation:ceria-grow .7s var(--ceria-ease) both}
+@keyframes ceria-grow{from{width:0}}
+html[data-palette=ceria][data-ios-theme] .faris-staff .workspace-page:not([hidden]){animation:ceria-rise .45s var(--ceria-ease) both}
+@keyframes ceria-rise{from{opacity:0;transform:translateY(10px)}}
+
+/* Surfaces: lighter, softer depth instead of heavy 3D edges. */
+html[data-palette=ceria][data-ios-theme] .faris-ui :is(.panel,.innerpanel,.card,.customer-insights,.insights-panel,.afPanel,.vsoFormPanel,.vsoPreviewPanel,.gallery-card,.inbox-file,.lead,.generated-customer){border-color:#f3e9dc;box-shadow:var(--ceria-soft)}
+html[data-palette=ceria][data-ios-theme] .faris-ui :is(.metric,.stat){box-shadow:var(--ceria-soft);border-color:#f3e9dc}
+html[data-palette=ceria][data-ios-theme] .faris-staff .workspace-card{background:#fff;border:1px solid #f3e9dc;box-shadow:var(--ceria-soft);transition:transform .3s var(--ceria-ease),box-shadow .3s}
+html[data-palette=ceria][data-ios-theme] .faris-staff .workspace-card:hover{transform:translateY(-4px);box-shadow:var(--ceria-lift)}
+html[data-palette=ceria][data-ios-theme] .faris-staff .workspace-card>span{background:var(--nav-bg);color:var(--nav);box-shadow:none;transition:transform .35s var(--ceria-ease)}
+html[data-palette=ceria][data-ios-theme] .faris-staff .workspace-card:hover>span{transform:rotate(-8deg) scale(1.1)}
+html[data-palette=ceria][data-ios-theme] .faris-staff .customer-insights{background:linear-gradient(180deg,#fff,#fffbf5)}
+
+/* Buttons and fields. */
+html[data-palette=ceria][data-ios-theme] .faris-ui :is(.primary,.btn.primary,.vsoPrimary){background:linear-gradient(140deg,#0d8075,#0b6b63);color:#fff;box-shadow:0 6px 16px rgba(15,118,110,.28);transition:transform .2s var(--ceria-ease),box-shadow .2s,filter .2s}
+html[data-palette=ceria][data-ios-theme] .faris-ui :is(.primary,.btn.primary,.vsoPrimary):hover:not(:disabled){transform:translateY(-2px);box-shadow:0 10px 22px rgba(15,118,110,.32);filter:saturate(1.15)}
+html[data-palette=ceria][data-ios-theme] .faris-ui :is(.primary,.btn.primary,.vsoPrimary):active:not(:disabled){transform:translateY(0) scale(.98)}
+html[data-palette=ceria][data-ios-theme] .faris-ui :is(.secondary,.btn:not(.primary):not(.good),.vsoSecondary,.iconbtn){background:#fff;border-color:#eadfce;box-shadow:0 2px 6px rgba(124,86,38,.07);transition:transform .2s var(--ceria-ease),border-color .2s,color .2s}
+html[data-palette=ceria][data-ios-theme] .faris-ui :is(.secondary,.btn:not(.primary):not(.good),.vsoSecondary,.iconbtn):hover:not(:disabled){border-color:#5eb8ad;color:#0f766e;transform:translateY(-1px)}
+html[data-palette=ceria][data-ios-theme] .faris-ui :is(input:not([type=checkbox]):not([type=radio]):not([type=file]),select,textarea){background:#fffdf9;border-color:#ecdfcd;box-shadow:none;transition:border-color .2s,box-shadow .2s}
+html[data-palette=ceria][data-ios-theme] .faris-ui :is(input:not([type=checkbox]):not([type=radio]):not([type=file]),select,textarea):focus{border-color:#14b8a6;box-shadow:0 0 0 4px rgba(20,184,166,.16)}
+html[data-palette=ceria][data-ios-theme] .faris-ui :is(button,a,input,select,textarea):focus-visible{outline-color:#0f766e}
+html[data-palette=ceria][data-ios-theme] .faris-ui :is(.pill,.status,.badge,.insights-live,.vsoVersion,.cover-chip,.summary-pill){background:#e3f6f2;color:#0f766e}
+html[data-palette=ceria][data-ios-theme] .faris-staff .insights-live{background:#fff2d2;color:#8a4b00}
+html[data-palette=ceria][data-ios-theme] .faris-ui :is(.insights-track>span,.progress>div){background:linear-gradient(90deg,#14b8a6,#ffc94d,#ff7a59);background-size:200% 100%}
+html[data-palette=ceria][data-ios-theme] .faris-ui .insights-drill:hover{background:#fffaf2}
+
+/* KPI tiles: each status owns a colour, an icon and a share bar. Pending is warm amber, not alarm red. */
+html[data-palette=ceria][data-ios-theme] .faris-staff .insights-kpi{--k:#0f766e;--kbg:#e3f6f2;--kicon:'✨';overflow:hidden;isolation:isolate;
+ background:linear-gradient(165deg,var(--kbg) 0%,#fff 62%);border:1px solid #fff;box-shadow:var(--ceria-soft);
+ transition:transform .3s var(--ceria-ease),box-shadow .3s;animation:ceria-pop .55s var(--ceria-ease) both}
+html[data-palette=ceria][data-ios-theme] .faris-staff .insights-kpi.lou{--k:#1d4ed8;--kbg:#e8f0ff;--kicon:'📄'}
+html[data-palette=ceria][data-ios-theme] .faris-staff .insights-kpi.delivered{--k:#166534;--kbg:#e3f6e9;--kicon:'🚗'}
+html[data-palette=ceria][data-ios-theme] .faris-staff .insights-kpi.pending{--k:#a15c00;--kbg:#fff2d2;--kicon:'⏳'}
+html[data-palette=ceria][data-ios-theme] .faris-staff .insights-kpi.trade_in{--k:#6d28d9;--kbg:#f1ebff;--kicon:'🔄'}
+html[data-palette=ceria][data-ios-theme] .faris-staff .insights-kpi.colour{--k:#be185d;--kbg:#fde8f1;--kicon:'🎨'}
+html[data-palette=ceria][data-ios-theme] .faris-staff .insights-kpi.confirm{--k:#0f766e;--kbg:#e3f6f2;--kicon:'✅'}
+html[data-palette=ceria][data-ios-theme] .faris-staff .insights-kpi:nth-child(2){animation-delay:.07s}
+html[data-palette=ceria][data-ios-theme] .faris-staff .insights-kpi:nth-child(3){animation-delay:.14s}
+html[data-palette=ceria][data-ios-theme] .faris-staff .insights-kpi:nth-child(4){animation-delay:.21s}
+@keyframes ceria-pop{from{opacity:0;transform:translateY(12px) scale(.97)}}
+html[data-palette=ceria][data-ios-theme] .faris-staff .insights-kpi::before{content:'';position:absolute;left:0;right:0;top:0;height:5px;background:var(--k);opacity:.9}
+html[data-palette=ceria][data-ios-theme] .faris-staff .insights-kpi::after{content:var(--kicon)/'';position:absolute;right:14px;top:14px;z-index:-1;font-size:30px;line-height:1;opacity:.85;transition:transform .4s var(--ceria-ease)}
+html[data-palette=ceria][data-ios-theme] .faris-staff .insights-kpi:hover{transform:translateY(-4px);box-shadow:var(--ceria-lift)}
+html[data-palette=ceria][data-ios-theme] .faris-staff .insights-kpi:hover::after{transform:rotate(-10deg) scale(1.15)}
+html[data-palette=ceria][data-ios-theme] .faris-staff .insights-kpi>span{background:#fff;color:var(--k);font-weight:700;box-shadow:0 1px 3px rgba(124,86,38,.08)}
+html[data-palette=ceria][data-ios-theme] .faris-staff .insights-kpi strong{color:var(--k)}
+html[data-palette=ceria][data-ios-theme] .faris-staff .insights-kpi-link{color:var(--k)!important;font-weight:650}
+html[data-palette=ceria][data-ios-theme] .faris-staff .insights-kpi[aria-pressed=true]{outline:3px solid var(--k);outline-offset:3px;box-shadow:var(--ceria-lift)}
+html[data-palette=ceria][data-ios-theme] .faris-staff .insights-kpi>.ceria-kpi-share{display:block;height:6px;padding:0;margin:8px 0 2px;border-radius:6px;background:rgba(124,86,38,.09);box-shadow:none;overflow:hidden}
+html[data-palette=ceria][data-ios-theme] .faris-staff .ceria-kpi-share>i{display:block;height:100%;width:0;border-radius:inherit;background:var(--k);transition:width .9s var(--ceria-ease) .15s}
+html:not([data-palette=ceria]) .ceria-kpi-share{display:none}
+
+/* Lists: warm hover so rows feel alive without noise. */
+html[data-palette=ceria][data-ios-theme] .faris-staff .customer-list-row{transition:background-color .2s,box-shadow .2s}
+html[data-palette=ceria][data-ios-theme] .faris-staff .customer-list-row:hover{background:#fffaf2;box-shadow:inset 4px 0 0 #ffc94d}
+html[data-palette=ceria][data-ios-theme] .faris-ui a:not(.wa):not(.primary):not(.tg-open):not(.secondary){color:#0f766e}
+
+/* Login card. */
+html[data-palette=ceria][data-ios-theme] .faris-staff .authinfo{background:radial-gradient(circle at calc(100% - 40px) 0,rgba(255,201,77,.55) 0 70px,transparent 71px),linear-gradient(140deg,#e3f6f2,#fff6e3 60%,#ffe8dc)}
+
+@media(max-width:760px){
+ html[data-palette=ceria][data-ios-theme] .faris-staff .insights-kpi::after{font-size:22px;right:10px;top:12px}
+ html[data-palette=ceria][data-ios-theme] .faris-staff .workspace-heading h2::after{width:42px;height:4px}
+}
+@media(prefers-reduced-motion:reduce){
+ html[data-palette=ceria] *,html[data-palette=ceria] *::before,html[data-palette=ceria] *::after{animation:none!important;transition:none!important}
+}

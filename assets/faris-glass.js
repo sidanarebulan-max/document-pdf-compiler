@@ -7,7 +7,7 @@ function icon(name){if(name==='whatsapp')return '<span class="faris-whatsapp-log
 function decorate(button){const page=button.dataset.workspaceNav||button.dataset.mobileNav,el=button.querySelector('span[aria-hidden]');if(el)el.innerHTML=icon(pageIcons[page]||'files')}
 function themeControl(){
  const el=document.createElement('div');el.className='theme-switch';el.setAttribute('role','group');el.setAttribute('aria-label','Pilih warna paparan');
- for(const [key,label,symbol] of [['auto','Auto','◐'],['light','Light','☀'],['dark','Dark','☾']]){const b=document.createElement('button');b.type='button';b.className='theme-choice';b.dataset.themeChoice=key;b.setAttribute('aria-label',key==='auto'?'Ikut tema peranti':'Aktifkan '+label+' Mode');b.innerHTML=symbol+' <span>'+label+'</span>';el.append(b)}
+ for(const [key,label,symbol] of [['auto','Auto','◐'],['light','Light','☀'],['dark','Dark','☾'],['ceria','Ceria','✿']]){const b=document.createElement('button');b.type='button';b.className='theme-choice';b.dataset.themeChoice=key;b.setAttribute('aria-label',key==='auto'?'Ikut tema peranti':key==='ceria'?'Aktifkan tema Ceria':'Aktifkan '+label+' Mode');b.innerHTML=symbol+' <span>'+label+'</span>';el.append(b)}
  return el;
 }
 function staffShell(){
