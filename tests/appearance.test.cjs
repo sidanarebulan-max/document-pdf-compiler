@@ -13,3 +13,8 @@ test('Auto follows device appearance, explicit modes persist and old preferences
 test('Blocked storage, cross-tab changes and visual controls stay in sync',()=>{
  const s=setup(null,{blocked:true});assert.equal(s.api.setTheme('dark'),true);assert.equal(s.meta.content,'#10131d');assert.equal(s.buttons.find(b=>b.dataset.themeChoice==='dark')['aria-pressed'],'true');s.windowEvents.storage({key:'faris_lead_hub_theme_v1',newValue:'light'});assert.equal(s.root.dataset.theme,'light');assert.equal(s.root.dataset.iosTheme,'light');s.windowEvents.storage({key:null,newValue:null});assert.equal(s.api.getTheme(),'auto');
 });
+test('Ceria is a persisted light palette that clears when another mode is chosen',()=>{
+ const s=setup(null,{dark:true});assert.equal(s.api.setTheme('ceria'),true);assert.equal(s.root.dataset.iosTheme,'light');assert.equal(s.root.dataset.theme,'light');assert.equal(s.root.dataset.palette,'ceria');assert.equal(s.root.dataset.iosAppearance,'ceria');assert.equal(s.meta.content,'#fff8ef');assert.equal(s.storage.get('faris_lead_hub_theme_v1'),'ceria');
+ s.media.change();assert.equal(s.root.dataset.iosTheme,'light');s.api.setTheme('dark');assert.equal(s.root.dataset.palette,undefined);assert.equal(s.root.dataset.iosTheme,'dark');
+ const r=setup('ceria');assert.equal(r.root.dataset.palette,'ceria');assert.equal(r.api.getTheme(),'ceria');
+});
