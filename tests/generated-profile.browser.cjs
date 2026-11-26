@@ -31,8 +31,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
     }
     return route.fulfill({headers,contentType:'application/json',body:JSON.stringify(result)});
    }
-   if(u.pathname.endsWith('/pdf.min.js'))return route.fulfill({contentType:'text/javascript',body:fs.readFileSync('/workspace/scratch/f9187d9ae437/browser-check/vendor/pdf.min.js')});
-   if(u.pathname.endsWith('/pdf.worker.min.js'))return route.fulfill({contentType:'text/javascript',body:fs.readFileSync('/workspace/scratch/f9187d9ae437/browser-check/vendor/pdf.worker.min.js')});
+   if(/\/pdf(?:\.worker)?\.min\.js$/.test(u.pathname))return route.fulfill({contentType:'text/javascript',body:fs.readFileSync(require.resolve('pdfjs-dist/build/'+path.basename(u.pathname)))});
    if(u.pathname.includes('/pdf-lib'))return route.fulfill({contentType:'text/javascript',body:fs.readFileSync(path.join(path.dirname(require.resolve('pdf-lib')),'../dist/pdf-lib.min.js'))});
    return route.fulfill({contentType:'text/javascript',body:''});
   });
@@ -53,8 +52,8 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   await page.locator('#outputName').fill('Nama Baru');assert.equal(await page.locator('#compilerSaveProfile').isDisabled(),true,'edited output name invalidates old profile metadata');
   await page.locator('#customerName').fill('Nama lain');assert.equal(await page.locator('#compilerSaveProfile').isDisabled(),true,'edited inputs invalidate old generated PDF');
   await page.evaluate(()=>window.FARIS_GENERATED.publish('compiler',{blob:new Blob([new Uint8Array(21*1048576)],{type:'application/pdf'}),name:'large.pdf',party:'HIRER',category:'OTHER'}));await page.locator('#compilerSaveProfile').click();await page.waitForFunction(()=>document.getElementById('generatedProfileStatus').textContent.includes('melebihi had'));assert.equal(uploads.length,1);assert.equal(await page.locator('[data-generated-target]').count(),0);await page.locator('#generatedProfileClose').click();
-  await page.locator('[data-main="VSO"]').click();await page.waitForFunction(()=>document.getElementById('vsoExactStatus').textContent.includes('automatik'));
-  await page.locator('#vsoCustomer').fill('Customer VSO Test');await page.locator('#vsoPhone').fill('0100000888');await page.locator('#vsoLoan').fill('60000');await page.locator('#vsoColor').fill('Hijau');await page.locator('#vsoYear').fill('2026');
+  await page.locator('[data-main="VSO"]').click();await page.locator('#vsoExactStatus.vsoExactOk').waitFor();
+  await page.locator('#vsoCustomer').fill('Customer VSO Test');await page.locator('#vsoLoan').fill('60000');await page.locator('#vsoColor').fill('Hijau');await page.locator('#vsoYear').fill('2026');
   for(const [loan,otr,net] of [['60000','75,800.00','72,092.00'],['68220','75,800.00','72,092.00'],['68220.01','75,800.01','72,092.01'],['72800','80,888.89','77,180.89'],['80000','88,888.89','85,180.89']]){
    await page.locator('#vsoLoan').fill(loan);assert.equal(await page.locator('#vsoOtr').innerText(),'RM '+otr);assert.equal(await page.locator('#vsoNet').innerText(),'RM '+net);assert.equal(await page.locator('#vsoAnchor').innerText(),'RM 75,800.00');assert.equal(await page.locator('#vsoLoanLimit').innerText(),'RM 68,220.00');
   }

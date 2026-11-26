@@ -52,27 +52,123 @@ const sections=[
 ];
 const fields=sections.flatMap(s=>s.fields.map(([id,label,aliases])=>({id:s.id+'_'+id,section:s.id,label,aliases})));
 const normalize=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+const identityAliases={
+ name:['nama','nama penuh','nama seperti ic','nama dalam ic','nama ikut ic','nama seperti dalam ic','nama seperti di ic','nama seperti dalam mykad','nama seperti dalam kad pengenalan','nama mengikut kad pengenalan','name','full name','nama name'],
+ nric:['ic','no ic','ic no','ic number','ic num','no i c','i c no','nombor ic','no kad pengenalan','nombor kad pengenalan','kad pengenalan','no mykad','mykad','no kp','nombor kp','nric','nric no','nric number','identity card number','id number'],
+ phone:['no hp','hp','handphone','hp no','no handphone','no telefon','nombor telefon','telefon','no tel','tel','no telefon bimbit','nombor telefon bimbit','telefon bimbit','no whatsapp','nombor whatsapp','whatsapp','no ws','no wasap','no fon','no phone','phone','phone no','phone number','mobile','mobile no','mobile number']
+};
+const personLabels={applicant:['pemohon','pelanggan','customer','applicant'],spouse:['pasangan','suami','isteri','spouse'],reference:['rujukan','reference']};
+const bySection=new Map(sections.map(s=>[s.id,new Map()]));
+const allLabels=new Map(),qualifiedLabels=new Map();
+for(const field of fields){
+ const kind=field.id.slice(field.section.length+1),people=personLabels[field.section];
+ const aliases=new Set(field.aliases.map(normalize));
+ if(people&&identityAliases[kind]){
+  for(const label of identityAliases[kind]){
+   aliases.add(label);
+   for(const person of people){
+    qualifiedLabels.set(label+' '+person,field);
+    qualifiedLabels.set(person+' '+label,field);
+   }
+  }
+ }
+ if(field.id==='employment_phone')for(const alias of ['tel','telefon','nombor telefon','no telefon pejabat','nombor telefon pejabat','office phone number'])aliases.add(alias);
+ for(const label of aliases){
+  bySection.get(field.section).set(label,field);
+  if(!allLabels.has(label))allLabels.set(label,[]);
+  allLabels.get(label).push(field);
+ }
+}
+function fieldFor(label,section){
+ const key=normalize(label),matches=allLabels.get(key);
+ return qualifiedLabels.get(key)||bySection.get(section)?.get(key)||(matches?.length===1?matches[0]:undefined);
+}
+const labelPattern=[...new Set([...allLabels.keys(),...qualifiedLabels.keys()])]
+ .sort((a,b)=>b.length-a.length).map(label=>label.replace(/ /g,'[ .()\\/\\-]*')).join('|');
+const inlineField=new RegExp('(?:^|[\\s|;])(?:'+labelPattern+')\\s*[:：=]','giu');
+const boldLabel=new RegExp('(^|[\\s|;])\\*{1,2}(?=(?:'+labelPattern+')\\s*[:：=])','giu');
+const spacedField=new RegExp('^('+labelPattern+')(?:\\s*[–—-]\\s*|\\s+)(\\S.*)$','iu');
+function cleanValue(raw){return raw.trim().replace(/^\*{1,2}|\*{1,2}$/g,'').trim()}
+function phoneValue(value){
+ const phone=value.replace(/^https?:\/\/wa\.me\//i,'').replace(/[\s().\p{Pd}]/gu,'');
+ if(!/^\+?\d+$/.test(phone))return '';
+ const local=phone.replace(/^(?:\+?60|0060)0?/,'0');
+ return /^(?:01\d{8,9}|0[3-9]\d{7,8})$/.test(local)?local:'';
+}
+function nricValue(value){
+ if(!/^\d{6}[\s\p{Pd}]*\d{2}[\s\p{Pd}]*\d{4}$/u.test(value))return '';
+ return value.replace(/\D/g,'');
+}
+function identityNumber(line){
+ const phone=phoneValue(line),nric=nricValue(line);
+ if(!nric)return phone?'phone':'';
+ if(!phone||/^\d{6}[\s\p{Pd}]+\d{2}[\s\p{Pd}]+\d{4}$/u.test(line))return 'nric';
+ const month=Number(nric.slice(2,4)),date=Number(nric.slice(4,6));
+ return month<1||month>12||date<1||date>31?'phone':'';
+}
+const multiline=f=>/address|scope/.test(f.id);
 function sectionFor(line){const clean=s=>normalize(s.replace(/\([^)]*\)/g,''));const n=clean(line.replace(/^\s*(?:\d+[.)]|[-*•])\s*/,''));return sections.find(s=>[s.title,...s.aliases].some(a=>n===clean(a)))}
 function parse(text){
- const values={},unparsed=[],conflicts=[];let section='applicant',pending=null;
- function flush(){if(!pending)return;const value=pending.parts.join(' ').replace(/\s+/g,' ').trim();if(values[pending.field.id]&&values[pending.field.id]!==value){conflicts.push(pending.field.id)}else values[pending.field.id]=value;pending=null}
- for(const source of String(text||'').replace(/\r\n?/g,'\n').split('\n')){
-  const line=source.trim().replace(/^[-*•]\s*/,'').replace(/^\d+[.)]\s*/,'');if(!line)continue;
-  const heading=sectionFor(line.replace(/[:：]\s*$/,''));if(heading){flush();section=heading.id;continue}
-  if(/^(?:application form|borang permohonan)(?:\s|$)/i.test(line))continue;
-  const match=line.match(/^([^:：\t]+)\s*[:：\t]+\s*(.*)$/);
-  if(match){
-   flush();const label=normalize(match[1]),local=fields.filter(f=>f.section===section&&f.aliases.some(a=>normalize(a)===label));
-   const global=fields.filter(f=>f.aliases.some(a=>normalize(a)===label));const field=local[0]||(global.length===1?global[0]:null);
-   if(field){pending={field,parts:[match[2]]};continue}
-   unparsed.push(line);continue;
-  }
-  if(/^(?:maklumat|butiran)\b/i.test(line)){flush();section='unknown';unparsed.push(line);continue}
-  const label=normalize(line),field=fields.find(f=>f.section===section&&f.aliases.some(a=>normalize(a)===label));
-  if(field){flush();pending={field,parts:[]};continue}
-  if(pending)pending.parts.push(line);else unparsed.push(line);
+ const values={},unparsed=[],conflicts=new Set(),unlabelled=new Map();let section='applicant',pending=null,contactScope='applicant';
+ function put(field,raw){
+  let value=cleanValue(raw.replace(/\s+/g,' '));
+  if(field.id.endsWith('_phone'))value=phoneValue(value)||value;
+  if(field.id.endsWith('_nric'))value=nricValue(value)||value;
+  if(value&&values[field.id]&&values[field.id]!==value)conflicts.add(field.id);
+  else if(value||!Object.hasOwn(values,field.id))values[field.id]=value;
  }
- flush();return {values,unparsed,conflicts:[...new Set(conflicts)],count:Object.values(values).filter(Boolean).length};
+ function flush(){if(pending){put(pending.field,pending.parts.join(' '));pending=null}}
+ function read(line){
+  const heading=sectionFor(line.replace(/[:：]\s*$/,''));
+  if(heading){flush();section=contactScope=heading.id;return}
+  if(/^(?:application form|borang permohonan)(?:\s|$)/i.test(line))return;
+  if(/^(?:maklumat|butiran)\b/i.test(line)){flush();section=contactScope='unknown';unparsed.push(line);return}
+  const match=line.match(/^([^:：=\t]+?)\s*[:：=\t]+\s*(.*)$/);
+  const exact=match?null:fieldFor(line,section);
+  const spaced=match||exact?null:line.match(spacedField);
+  const field=exact||((match||spaced)&&fieldFor((match||spaced)[1],section));
+  if(field){
+   flush();
+   contactScope=field.section;
+   pending={field,parts:[(match||spaced)?.[2]||'']};
+   return;
+  }
+  const nameContinuation=pending?.field.id.endsWith('_name')&&/^(?:bin(?:ti)?|bte?|a\/[lp])\s+[\p{L}\p{M}.'’@\/ -]+$/iu.test(line);
+  if(pending&&!match&&(!pending.parts.some(Boolean)||multiline(pending.field)||nameContinuation)){
+   pending.parts.push(line);return;
+  }
+  flush();
+  if(!match&&bySection.has(contactScope)){
+   if(!unlabelled.has(contactScope))unlabelled.set(contactScope,[]);
+   unlabelled.get(contactScope).push(line);
+  }else unparsed.push(line);
+ }
+ const input=String(text||'').normalize('NFKC').replace(/[\u200b-\u200f\u202a-\u202e\u2060\ufeff]/g,'').replace(/\r\n?|[\u2028\u2029]/g,'\n');
+ for(const source of input.split('\n')){
+  const line=cleanValue(source).replace(/^(?:[•▪●]\s*|-\s+|\d{1,2}[.)](?=\s|\p{L})\s*)/u,'')
+   .replace(/\*{1,2}(?=\s*[:：=])|(?<=[:：=])\*{1,2}/g,'').replace(boldLabel,'$1');
+  if(!line)continue;
+  const hits=[...line.matchAll(inlineField)];
+  if(hits.length>1&&hits[0].index===0){
+   for(let i=0;i<hits.length;i++)read(line.slice(hits[i].index,hits[i+1]?.index).trim().replace(/[|;]\s*$/,'').trim());
+  }else read(line);
+ }
+ flush();
+ for(const [scope,lines] of unlabelled){
+  const identity=bySection.get(scope);
+  const name=personLabels[scope]&&identity.get('nama'),nric=identity.get('ic'),phone=identity.get('no telefon');
+  const numberKinds=lines.map(identityNumber);
+  const phoneLines=numberKinds.filter(kind=>kind==='phone'),nricLines=numberKinds.filter(kind=>kind==='nric');
+  const nameLines=lines.filter(line=>/^[\p{L}\p{M}][\p{L}\p{M}.'’@\/ -]{1,118}$/u.test(line)&&line.split(/\s+/).length>=2);
+  const inferredName=name&&!values[name.id]&&lines.length===3&&nameLines.length===1&&phoneLines.length===1&&nricLines.length===1;
+  for(const [index,line] of lines.entries()){
+   if(nric&&numberKinds[index]==='nric')put(nric,line);
+   else if(phone&&numberKinds[index]==='phone')put(phone,line);
+   else if(inferredName&&line===nameLines[0])put(name,line);
+   else unparsed.push(line);
+  }
+ }
+ return {values,unparsed,conflicts:[...conflicts],count:Object.values(values).filter(Boolean).length};
 }
 // Baselines and reserved line counts follow the supplied two-page A4 form.
 const plans=[[
@@ -115,5 +211,5 @@ async function buildPdf({PDFLib,fontkit,fontBytes,titleBytes,values}){
  doc.setTitle('Application Form');doc.setAuthor('FARIS R+PROTON');doc.setCreator('FARIS Application Form Generator');
  return {bytes:await doc.save(),pages:doc.getPageCount()};
 }
-return {sections,fields,normalize,parse,buildPdf};
+return {sections,fields,normalize,phoneValue,parse,buildPdf};
 });

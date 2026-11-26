@@ -2,8 +2,8 @@
 'use strict';
 const core=window.FARIS_APPLICATION_CORE,$=id=>document.getElementById(id);
 const host=document.createElement('section');host.id='applicationWorkspace';host.hidden=true;
-host.innerHTML=`<header class="afIntro"><div class="afEyebrow">APPLICATION FORM</div><h1>Application Form Generator</h1><p>Copy borang yang telah diisi dari Word dan paste di bawah. Semak maklumat yang dibaca, kemudian jana PDF mengikut format dua halaman asal.</p></header>
- <section class="afPanel afPaste"><h2>1. Paste maklumat dari Word</h2><label class="afField" for="applicationPaste">Teks borang customer</label><textarea id="applicationPaste" rows="9" maxlength="30000" placeholder="MAKLUMAT PEMOHON&#10;Nama : Nor Farah&#10;I/C No : ...&#10;&#10;MAKLUMAT PEKERJAAN&#10;Nama Majikan : ..."></textarea><p class="afHint">Sertakan tajuk bahagian dan label seperti Nama, I/C No dan Alamat. Maklumat yang tiada tidak diisi secara automatik. Semak padanan sebelum jana.</p><div class="afActions"><button class="vsoPrimary" id="applicationRead" type="button">Baca Maklumat</button><button class="vsoSecondary" id="applicationClear" type="button">Kosongkan Borang</button></div><p id="applicationReadStatus" class="afStatus" role="status" aria-live="polite"></p><details id="applicationIssues" class="afIssues" hidden><summary>Maklumat yang perlu disemak</summary><ul id="applicationIssueList"></ul></details></section>
+host.innerHTML=`<header class="afIntro"><div class="afEyebrow">APPLICATION FORM</div><h1>Application Form Generator</h1><p>Paste maklumat daripada Word atau WhatsApp. Semak medan yang dikesan sebelum jana PDF.</p></header>
+ <section class="afPanel afPaste"><h2>1. Paste maklumat pelanggan</h2><label class="afField" for="applicationPaste">Teks borang customer</label><textarea id="applicationPaste" rows="9" maxlength="30000" placeholder="Nama penuh: Nor Farah&#10;No. IC: ...&#10;Nombor telefon: ..."></textarea><p class="afHint">Gunakan tajuk bahagian atau label seperti Nama pasangan dan Telefon rujukan untuk bezakan maklumat setiap orang.</p><div class="afActions"><button class="vsoPrimary" id="applicationRead" type="button">Baca Maklumat</button><button class="vsoSecondary" id="applicationClear" type="button">Kosongkan Borang</button></div><p id="applicationReadStatus" class="afStatus" role="status" aria-live="polite"></p><details id="applicationIssues" class="afIssues" hidden><summary>Maklumat yang perlu disemak</summary><ul id="applicationIssueList"></ul></details></section>
  <div class="afLayout"><section class="afPanel"><h2>2. Semak &amp; edit maklumat</h2><p class="afHint">Nama pemohon diperlukan. Medan lain boleh dikosongkan jika belum tersedia. Setiap bahagian disimpan berasingan dalam borang ini.</p><div id="applicationFields"></div><div class="afFilename"><label class="afField" for="applicationOutputName">Nama fail output (optional)<input id="applicationOutputName" maxlength="120" placeholder="Nor Farah - Application Form"></label><p class="afHint" id="applicationFilename"></p></div><div class="afActions"><button type="button" class="vsoPrimary" id="applicationGenerate">Jana Pratonton PDF</button></div><p class="afStatus" id="applicationStatus" role="status" aria-live="polite"></p></section>
  <section class="afPanel afPreviewPanel"><h2>3. Pratonton Application Form</h2><p class="afHint">Saiz A4 dan susunan mengikut contoh asal. Teks panjang dibalut; halaman sambungan ditambah jika ruang tidak mencukupi.</p><div id="applicationPreview" class="afPreview"><div class="afPlaceholder">Paste dan semak maklumat dahulu.<br>Tekan Jana Pratonton PDF untuk melihat hasil.</div></div><div class="afActions"><button type="button" class="vsoPrimary" id="applicationDownload" disabled>Download PDF</button><button type="button" class="vsoSecondary" id="applicationToCompiler" disabled>Hantar ke Compiler</button></div></section></div>`;
 document.querySelector('.app').insertAdjacentElement('beforebegin',host);
@@ -12,7 +12,7 @@ for(const s of core.sections){
  const grid=document.createElement('div');grid.className='afFields';for(const f of core.fields.filter(f=>f.section===s.id)){
   const label=document.createElement('label');label.className='afField';label.htmlFor='application_'+f.id;const caption=document.createElement('span');caption.textContent=f.label.replace(/\s*:\s*$/,'');
   const multiline=/address|scope/.test(f.id),input=document.createElement(multiline?'textarea':'input');input.id='application_'+f.id;input.dataset.applicationField=f.id;input.maxLength=multiline?2000:300;
-  if(multiline)input.rows=3;else input.type='text';input.autocomplete='off';label.append(caption,input);grid.append(label);
+ if(multiline)input.rows=3;else input.type='text';if(f.id.endsWith('_phone'))input.inputMode='tel';if(f.id.endsWith('_nric'))input.inputMode='numeric';input.autocomplete='off';label.append(caption,input);grid.append(label);
  }group.append(grid);$('applicationFields').append(group);
 }
 let result=null,busy=false,assetsPromise=null,epoch=0,previewDoc=null,pasteDirty=false;
@@ -57,28 +57,50 @@ async function generate(){
   if(generation===epoch)status('✓ Application Form siap · '+built.pages+' halaman · '+name);
  }catch(e){status(e.message||'Borang tidak dapat dijana.',true)}finally{busy=false;controls()}
 }
+function showIssues(issues){
+ const list=$('applicationIssueList'),panel=$('applicationIssues');
+ list.replaceChildren();for(const text of issues){const li=document.createElement('li');li.textContent=text;list.append(li)}
+ panel.hidden=!issues.length;panel.open=!!issues.length;
+}
 $('applicationRead').addEventListener('click',()=>{
- if(!$('applicationPaste').value.trim()){$('applicationReadStatus').textContent='Paste maklumat borang dari Word dahulu.';return}
+ const readStatus=$('applicationReadStatus');
+ if(!$('applicationPaste').value.trim()){readStatus.textContent='Paste maklumat pelanggan dahulu.';return}
  const parsed=core.parse($('applicationPaste').value), workflow=window.FARIS_WORKSPACE_PROFILE;
- if(workflow&&!workflow.samePhone(parsed.values.applicant_phone)){
-  $('applicationReadStatus').textContent='Nombor dalam teks berbeza daripada profil yang sedang dibuka.';
+ const issues=[...parsed.conflicts.map(id=>'Dua nilai berbeza untuk '+core.fields.find(f=>f.id===id).label.trim().replace(/:$/,'')+'. Semak teks sumber.'),...parsed.unparsed.map(line=>'Belum dipadankan: '+line)];
+ showIssues(issues);
+ if(!parsed.count){
+  readStatus.textContent='Tiada medan dikesan. Cuba letak label seperti Nama, No. IC atau Nombor telefon.';
+  return;
+ }
+ const phone=parsed.values.applicant_phone;
+ if(parsed.conflicts.includes('applicant_phone')){
+  readStatus.textContent='Ada lebih daripada satu nombor telefon pemohon. Semak nombor sebelum teruskan.';
+  return;
+ }
+ if(workflow?.active&&phone&&!core.phoneValue(phone)){
+  readStatus.textContent='Format nombor telefon pemohon tidak dapat dibaca. Semak dan cuba lagi.';
+  return;
+ }
+ if(workflow&&!workflow.samePhone(phone)){
+  readStatus.textContent='Nombor dalam teks berbeza daripada profil yang sedang dibuka.';
   return;
  }
  pasteDirty=false;invalidate();
- if(workflow?.active)workflow.applyApplication(parsed.values);
+ const cleanFields=Object.fromEntries(Object.entries(parsed.values).filter(([id])=>!parsed.conflicts.includes(id)));
+ if(workflow?.active)workflow.applyApplication(cleanFields);
  else {
-  for(const f of core.fields)$('application_'+f.id).value=parsed.values[f.id]||'';
-  if(parsed.values.applicant_phone)$('application_applicant_phone').dispatchEvent(new Event('change',{bubbles:true}));
+  for(const f of core.fields)$('application_'+f.id).value=cleanFields[f.id]||'';
+  if(core.phoneValue(phone))$('application_applicant_phone').dispatchEvent(new Event('change',{bubbles:true}));
  }
- $('applicationReadStatus').textContent=parsed.count+' daripada '+core.fields.length+' medan dibaca. Semak nama, nombor dan alamat sebelum jana.';
- const issues=[...parsed.conflicts.map(id=>'Label berulang dengan nilai berbeza: '+core.fields.find(f=>f.id===id).label+' — nilai pertama dikekalkan.'),...parsed.unparsed.map(line=>'Belum dipadankan: '+line)];
- $('applicationIssueList').replaceChildren();for(const text of issues){const li=document.createElement('li');li.textContent=text;$('applicationIssueList').append(li)}$('applicationIssues').hidden=!issues.length;
+ const count=Object.values(cleanFields).filter(Boolean).length;
+ readStatus.textContent=count+' daripada '+core.fields.length+' medan dibaca. Semak nama, nombor dan alamat sebelum jana.';
  for(const group of $('applicationFields').querySelectorAll('details'))group.open=true;
  $('applicationFilename').textContent='Nama fail: '+filename();status('Maklumat telah dimasukkan. Semak dan edit medan di bawah.');
 });
 $('applicationClear').addEventListener('click',()=>{
- if(!confirm('Kosongkan semua maklumat Application Form ini?'))return;
- pasteDirty=false;invalidate();for(const f of core.fields)if(!window.FARIS_WORKSPACE_PROFILE?.active)$('application_'+f.id).value='';$('applicationPaste').value='';$('applicationOutputName').value='';$('applicationReadStatus').textContent='';$('applicationIssues').hidden=true;$('applicationIssueList').replaceChildren();status('Borang dikosongkan.');$('applicationFilename').textContent='Nama fail: '+filename();
+ const linked=window.FARIS_WORKSPACE_PROFILE?.active;
+ if(!confirm(linked?'Kosongkan teks yang dipaste dan nama fail?':'Kosongkan semua maklumat Application Form ini?'))return;
+ pasteDirty=false;invalidate();if(!linked)for(const f of core.fields)$('application_'+f.id).value='';$('applicationPaste').value='';$('applicationOutputName').value='';$('applicationReadStatus').textContent='';showIssues([]);status(linked?'Teks yang dipaste dan nama fail dikosongkan.':'Borang dikosongkan.');$('applicationFilename').textContent='Nama fail: '+filename();
 });
 host.addEventListener('input',e=>{if(e.target.matches('[data-application-field],#applicationOutputName'))invalidate()});
 $('applicationPaste').addEventListener('input',()=>{pasteDirty=!!$('applicationPaste').value.trim();invalidate();if(pasteDirty)status('Teks sumber berubah. Tekan Baca Maklumat dahulu untuk mengisi borang terkini.')});

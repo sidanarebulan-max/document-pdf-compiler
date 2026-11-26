@@ -144,7 +144,10 @@ async function start(selector, initial = {}) {
  flow = api.create({customer,accountId,render,notify:status});
  render(flow.data,customer);
  const safeDraft = Object.fromEntries(Object.entries(initial).filter(([key,value])=>value && (key==='customer_name' ? !flow.data[key]||flow.data[key]==='Pelanggan' : flow.data[key]==null||flow.data[key]==='')));
- if (Object.keys(safeDraft).length) accept(safeDraft,Object.hasOwn(safeDraft,'model'));
+ if (Object.keys(safeDraft).length) {
+  accept(safeDraft,Object.hasOwn(safeDraft,'model'));
+  render(flow.data);
+ }
  $('staffWorkflowLookup').hidden = true;
  $('staffWorkflowBack').href = '/staff?customer='+encodeURIComponent(flow.id)+'#customers';
  params.set('customer',flow.id);
