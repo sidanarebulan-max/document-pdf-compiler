@@ -1,10 +1,10 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const src=fs.readFileSync('staff-customers.js','utf8');
 function fixture(){
- const nodes=new Map(),node=id=>{if(!nodes.has(id))nodes.set(id,{value:'',checked:false,textContent:'',required:false,options:[],showModal(){this.shown=true},scrollIntoView(){this.scrolled=true}});return nodes.get(id)};
+ const nodes=new Map(),node=id=>{if(!nodes.has(id))nodes.set(id,{value:'',checked:false,textContent:'',dataset:{},required:false,options:[],showModal(){this.shown=true},scrollIntoView(){this.scrolled=true}});return nodes.get(id)};
  const saved={customer_name:'Customer',model:'e.MAS 5',variant:'Premium',colour:'White',sales_status:'documents',booking_status:'paid',booking_amount:'100',deposit:'5000',selling_price:'75800',loan_amount:'60000',guarantor_required:true,lou_received:false,trade_in:false,closure_reason:'',expected_revision:7,expected_lead_updated_at:'2026-10-30T01:00:00Z'};
  const ctx={esc:s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),when:()=> '30/10/2026',$:node,STATUSES:{documents:'Mengumpul dokumen',approved:'Loan Lulus – Tunggu Delivery',delivery:'Persiapan Delivery',delivered:'Dah Delivery',on_hold:'Tangguh',cancelled:'Tidak diteruskan'},PARTIES:{HIRER:'Pemohon',GUARANTOR:'Penjamin',REBATE:'Rebate'},profileValues:()=>({...saved}),notice:t=>node('notice').textContent=t,showTab:t=>node('tab').value=t,document:{querySelectorAll:()=>[]}};
- vm.createContext(ctx);vm.runInContext("let selected=new Set(),customer={files:[],profile:{sales_status:'documents',lou_received:false,trade_in:false,closure_reason:''}},busy=false,dirty=false;"+src.slice(src.indexOf('function caseStage('),src.indexOf('function renderProfile('))+";globalThis.markup=referenceFilesMarkup;globalThis.show=openCaseStatus;globalThis.values=caseStatusValues;globalThis.reason=caseReasonRequired;globalThis.stage=caseStage;globalThis.makeDirty=()=>{dirty=true};",ctx);
+ vm.createContext(ctx);vm.runInContext("let selected=new Set(),customer={files:[],profile:{sales_status:'documents',lou_received:false,trade_in:false,closure_reason:''}},busy=false,dirty=false;"+src.slice(src.indexOf('function caseStage('),src.indexOf('function renderProfile('))+";globalThis.markup=referenceFilesMarkup;globalThis.show=openCaseStatus;globalThis.values=caseStatusValues;globalThis.reason=caseReasonRequired;globalThis.stage=caseStage;globalThis.timeline=renderSalesTimeline;globalThis.makeDirty=()=>{dirty=true};",ctx);
  return {ctx,node,saved};
 }
 test('A case with no attachments can open the status editor',()=>{
@@ -22,6 +22,27 @@ test('Case stage distinguishes LOU, delivery and inactive cases',()=>{
  const {ctx}=fixture();assert.match(ctx.stage({sales_status:'documents',lou_received:true}),/LOU/);assert.match(ctx.stage({sales_status:'delivered',lou_received:true}),/Dah Delivery/);assert.equal(ctx.stage({sales_status:'cancelled',lou_received:true}),'Tidak diteruskan');
  assert.equal(ctx.stage({sales_status:'approved',lou_received:true}),'Loan Lulus – Tunggu Delivery');
  assert.equal(ctx.stage({sales_status:'delivery',lou_received:true}),'Persiapan Delivery');
+});
+
+test('The profile timeline moves with saved status, shows LOU separately and clears progress for stopped cases',()=>{
+ const {ctx,node}=fixture(),steps=node('customerTimelineSteps'),position=node('customerTimelinePosition');
+ ctx.timeline({sales_status:'documents',lou_received:true});
+ assert.equal(position.textContent,'Tahap 4 daripada 8 · Mengumpul dokumen');
+ assert.equal(node('customerTimelineLou').hidden,false);
+ assert.match(steps.innerHTML,/aria-current="step"[^]*?customer-timeline-label">Dokumen</);
+ assert.equal([...steps.innerHTML.matchAll(/data-state="past"/g)].length,3);
+
+ ctx.timeline({sales_status:'delivered'});
+ assert.equal(position.textContent,'Tahap 8 daripada 8 · Dah Delivery');
+ assert.equal(node('customerTimelineLou').hidden,true);
+ assert.doesNotMatch(steps.innerHTML,/data-state="pending"/);
+
+ for(const [status,label] of [['on_hold','Tangguh'],['cancelled','Tidak diteruskan']]){
+  ctx.timeline({sales_status:status});
+  assert.equal(node('customerSalesTimeline').dataset.state,status);
+  assert.equal(position.textContent,label);
+  assert.doesNotMatch(steps.innerHTML,/aria-current|data-state="past"/);
+ }
 });
 
 test('Reference list includes old and unknown classifications without per-document states',()=>{

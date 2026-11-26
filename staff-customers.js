@@ -195,6 +195,44 @@ function caseStage(profile){
  if(profile.lou_received)return 'LOU diterima';
  return STATUSES[profile.sales_status]||profile.sales_status;
 }
+const SALES_STEPS=[
+ ['new','Lead baharu'],
+ ['contacted','Dihubungi'],
+ ['interested','Berminat'],
+ ['documents','Dokumen'],
+ ['bank_submitted','Permohonan bank'],
+ ['approved','Loan lulus'],
+ ['delivery','Persiapan delivery'],
+ ['delivered','Dah Delivery']
+];
+function salesTimeline(profile){
+ const status=profile.sales_status;
+ const active=SALES_STEPS.findIndex(([key])=>key===status);
+ const state=['on_hold','cancelled'].includes(status)?status:'';
+ return {
+  position:active<0?(STATUSES[status]||'Tahap belum ditetapkan'):
+   'Tahap '+(active+1)+' daripada '+SALES_STEPS.length+' · '+STATUSES[status],
+  state,
+  lou:profile.lou_received===true,
+  steps:SALES_STEPS.map(([key,label],index)=>({
+   key,label,state:index===active?'current':index<active?'past':'pending'
+  }))
+ };
+}
+function renderSalesTimeline(profile){
+ const timeline=salesTimeline(profile);
+ $('customerSalesTimeline').dataset.state=timeline.state;
+ const position=$('customerTimelinePosition');
+ if(position.textContent!==timeline.position)position.textContent=timeline.position;
+ $('customerTimelineLou').hidden=!timeline.lou;
+ $('customerTimelineSteps').innerHTML=timeline.steps.map(({label,state})=>{
+  const current=state==='current'?' aria-current="step"':'';
+  const marker=state==='past'?'✓':'';
+  return '<li class="customer-timeline-step" data-state="'+state+'"'+current+
+   '><span class="customer-timeline-marker" aria-hidden="true">'+marker+
+   '</span><span class="customer-timeline-label">'+esc(label)+'</span></li>';
+ }).join('');
+}
 function caseReasonRequired(){const required=['on_hold','cancelled'].includes($('customerCaseStatus').value);$('customerCaseReason').required=required;$('customerCaseReasonLabel').textContent=required?'Sebab (wajib)':'Catatan sebab tangguh / tidak diteruskan';}
 function openCaseStatus(){
  if(!customer||busy)return;
@@ -208,6 +246,7 @@ function referenceFilesMarkup(files){
 }
 function renderProfile(fill=true){
  const {lead:l,profile:p,staff}=customer;
+ renderSalesTimeline(p);
  $('customerName').textContent=l.customer_name;$('customerIdentity').textContent=l.phone_e164+' · '+(l.model||'Model belum dipilih')+(p.variant?' / '+p.variant:'');$('customerOwner').textContent='Staff urus: '+(staff?staff.display_name+' ('+staff.staff_code+')':'Belum diagih');$('customerStatusBadge').textContent=STATUSES[p.sales_status]||p.sales_status;
  $('customerNextAction').innerHTML='<b>Tindakan seterusnya</b>'+esc(p.next_action||'Belum ditetapkan')+'<br>Follow-up: '+esc(profileFollowStamp(l,p)?when(p.follow_up_due_at):day(l.follow_up_at));
  $('customerFinishFollow').classList.toggle('hide',!l.follow_up_at);$('customerRescheduleFollow').classList.toggle('hide',!l.follow_up_at);
