@@ -7,19 +7,20 @@
   <link rel="apple-touch-icon" href="/assets/faris-app-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <script>
-  // Phone entry: FARIS WhatsApp/Lead Hub. Document tools are accessible
-  // after staff login through ?tool=...&origin=staff.
+  // Staff-only: the document tools open only for a signed-in Lead Hub account, on every device.
+  // Phones without a staff tool link, and anyone without a valid session, go to the Lead Hub login.
   (()=>{
-   if(!window.matchMedia("(max-width:900px) and (pointer:coarse)").matches)return;
    const params=new URLSearchParams(location.search);
+   const phone=window.matchMedia("(max-width:900px) and (pointer:coarse)").matches;
    const isStaffWorkspace=params.get("origin")==="staff"&&
      ["VSO","COMPILER","APPLICATION"].includes(params.get("tool")||"");
    const leadUrl="/staff.html";
-   if(!isStaffWorkspace){location.replace(leadUrl);return;}
-   document.documentElement.style.visibility="hidden";
+   if(phone&&!isStaffWorkspace){location.replace(leadUrl);return;}
+   const root=document.documentElement;root.style.visibility="hidden";
    const api="https://qagsczjxzshjxmmxvkbq.supabase.co/functions/v1/lead-hub";
    const SESSION_KEY="faris_lead_hub_session_v2";
    const DEVICE_KEY="faris_lead_hub_trusted_browser_v1";
+   const read=k=>{try{return localStorage.getItem(k)||""}catch{return ""}};
    async function verify(action,body,session){
     const response=await fetch(api,{method:"POST",cache:"no-store",
      headers:{"Content-Type":"application/json",...(session?{"Authorization":"Bearer "+session}:{})},
@@ -28,17 +29,19 @@
     return response.ok&&data?.ok?data:null;
    }
    (async()=>{
-    const existing=localStorage.getItem(SESSION_KEY)||"";
+    const existing=read(SESSION_KEY);
     if(existing&&await verify("me",{},existing))return true;
-    const device=localStorage.getItem(DEVICE_KEY)||"";
+    const device=read(DEVICE_KEY);
     if(!device)return false;
     const renewed=await verify("resume_device",{device_token:device});
     if(!renewed?.token)return false;
     localStorage.setItem(SESSION_KEY,renewed.token);
     return true;
    })().then(ok=>{
-    if(ok)document.documentElement.style.visibility="";
-    else location.replace(leadUrl);
+    if(!ok){location.replace(leadUrl);return}
+    root.style.visibility="";
+    // Signing out in another tab closes the tools here too.
+    window.addEventListener("storage",e=>{if((e.key===SESSION_KEY&&!e.newValue)||e.key===null)location.replace(leadUrl)});
    }).catch(()=>location.replace(leadUrl));
   })();
   </script>
