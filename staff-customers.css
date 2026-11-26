@@ -114,6 +114,8 @@ button.insights-kpi{display:block;text-align:left;color:var(--text);font:inherit
  font-size:.75rem;
  font-weight:700;
 }
+.customer-timeline-lou time {margin-inline-start:6px}
+.customer-timeline-lou time span {white-space:nowrap}
 .customer-timeline-position {
  margin:6px 0 14px;
  color:var(--timeline-active);
@@ -134,7 +136,7 @@ button.insights-kpi{display:block;text-align:left;color:var(--text);font:inherit
 .customer-timeline-step {
  position:relative;
  display:grid;
- grid-template-rows:24px auto;
+ grid-template-rows:24px auto 1fr;
  gap:7px;
  justify-items:center;
  min-width:0;
@@ -180,12 +182,24 @@ button.insights-kpi{display:block;text-align:left;color:var(--text);font:inherit
  overflow-wrap:anywhere;
 }
 .customer-timeline-step[data-state="current"] .customer-timeline-label {color:var(--timeline-active);font-weight:800}
-.customer-timeline-endpoints {display:none}
+.customer-timeline-stamp {
+ color:var(--muted);
+ font-size:.75rem;
+ font-variant-numeric:tabular-nums;
+ line-height:1.35;
+}
+.customer-timeline-step time span {display:block}
+.customer-timeline-current-date {display:none;margin:-8px 0 12px}
+.customer-timeline-current-date:empty {display:none}
+.customer-timeline-endpoints,.customer-timeline-dates {display:none}
+.customer-sales-timeline:is([data-state="on_hold"],[data-state="cancelled"]) .customer-timeline-current-date:not(:empty) {display:block}
+.customer-timeline-zone {margin:10px 0 0;color:var(--muted);font-size:.75rem}
 @media(max-width:900px) {
  .customer-sales-timeline {padding:12px 14px}
  .customer-timeline-position {margin-bottom:10px}
+ .customer-timeline-current-date:not(:empty) {display:block;margin:-6px 0 10px}
  .customer-timeline-step {grid-template-rows:24px}
- .customer-timeline-label {
+ .customer-timeline-label,.customer-timeline-step time {
   position:absolute;
   width:1px;
   height:1px;
@@ -200,5 +214,21 @@ button.insights-kpi{display:block;text-align:left;color:var(--text);font:inherit
   margin-top:6px;
   color:var(--muted);
   font-size:.75rem;
+ }
+ .customer-timeline-dates:not([hidden]) {
+  display:block;
+  margin-top:10px;
+  color:var(--text);
+  font-size:.8125rem;
+ }
+ .customer-timeline-dates summary {cursor:pointer;padding:6px 0;font-weight:700}
+ .customer-timeline-dates ul {margin:0;padding:0;list-style:none}
+ .customer-timeline-dates li {
+  display:flex;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:4px 12px;
+  padding:6px 0;
+  border-top:1px solid var(--line);
  }
 }

@@ -4,7 +4,7 @@ function fixture(){
  const nodes=new Map(),node=id=>{if(!nodes.has(id))nodes.set(id,{value:'',checked:false,textContent:'',dataset:{},required:false,options:[],showModal(){this.shown=true},scrollIntoView(){this.scrolled=true}});return nodes.get(id)};
  const saved={customer_name:'Customer',model:'e.MAS 5',variant:'Premium',colour:'White',sales_status:'documents',booking_status:'paid',booking_amount:'100',deposit:'5000',selling_price:'75800',loan_amount:'60000',guarantor_required:true,lou_received:false,trade_in:false,closure_reason:'',expected_revision:7,expected_lead_updated_at:'2026-10-30T01:00:00Z'};
  const ctx={esc:s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),when:()=> '30/10/2026',$:node,STATUSES:{documents:'Mengumpul dokumen',approved:'Loan Lulus – Tunggu Delivery',delivery:'Persiapan Delivery',delivered:'Dah Delivery',on_hold:'Tangguh',cancelled:'Tidak diteruskan'},PARTIES:{HIRER:'Pemohon',GUARANTOR:'Penjamin',REBATE:'Rebate'},profileValues:()=>({...saved}),notice:t=>node('notice').textContent=t,showTab:t=>node('tab').value=t,document:{querySelectorAll:()=>[]}};
- vm.createContext(ctx);vm.runInContext("let selected=new Set(),customer={files:[],profile:{sales_status:'documents',lou_received:false,trade_in:false,closure_reason:''}},busy=false,dirty=false;"+src.slice(src.indexOf('function caseStage('),src.indexOf('function renderProfile('))+";globalThis.markup=referenceFilesMarkup;globalThis.show=openCaseStatus;globalThis.values=caseStatusValues;globalThis.reason=caseReasonRequired;globalThis.stage=caseStage;globalThis.timeline=renderSalesTimeline;globalThis.makeDirty=()=>{dirty=true};",ctx);
+ vm.createContext(ctx);vm.runInContext("let selected=new Set(),customer={files:[],profile:{sales_status:'documents',lou_received:false,trade_in:false,closure_reason:''}},busy=false,dirty=false;"+src.slice(src.indexOf('function caseStage('),src.indexOf('function renderProfile('))+";globalThis.markup=referenceFilesMarkup;globalThis.show=openCaseStatus;globalThis.values=caseStatusValues;globalThis.reason=caseReasonRequired;globalThis.stage=caseStage;globalThis.timeline=(profile,lead={},dates=new Map())=>renderSalesTimeline(profile,lead,dates);globalThis.recordSalesDates=recordSalesDates;globalThis.makeDirty=()=>{dirty=true};",ctx);
  return {ctx,node,saved};
 }
 test('A case with no attachments can open the status editor',()=>{
@@ -22,6 +22,52 @@ test('Case stage distinguishes LOU, delivery and inactive cases',()=>{
  const {ctx}=fixture();assert.match(ctx.stage({sales_status:'documents',lou_received:true}),/LOU/);assert.match(ctx.stage({sales_status:'delivered',lou_received:true}),/Dah Delivery/);assert.equal(ctx.stage({sales_status:'cancelled',lou_received:true}),'Tidak diteruskan');
  assert.equal(ctx.stage({sales_status:'approved',lou_received:true}),'Loan Lulus – Tunggu Delivery');
  assert.equal(ctx.stage({sales_status:'delivery',lou_received:true}),'Persiapan Delivery');
+});
+
+test('Timeline uses recorded status transitions, Malaysia time and actual delivery dates',()=>{
+ const {ctx,node}=fixture(),dates=new Map();
+ const event=(created_at,before,after,event_type='profile_updated')=>({created_at,event_type,details:{before,after}});
+ ctx.recordSalesDates(dates,[
+  event('2026-11-27T01:00:00Z',{sales_status:'documents'},{sales_status:'documents'}),
+  event('2026-11-26T17:30:00Z',{sales_status:'interested',lou_received:false},{sales_status:'documents',lou_received:true}),
+  event('2026-11-25T16:00:00Z',{sales_status:'interested'},{sales_status:'documents'},'status_updated'),
+  event('2026-11-25T00:00:00Z',{sales_status:'interested'},{sales_status:'documents'}),
+ ]);
+ const steps=node('customerTimelineSteps'),mobile=node('customerTimelineDateList');
+ ctx.timeline({sales_status:'documents',lou_received:true},{created_at:'2026-11-24T12:15:00Z'},dates);
+ assert.match(steps.innerHTML,/Lead baharu<\/span><time[^]*?20:15/);
+ assert.match(steps.innerHTML,/Dokumen<\/span><time[^]*?27 Nov 2026<\/span> <span>01:30/);
+ assert.doesNotMatch(steps.innerHTML,/(Berminat|Permohonan bank)<\/span><time/);
+ assert.match(mobile.innerHTML,/Dokumen<\/span><time/);
+ assert.match(node('customerTimelineLou').innerHTML,/LOU diterima<time[^]*?01:30/);
+ ctx.recordSalesDates(dates,[event('2026-11-28T05:00:00Z',{sales_status:'delivery'},{sales_status:'delivered'})]);
+ ctx.timeline({sales_status:'delivered',delivered_at:'2026-11-28T04:15:00Z'},{},dates);
+ assert.match(steps.innerHTML,/Dah Delivery<\/span><time[^]*?12:15/);
+ assert.doesNotMatch(steps.innerHTML,/13:00/);
+});
+
+test('Timeline finds older transitions and shares the paginated requests with the History tab',async()=>{
+ const {ctx,node}=fixture(),offsets=[],rendered=[];
+ const event=(sales_status,created_at)=>({event_type:'profile_updated',created_at,details:{before:{sales_status:'new'},after:{sales_status}}});
+ node('customerHistoryMore').classList={add(){}};
+ ctx.request=async(action,{lead_id,offset})=>{
+  assert.equal(action,'timeline');assert.equal(lead_id,'lead-a');offsets.push(offset);
+  return offset===0?{events:[event('interested','2026-11-26T08:00:00Z')],next_offset:50}:
+   {events:[event('contacted','2026-11-25T08:00:00Z')],next_offset:null};
+ };
+ ctx.rendered=rendered;
+ vm.runInContext("let historyRows=[],historyNext=null,historyLoaded=false,historySeq=0,historyPages=new Map(),salesEventDates=new Map();"+
+  "customer={lead:{id:'lead-a',created_at:'2026-11-24T08:00:00Z'},profile:{sales_status:'interested'}};"+
+  "function renderHistory(){rendered.push(historyRows.length)}"+
+  src.slice(src.indexOf('function resetHistory('),src.indexOf('async function loadPicker('))+
+  ";globalThis.loadDates=loadSalesDates;globalThis.loadHistory=loadHistory;",ctx);
+ ctx.resetHistory();
+ await Promise.all([ctx.loadDates(),ctx.loadHistory()]);
+ assert.deepEqual(offsets,[0,50]);
+ assert.match(node('customerTimelineSteps').innerHTML,/Dihubungi<\/span><time[^]*?25 Nov 2026/);
+ await ctx.loadHistory(true);
+ assert.deepEqual(offsets,[0,50]);
+ assert.deepEqual(rendered,[1,2]);
 });
 
 test('The profile timeline moves with saved status, shows LOU separately and clears progress for stopped cases',()=>{

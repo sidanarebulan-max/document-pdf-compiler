@@ -80,6 +80,8 @@ async function leaveForTool(tool,suffix=''){
  }catch(error){notice(error.message,true)}
 }
 let historyRows=[],historyNext=null,historyLoaded=false,historySeq=0,linkHandoff=null;
+const historyPages=new Map();
+let salesEventDates=new Map();
 let pickerRows=[],pickerNext=null,pickerSelected=new Set(),pickerSeq=0,pickerMeta=null,previewFile=null,previewUrl=null,previewSeq=0;
 const operations=new Map();
 function notice(text,error=false){$('customersNotice').textContent=text;$('customersNotice').classList.remove('hide');$('customersNotice').classList.toggle('error',error)}
@@ -205,7 +207,23 @@ const SALES_STEPS=[
  ['delivery','Persiapan delivery'],
  ['delivered','Dah Delivery']
 ];
-function salesTimeline(profile){
+const timelineDate=new Intl.DateTimeFormat('ms-MY',{timeZone:'Asia/Kuala_Lumpur',day:'numeric',month:'short',year:'numeric'});
+const timelineTime=new Intl.DateTimeFormat('ms-MY',{timeZone:'Asia/Kuala_Lumpur',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
+function recordSalesDates(dates,events){
+ for(const {event_type,created_at,details} of events){
+  if(event_type!=='profile_updated'||!Number.isFinite(Date.parse(created_at)))continue;
+  const {before,after}=details||{};
+  if(after?.sales_status&&before?.sales_status!==after.sales_status&&!dates.has(after.sales_status))dates.set(after.sales_status,created_at);
+  if(after?.lou_received===true&&before?.lou_received!==true&&!dates.has('lou'))dates.set('lou',created_at);
+ }
+}
+function timelineDateMarkup(stamp,className){
+ const date=new Date(stamp);
+ if(!stamp||!Number.isFinite(date.getTime()))return '';
+ return '<time class="'+className+'" datetime="'+date.toISOString()+'"><span>'+
+  esc(timelineDate.format(date))+'</span> <span>'+esc(timelineTime.format(date))+'</span></time>';
+}
+function salesTimeline(profile,lead,dates){
  const status=profile.sales_status;
  const active=SALES_STEPS.findIndex(([key])=>key===status);
  const state=['on_hold','cancelled'].includes(status)?status:'';
@@ -214,24 +232,39 @@ function salesTimeline(profile){
    'Tahap '+(active+1)+' daripada '+SALES_STEPS.length+' · '+STATUSES[status],
   state,
   lou:profile.lou_received===true,
+  louAt:dates.get('lou'),
+  stoppedAt:state&&dates.get(status),
   steps:SALES_STEPS.map(([key,label],index)=>({
-   key,label,state:index===active?'current':index<active?'past':'pending'
+   label,state:index===active?'current':index<active?'past':'pending',
+   stamp:index<=active||state?(
+    key==='new'?profile.lead_received_at||lead.created_at||dates.get(key):
+     key==='delivered'?profile.delivered_at||dates.get(key):dates.get(key)
+   ):undefined
   }))
  };
 }
-function renderSalesTimeline(profile){
- const timeline=salesTimeline(profile);
+function renderSalesTimeline(profile,lead,dates){
+ const timeline=salesTimeline(profile,lead,dates);
  $('customerSalesTimeline').dataset.state=timeline.state;
  const position=$('customerTimelinePosition');
  if(position.textContent!==timeline.position)position.textContent=timeline.position;
- $('customerTimelineLou').hidden=!timeline.lou;
- $('customerTimelineSteps').innerHTML=timeline.steps.map(({label,state})=>{
+ const lou=$('customerTimelineLou');
+ lou.hidden=!timeline.lou;
+ lou.innerHTML=timeline.lou?'LOU diterima'+timelineDateMarkup(timeline.louAt,'customer-timeline-stamp'):'';
+ const activeAt=timeline.stoppedAt||timeline.steps.find(step=>step.state==='current')?.stamp;
+ $('customerTimelineCurrentDate').innerHTML=timelineDateMarkup(activeAt,'customer-timeline-stamp');
+ $('customerTimelineSteps').innerHTML=timeline.steps.map(({label,state,stamp})=>{
   const current=state==='current'?' aria-current="step"':'';
   const marker=state==='past'?'✓':'';
   return '<li class="customer-timeline-step" data-state="'+state+'"'+current+
    '><span class="customer-timeline-marker" aria-hidden="true">'+marker+
-   '</span><span class="customer-timeline-label">'+esc(label)+'</span></li>';
+   '</span><span class="customer-timeline-label">'+esc(label)+'</span>'+
+   timelineDateMarkup(stamp,'customer-timeline-stamp')+'</li>';
  }).join('');
+ const datedSteps=timeline.steps.filter(step=>step.stamp);
+ $('customerTimelineDates').hidden=!datedSteps.length;
+ $('customerTimelineDateList').innerHTML=datedSteps.map(({label,stamp})=>'<li><span>'+esc(label)+'</span>'+
+  timelineDateMarkup(stamp,'customer-timeline-stamp')+'</li>').join('');
 }
 function caseReasonRequired(){const required=['on_hold','cancelled'].includes($('customerCaseStatus').value);$('customerCaseReason').required=required;$('customerCaseReasonLabel').textContent=required?'Sebab (wajib)':'Catatan sebab tangguh / tidak diteruskan';}
 function openCaseStatus(){
@@ -246,7 +279,7 @@ function referenceFilesMarkup(files){
 }
 function renderProfile(fill=true){
  const {lead:l,profile:p,staff}=customer;
- renderSalesTimeline(p);
+ renderSalesTimeline(p,l,salesEventDates);
  $('customerName').textContent=l.customer_name;$('customerIdentity').textContent=l.phone_e164+' · '+(l.model||'Model belum dipilih')+(p.variant?' / '+p.variant:'');$('customerOwner').textContent='Staff urus: '+(staff?staff.display_name+' ('+staff.staff_code+')':'Belum diagih');$('customerStatusBadge').textContent=STATUSES[p.sales_status]||p.sales_status;
  $('customerNextAction').innerHTML='<b>Tindakan seterusnya</b>'+esc(p.next_action||'Belum ditetapkan')+'<br>Follow-up: '+esc(profileFollowStamp(l,p)?when(p.follow_up_due_at):day(l.follow_up_at));
  $('customerFinishFollow').classList.toggle('hide',!l.follow_up_at);$('customerRescheduleFollow').classList.toggle('hide',!l.follow_up_at);
@@ -272,13 +305,13 @@ async function open(id){
  try{await sharedFlow?.flush()}catch(error){notice(error.message,true);return}
  if(dirty&&!confirm('Buka customer lain dan tinggalkan perubahan profil yang belum disimpan?'))return;
  sharedFlow?.close();sharedFlow=null;
- const gen=epoch,seq=++opening;customer=null;window.FARIS_NAV.show('customers',{scroll:false});dirty=false;selected.clear();historySeq++;historyRows=[];historyNext=null;historyLoaded=false;$('customerDetail').classList.add('hide');$('customersDirectory').classList.add('hide');notice('Memuatkan profil customer…');
- try{const d=await request('get',{lead_id:id});if(gen!==epoch||seq!==opening)return;customer=d.customer;$('customerDetail').classList.remove('hide');$('customersNotice').classList.add('hide');renderProfile();attachSharedProfile();showTab('summary');$('workspace-customers').scrollIntoView({block:'start'});return true}
+ const gen=epoch,seq=++opening;customer=null;window.FARIS_NAV.show('customers',{scroll:false});dirty=false;selected.clear();resetHistory();$('customerTimelineDates').open=false;$('customerDetail').classList.add('hide');$('customersDirectory').classList.add('hide');notice('Memuatkan profil customer…');
+ try{const d=await request('get',{lead_id:id});if(gen!==epoch||seq!==opening)return;customer=d.customer;$('customerDetail').classList.remove('hide');$('customersNotice').classList.add('hide');renderProfile();attachSharedProfile();showTab('summary');loadSalesDates();$('workspace-customers').scrollIntoView({block:'start'});return true}
  catch(e){if(gen===epoch&&seq===opening){notice(e.message,true);$('customersDirectory').classList.remove('hide')}}
 }
 async function refreshProfile(force=false){
  if(!customer||!user)return;const gen=epoch,id=customer.lead.id,seq=++opening;
- let d;try{d=await request('get',{lead_id:id})}catch(e){if(gen===epoch&&customer?.lead.id===id&&e.status===403)forgetCustomer();throw e}if(gen!==epoch||seq!==opening||customer?.lead.id!==id)return;customer=d.customer;renderProfile(force||!dirty);if(sharedFlow&&!sharedFlow.dirty){sharedFlow.close();sharedFlow=null;attachSharedProfile()}historyLoaded=false;historyRows=[];historyNext=null;historySeq++;if(tab==='history')loadHistory();
+ let d;try{d=await request('get',{lead_id:id})}catch(e){if(gen===epoch&&customer?.lead.id===id&&e.status===403)forgetCustomer();throw e}if(gen!==epoch||seq!==opening||customer?.lead.id!==id)return;customer=d.customer;resetHistory();renderProfile(force||!dirty);if(sharedFlow&&!sharedFlow.dirty){sharedFlow.close();sharedFlow=null;attachSharedProfile()}if(tab==='history')loadHistory();loadSalesDates();
 }
 function profileValues(){
  const p=customer?.profile||{};
@@ -340,6 +373,63 @@ function historyDetail(event){
 function renderHistory(){const labels={shared_fields_updated:'Maklumat pelanggan diselaraskan',profile_updated:'Profil dikemas kini',note_added:'Nota ditambah',bank_updated:'Permohonan bank dikemas kini',bank_removed:'Rekod bank dipadam',follow_up_completed:'Follow-up selesai',contact_recorded:'Pelanggan dihubungi',documents_linked:'Dokumen dipautkan / dikategorikan',document_unlinked:'Dokumen dinyahpaut',checklist_updated:'Checklist dokumen dikemas kini',claimed:'Nombor diclaim',assigned:'Customer diagihkan',legacy_assignment:'Rekod agihan lama',pm_confirmed:'PM disahkan oleh staff',whatsapp_opened:'WhatsApp dibuka',status_updated:'Status WhatsApp berubah',whatsapp_details_updated:'Catatan / follow-up WhatsApp berubah',lead_created:'Lead diwujudkan'};
  $('customerHistory').innerHTML=historyRows.length?historyRows.map(e=>'<article class="customer-history-item"><b>'+esc(labels[e.event_type]||e.event_type)+'</b><br><small>'+esc(when(e.created_at))+' · '+esc(e.actor_name?e.actor_name+' ('+e.actor_code+')':'Rekod sistem')+'</small>'+historyDetail(e)+'</article>').join(''):'<div class="empty">Belum ada sejarah untuk customer ini.</div>';$('customerHistoryMore').classList.toggle('hide',historyNext===null);
 }
+function resetHistory(){
+ historySeq++;historyRows=[];historyNext=null;historyLoaded=false;historyPages.clear();salesEventDates=new Map();
+ $('customerHistory').textContent='';
+ $('customerHistoryMore').classList.add('hide');
+ $('customerHistoryMore').disabled=false;
+ $('customerTimelineError').hidden=true;
+}
+function getHistoryPage(id,offset){
+ if(!historyPages.has(offset)){
+  const seq=historySeq;
+  historyPages.set(offset,request('timeline',{lead_id:id,offset}).catch(error=>{
+   if(seq===historySeq)historyPages.delete(offset);
+   throw error;
+  }));
+ }
+ return historyPages.get(offset);
+}
+async function loadHistory(append=false){
+ if(!customer||$('customerHistoryMore').disabled||append&&historyNext===null)return;
+ const seq=historySeq,id=customer.lead.id;
+ $('customerHistoryMore').disabled=true;
+ if(!append)$('customerHistory').textContent='Memuatkan sejarah pelanggan…';
+ try{
+  const page=await getHistoryPage(id,append?historyNext:0);
+  if(seq!==historySeq)return;
+  historyRows=append?[...historyRows,...page.events]:page.events;
+  historyNext=page.next_offset;historyLoaded=true;renderHistory();
+ }catch(error){
+  if(seq!==historySeq)return;
+  if(error.status===403)forgetCustomer();
+  else if(append)notice(error.message,true);
+  else $('customerHistory').textContent=error.message;
+ }finally{if(seq===historySeq)$('customerHistoryMore').disabled=false}
+}
+async function loadSalesDates(){
+ const seq=historySeq,id=customer.lead.id;
+ let offset=0;
+ try{
+  for(;;){
+   const {profile,lead}=customer;
+   const timeline=salesTimeline(profile,lead,salesEventDates);
+   const hasMissingDates=timeline.steps.some(step=>(timeline.state||step.state!=='pending')&&!step.stamp)||
+    timeline.lou&&!timeline.louAt||timeline.state&&!timeline.stoppedAt;
+   if(!hasMissingDates)return;
+   const page=await getHistoryPage(id,offset);
+   if(seq!==historySeq)return;
+   recordSalesDates(salesEventDates,page.events);
+   renderSalesTimeline(customer.profile,customer.lead,salesEventDates);
+   if(page.next_offset===null||page.next_offset<=offset)return;
+   offset=page.next_offset;
+  }
+ }catch(error){
+  if(seq!==historySeq)return;
+  if(error.status===403)forgetCustomer();
+  else $('customerTimelineError').hidden=false;
+ }
+}
 async function loadPicker(append=false){
  if(!customer)return;const gen=epoch,id=customer.lead.id,seq=++pickerSeq;$('customerInboxLink').disabled=true;$('customerInboxMore').disabled=true;
  try{const d=await request('unlinked_files',{lead_id:id,search:$('customerInboxSearch').value,offset:append?pickerNext||0:0});if(gen!==epoch||seq!==pickerSeq||customer?.lead.id!==id)return;pickerRows=append?[...pickerRows,...d.files]:d.files;pickerNext=d.next_offset;if(!append)pickerSelected.clear();$('customerInboxList').innerHTML=pickerRows.length?pickerRows.map(f=>'<label><input type="checkbox" data-customer-inbox="'+esc(f.id)+'"><span>'+esc(f.original_name)+'<small>'+(f.byte_size/1048576).toFixed(2)+' MB'+(f.customer_name?' · Catatan lama: '+esc(f.customer_name):'')+'</small></span></label>').join(''):'<p class="customer-note-empty">Tiada fail yang belum dipautkan dalam paparan ini.</p>';
@@ -363,13 +453,13 @@ async function download(id,button){const gen=epoch;button.disabled=true;try{cons
 function compiler(){if(!customer||!selected.size||busy)return;const files=customer.files.filter(f=>selected.has(f.id));if(files.length>30||files.reduce((n,f)=>n+f.byte_size,0)>80*1048576)return notice('Pilih maksimum 30 fail dan 80 MB sekali untuk Compiler.',true);sessionStorage.setItem('faris_inbox_compiler_v1',JSON.stringify({ids:[...selected],account_id:user.id,created_at:Date.now()}));leaveForTool('COMPILER','&inbox=1')}
 function forgetCustomer(){
  sharedFlow?.close();sharedFlow=null;
- opening++;historySeq++;customer=null;dirty=false;selected.clear();historyRows=[];historyNext=null;historyLoaded=false;
+ opening++;customer=null;dirty=false;selected.clear();resetHistory();
  for(const id of ['customerPreview','customerInboxDialog','customerCaseDialog','customerBankDialog','customerActionDialog'])if($(id).open)$(id).close();clearPreview();
  for(const id of ['customerFiles','customerHistory','customerNotes','customerName','customerIdentity','customerOwner','customerNextAction','customerSourceInfo','customerLastUpdated','customerLegacyNotes'])$(id).textContent='';
  $('customerProfileForm').reset();$('customerCaseForm').reset();$('customerCaseFeedback').textContent='';$('customerNoteForm').reset();$('customerWhatsapp').removeAttribute('href');$('customerDetail').classList.add('hide');$('customersDirectory').classList.remove('hide');directory();
 }
 function reset(){
- sharedFlow?.close();sharedFlow=null;epoch++;whatsappTrendListing++;$('whatsappTrendResult').innerHTML='';$('whatsappTrendResult').setAttribute('aria-busy','false');$('whatsappTrendContext').textContent='';$('whatsappTrendForm').reset();whatsappTrendPreset();$('customerInsightsResult').innerHTML='';$('customerInsightsContext').textContent='';listing++;opening++;historySeq++;pickerSeq++;user=null;customer=null;rows=[];next=null;historyRows=[];historyNext=null;historyLoaded=false;selected.clear();pickerRows=[];pickerSelected.clear();operations.clear();linkHandoff=null;busy=false;dirty=false;
+ sharedFlow?.close();sharedFlow=null;epoch++;whatsappTrendListing++;$('whatsappTrendResult').innerHTML='';$('whatsappTrendResult').setAttribute('aria-busy','false');$('whatsappTrendContext').textContent='';$('whatsappTrendForm').reset();whatsappTrendPreset();$('customerInsightsResult').innerHTML='';$('customerInsightsContext').textContent='';listing++;opening++;pickerSeq++;user=null;customer=null;rows=[];next=null;resetHistory();selected.clear();pickerRows=[];pickerSelected.clear();operations.clear();linkHandoff=null;busy=false;dirty=false;
  for(const id of ['customerPreview','customerInboxDialog','customerCaseDialog','customerBankDialog','customerActionDialog'])if($(id).open)$(id).close();clearPreview();$('customerDetail').classList.add('hide');$('customersDirectory').classList.remove('hide');$('customersList').innerHTML='';$('customerFiles').innerHTML='';$('customerHistory').innerHTML='';$('customerNotes').innerHTML='';$('customerInboxList').innerHTML='';$('customerName').textContent='';$('customerIdentity').textContent='';$('customerOwner').textContent='';$('customerNextAction').textContent='';$('customerSourceInfo').textContent='';$('customerLastUpdated').textContent='';$('customerLegacyNotes').textContent='';$('customerWhatsapp').removeAttribute('href');$('customerProfileForm').reset();$('customerCaseForm').reset();$('customerCaseFeedback').textContent='';$('customerNoteForm').reset();$('customersFilterForm').reset();$('customerDateBasis').value='received';$('customerReminders').open=false;$('customerReminderItems').replaceChildren();$('customerReminderCounts').textContent='';$('customerBankList').replaceChildren();$('customerBankForm').reset();$('customerActionForm').reset();$('customerActiveFilters').textContent='';$('customersTotal').textContent='';$('customerUpload').value='';$('customersNotice').classList.add('hide');$('customersLinkBanner').classList.add('hide');$('customersRefresh').disabled=false;busyState(false)}
 const malaysiaFormDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
 function malaysiaInput(value){
@@ -584,7 +674,7 @@ document.addEventListener('DOMContentLoaded',()=>{
  document.addEventListener('click',e=>{const b=e.target.closest('[data-customer-open]');if(b)openLinkedCustomer(b)});
  $('customersFilterForm').addEventListener('submit',e=>{e.preventDefault();directory()});for(const id of ['customersStatus','customersVariant','customersColour','customersBucket','customersStaff'])$(id).addEventListener('change',()=>directory());$('customersModel').addEventListener('change',()=>{$('customersVariant').value='';$('customersColour').value='';directory()});$('customersMore').addEventListener('click',()=>directory(true));
  $('customersRefresh').addEventListener('click',async()=>{if(busy)return;try{if(customer){if((dirty||sharedFlow?.dirty)&&!confirm('Buang perubahan belum disimpan dan refresh profil?'))return;sharedFlow?.close();sharedFlow=null;await refreshProfile(true);attachSharedProfile()}else await directory()}catch(e){notice(e.message,true)}});
- $('customerBack').addEventListener('click',async()=>{if(busy||dirty&&!confirm('Tinggalkan perubahan profil yang belum disimpan?'))return;try{await sharedFlow?.flush()}catch(error){notice(error.message,true);return}sharedFlow?.close();sharedFlow=null;opening++;customer=null;dirty=false;historySeq++;$('customerDetail').classList.add('hide');$('customersDirectory').classList.remove('hide');directory()});
+ $('customerBack').addEventListener('click',async()=>{if(busy||dirty&&!confirm('Tinggalkan perubahan profil yang belum disimpan?'))return;try{await sharedFlow?.flush()}catch(error){notice(error.message,true);return}sharedFlow?.close();sharedFlow=null;opening++;customer=null;dirty=false;resetHistory();$('customerDetail').classList.add('hide');$('customersDirectory').classList.remove('hide');directory()});
  $('customersLinkCancel').addEventListener('click',()=>{linkHandoff=null;renderDirectory()});
  $('customersList').addEventListener('click',async e=>{const b=e.target.closest('[data-customer-link-target]');if(!b||!linkHandoff||busy)return;const handoff=linkHandoff,gen=epoch;b.disabled=true;busy=true;try{await mutate('link_files',{ids:handoff.ids,party:handoff.party,category:handoff.category},b.dataset.customerLinkTarget);if(gen!==epoch)return;linkHandoff=null;$('customersLinkBanner').classList.add('hide');busy=false;await open(b.dataset.customerLinkTarget);showTab('documents');notice('Fail telah dipautkan kepada profil customer.');window.FARIS_INBOX?.onShow?.()}catch(err){if(gen===epoch)notice(err.message,true)}finally{if(gen===epoch){busy=false;b.disabled=false}}});
  document.querySelectorAll('[data-customer-tab]').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.customerTab)));

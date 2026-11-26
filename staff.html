@@ -13,7 +13,7 @@
  <link rel="stylesheet" href="/staff.css?v=customers-v39-20261028">
  <link rel="stylesheet" href="/staff-gallery.css?v=gallery-catalogue-20261111">
  <link rel="stylesheet" href="/customer-workflow.css?v=1">
- <link rel="stylesheet" href="/staff-customers.css?v=sales-timeline-20261126">
+ <link rel="stylesheet" href="/staff-customers.css?v=sales-timeline-dates-20261126">
  <style>
   .credential{border:1px solid #405e98;background:linear-gradient(135deg,#101d38,#1d3156);border-radius:14px;padding:16px;margin-top:10px}
   .credential strong{display:block;color:#96baff;font-size:10px;letter-spacing:1.5px}
@@ -474,8 +474,15 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
    <span id="customerTimelineLou" class="customer-timeline-lou" hidden>LOU diterima</span>
   </div>
   <p id="customerTimelinePosition" class="customer-timeline-position" aria-live="polite"></p>
+  <div id="customerTimelineCurrentDate" class="customer-timeline-current-date"></div>
   <ol id="customerTimelineSteps" class="customer-timeline-steps" aria-label="Tahap jualan pelanggan"></ol>
   <div class="customer-timeline-endpoints" aria-hidden="true"><span>Lead baharu</span><span>Dah Delivery</span></div>
+  <details id="customerTimelineDates" class="customer-timeline-dates" hidden>
+   <summary>Tarikh &amp; waktu setiap tahap</summary>
+   <ul id="customerTimelineDateList"></ul>
+  </details>
+  <p class="customer-timeline-zone">Waktu Malaysia (MYT)</p>
+  <p id="customerTimelineError" class="customer-timeline-zone" role="status" hidden>Tarikh dan waktu sejarah belum dapat dimuatkan. Tekan Refresh untuk cuba lagi.</p>
  </section>
  <nav class="customer-tabs" aria-label="Bahagian profil"><button type="button" data-customer-tab="summary" aria-current="page">Ringkasan</button><button type="button" data-customer-tab="documents">Dokumen <span id="customerDocCount">0</span></button><button type="button" data-customer-tab="banks">Bank <span id="customerBankCount">0</span></button><button type="button" data-customer-tab="history">Sejarah</button></nav>
  <section data-customer-panel="summary" class="panel"><h3>Maklumat & status jualan</h3><p class="muted small">Status jualan berasingan daripada status PM WhatsApp. Setiap simpanan direkodkan bersama nama staff.</p><div id="customerNextAction" class="customer-next"></div>
@@ -738,7 +745,7 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
 <script src="/vso-variants.js?v=customer-workflow-v1"></script>
 <script src="/customer-workflow.js?v=1"></script>
 <script src="/customer-catalogue.js?v=20261126"></script>
-<script src="/staff-customers.js?v=sales-timeline-20261126"></script>
+<script src="/staff-customers.js?v=sales-timeline-dates-20261126"></script>
 <script src="/staff-inbox.js?v=customer-workflow-v1"></script>
 <script src="/staff-navigation.js?v=customers-v39-20261028"></script>
 <script src="/staff-passcode.js?v=customer-workflow-v1"></script>
