@@ -441,9 +441,6 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
  </section>
  <details class="panel customer-reminders" id="customerReminders">
  <summary><strong>Reminder</strong> <span id="customerReminderCounts" class="muted small"></span></summary>
- <p id="customerWorkflowStatus" class="muted small" role="status" aria-live="polite"></p>
- <details id="customerSharedTrading"><summary>Harga & pembiayaan</summary><div class="customer-form-grid" id="customerSharedFinance"></div></details>
- <details id="customerSharedPersonal"><summary>Butiran pelanggan, penjamin & trade-in</summary><div class="customer-form-grid" id="customerSharedDetails"></div></details>
  <div class="customer-tracking-actions"><button type="button" class="secondary" data-tracking-filter="today">Hari ini</button><button type="button" class="secondary" data-tracking-filter="overdue">Terlepas</button></div>
  <div id="customerReminderItems" aria-live="polite"></div>
  </details>
@@ -488,6 +485,9 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
  </section>
  <nav class="customer-tabs" aria-label="Bahagian profil"><button type="button" data-customer-tab="summary" aria-current="page">Ringkasan</button><button type="button" data-customer-tab="documents">Dokumen <span id="customerDocCount">0</span></button><button type="button" data-customer-tab="banks">Bank <span id="customerBankCount">0</span></button><button type="button" data-customer-tab="history">Sejarah</button></nav>
  <section data-customer-panel="summary" class="panel"><h3>Maklumat & status jualan</h3><p class="muted small">Status jualan berasingan daripada status PM WhatsApp. Setiap simpanan direkodkan bersama nama staff.</p><div id="customerNextAction" class="customer-next"></div>
+ <p id="customerWorkflowStatus" class="muted small" role="status" aria-live="polite"></p>
+ <details id="customerSharedTrading"><summary>Harga & pembiayaan</summary><div class="customer-form-grid" id="customerSharedFinance"></div></details>
+ <details id="customerSharedPersonal"><summary>Butiran pelanggan, penjamin & trade-in</summary><div class="customer-form-grid" id="customerSharedDetails"></div></details>
  <div class="customer-tracking-actions"><button type="button" class="secondary hide" id="customerFinishFollow">Selesai follow-up</button><button type="button" class="secondary hide" id="customerRescheduleFollow">Jadual semula</button><button type="button" class="secondary" id="customerRecordContact">Catat pelanggan dihubungi</button></div><form id="customerProfileForm"><div class="customer-form-grid"><label>Nama customer<input id="cpName" required maxlength="120"></label><label>Nombor telefon<input id="cpPhone" readonly></label><label>Model<select id="cpModel"><option value="">Pilih model</option></select></label><label>Varian<select id="cpVariant"><option value="">Pilih model dahulu</option></select></label><label>Warna kereta<select id="cpColour"><option value="">Pilih model dahulu</option></select></label><label>Status jualan<select id="cpStatus"></select></label><label>Tarikh follow-up<input id="cpFollow" type="date"></label>
  <label>Masa follow-up (MYT)<input id="cpFollowTime" type="time"></label>
  <label>Lead diterima (MYT)<input id="cpReceived" type="datetime-local"></label>
@@ -744,10 +744,10 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
 <script src="/staff-gallery.js?v=gallery-model-colours-20261111"></script>
 <script src="/customer-insights-core.js?v=whatsapp-week-v60-20261109"></script>
 <script src="/application-form-core.js?v=identity-paste-scope-20261127"></script>
-<script src="/vso-variants.js?v=customer-workflow-v1"></script>
-<script src="/customer-workflow.js?v=1"></script>
+<script src="/vso-variants.js?v=profile-sync-20261127"></script>
+<script src="/customer-workflow.js?v=profile-sync-20261127"></script>
 <script src="/customer-catalogue.js?v=20261126"></script>
-<script src="/staff-customers.js?v=sales-timeline-dates-20261126"></script>
+<script src="/staff-customers.js?v=profile-sync-20261127"></script>
 <script src="/staff-inbox.js?v=customer-workflow-v1"></script>
 <script src="/staff-navigation.js?v=customers-v39-20261028"></script>
 <script src="/staff-passcode.js?v=customer-workflow-v1"></script>

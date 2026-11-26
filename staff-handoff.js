@@ -77,6 +77,7 @@ function render(values) {
    if ($(id)) $(id).readOnly = true;
   }
   setField('application_financing_model',model);
+  window.VSO_CENTER.refresh();
   window.FARIS_COMPILER?.customerNames?.(values);
   $('staffWorkflowName').textContent = values.customer_name+' · +'+values.phone;
   $('staffWorkflowFiles').hidden = false;
@@ -161,18 +162,19 @@ async function start(selector, initial = {}) {
 $('staffWorkflowLookup').addEventListener('submit',async e => {
  e.preventDefault();
  if(loadingProfile)return;
+ const activeTool=document.querySelector('[data-main][aria-selected="true"]')?.dataset.main||tool;
  const phone = api.normalizePhone($('staffWorkflowPhone').value);
  if (!phone) return status('Semak nombor telefon pelanggan.',true);
- const activePhone=tool==='APPLICATION'?'application_applicant_phone':tool==='VSO'?'vsoPhone':'customerPhone';
+ const activePhone=activeTool==='APPLICATION'?'application_applicant_phone':activeTool==='VSO'?'vsoPhone':'customerPhone';
  if ($(activePhone)?.value && api.normalizePhone($(activePhone).value)!==phone) {
   return status('Nombor dalam borang berbeza daripada nombor yang hendak dipautkan.',true);
  }
- const draft=Object.fromEntries(Object.entries(ids).filter(([id])=>tool==='APPLICATION'?id.startsWith('application_'):tool==='VSO'?id.startsWith('vso'):id==='customerName').map(([id,key])=>[key,$(id)?.value]));
+ const draft=Object.fromEntries(Object.entries(ids).filter(([id])=>activeTool==='APPLICATION'?id.startsWith('application_'):activeTool==='VSO'?id.startsWith('vso'):id==='customerName').map(([id,key])=>[key,$(id)?.value]));
  for (const key of ['vehicle_year','loan_term','vso_accessories','loan_amount','colour','deposit','rebate_amount','insurance_amount']) {
-  if (tool==='VSO' && !document.getElementById(Object.keys(ids).find(id=>id.startsWith('vso')&&ids[id]===key))?.dataset.workflowEdited) delete draft[key];
+  if (activeTool==='VSO' && !document.getElementById(Object.keys(ids).find(id=>id.startsWith('vso')&&ids[id]===key))?.dataset.workflowEdited) delete draft[key];
  }
- const model=tool==='APPLICATION'?$('application_financing_model').value:'';
- if(tool==='VSO'&&$('vsoModel').dataset.workflowEdited)Object.assign(draft,modelPatch($('vsoModel').value,true));
+ const model=activeTool==='APPLICATION'?$('application_financing_model').value:'';
+ if(activeTool==='VSO'&&$('vsoModel').dataset.workflowEdited)Object.assign(draft,modelPatch($('vsoModel').value,true));
  if(model) Object.assign(draft,modelPatch(model,false));
  try { ready=start({phone},draft); await ready; }
  catch(error){ status(error.status===403?'Profil nombor ini tiada dalam akses kau. Ambil nombor di Lead Hub dahulu.':error.message,true); }

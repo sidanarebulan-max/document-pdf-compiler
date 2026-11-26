@@ -112,6 +112,7 @@ function create({customer, accountId, render, notify}) {
    await flush();
    const result = await window.FARIS_INBOX_CLIENT.upload(file,{customer_id:id,account_id:accountId,party,category});
    if (!result.files?.length || result.files.some(f=>f.customer_id!==id)) throw Error('Fail belum dipautkan ke profil. Cuba semula.');
+   channel?.postMessage(id);
    return result;
   },
   close(){ closed=true; clearTimeout(timer); pending.clear(); registry.delete(instance); }

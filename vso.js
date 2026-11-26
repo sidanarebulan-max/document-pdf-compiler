@@ -90,14 +90,15 @@
   function read(){
     const loan=Number(E('vsoLoan').value);
     const selected=chosenVariant();
-    const result=variants.present(variants.calculate(loan,mode,selected.id),E('vsoAccessoriesMode').checked?'ACCESSORIES':'NET');
+    const insurance=E('vsoInsurance')?.value;
+    const result=variants.present(variants.calculate(loan,mode,selected.id),E('vsoAccessoriesMode').checked?'ACCESSORIES':'NET',insurance?Number(insurance):undefined);
     return {
       name:E('vsoCustomer').value.trim(),
       nric:E('vsoNric').value.trim(),
       address:E('vsoAddress').value.trim(),
       phone:E('vsoPhone').value.trim(),
       email:E('vsoEmail').value.trim(),
-      model:selected.model,variant:selected,
+      model:selected.model,variant:selected,fees:result.fees,
       year:E('vsoYear').value.trim(),
       color:E('vsoColor').value.trim(),
       loan,
@@ -130,18 +131,18 @@
         ${row('Govt. Approved Net Selling Price*',v.net)}
         ${row('Inclusive of Approved Standard Accessories Excise Duty',v.accessoriesExcess>0?v.accessoriesExcess:null)}
         ${row('Sub Total (Sales Price)',null)}
-        ${row('Inspection & Handling Fee',v.variant.fees.handling)}
+        ${row('Inspection & Handling Fee',v.fees.handling)}
         ${row('Metallic Paint',null)}
-        ${row('Registration Number plate',v.variant.fees.plate)}
-        ${row('Accessory Package',v.variant.fees.accessory)}
+        ${row('Registration Number plate',v.fees.plate)}
+        ${row('Accessory Package',v.fees.accessory)}
         <tr class="vsoBlank"><td></td><td></td></tr>
         ${row('Less Discount (If any)',0)}
         <tr class="vsoBlank"><td></td><td></td></tr>
         ${row('Total Sales Price',null)}
-        ${row('Registration Fee',v.variant.fees.registration)}
-        ${row('Road tax',v.variant.fees.roadTax)}
-        ${row('H.P. Ownership Claim Fee',v.variant.fees.claim)}
-        ${row('Insurance Premium Inc. 6% SST',v.variant.fees.insurance)}
+        ${row('Registration Fee',v.fees.registration)}
+        ${row('Road tax',v.fees.roadTax)}
+        ${row('H.P. Ownership Claim Fee',v.fees.claim)}
+        ${row('Insurance Premium Inc. 6% SST',v.fees.insurance)}
         ${row('Sum Insured',null)}
         ${row('NCB',null)}
         <tr class="vsoPriceOtr"><td><strong>On The Road Price:</strong></td><td class="vsoMoney"><strong>${money(v.otr)}</strong></td></tr>
@@ -179,8 +180,8 @@
     E('vsoModeBadge').textContent=v.adjusted?'OTR DISELARASKAN':'OTR KEKAL PADA ANCHOR';
     E('vsoOtrLabel').textContent='OTR Price';
     const breakdown=Object.entries(feeLabels)
-       .filter(([key])=>v.variant.fees[key]!==null && v.variant.fees[key]!==undefined)
-       .map(([key,label])=>'<div class="vsoChargeRow"><span>'+label+'</span><b>'+currency(v.variant.fees[key])+'</b></div>')
+       .filter(([key])=>v.fees[key]!==null && v.fees[key]!==undefined)
+       .map(([key,label])=>'<div class="vsoChargeRow"><span>'+label+'</span><b>'+currency(v.fees[key])+'</b></div>')
        .join('');
     E('vsoFixedBreakdown').innerHTML=breakdown+'<div class="vsoChargeTotal"><span>Jumlah caj OTR</span><b>'+currency(v.feeTotal)+'</b></div>';
     workspace.querySelector('.vsoVersion').textContent=v.variant.display;
@@ -272,6 +273,7 @@
       return {loan:r.loan,otr:r.otr,charges:r.feeTotal,net:r.net,baseOtr:r.baseOtr,anchorPrice:r.anchorPrice,loanLimit:r.loanLimit,adjusted:r.adjusted,mode:'AUTO',variant:r.variant.model};
     },
     variants:variants.list.map(v=>({id:v.id,model:v.model,otr:v.baseOtr,net:v.baseNet})),
+    refresh:updatePreview,
     openVso:()=>switchMain('VSO'),openCompiler:()=>switchMain('COMPILER'),openApplication:()=>switchMain('APPLICATION')
   };
   updatePreview();switchMain('VSO');

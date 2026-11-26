@@ -69,11 +69,10 @@ function prepareDownload(out){
 }
 function data(){
  const value=id=>E(id)?.value?.trim()||'';
- const loan=Number(value('vsoLoan')),variant=window.VSO_VARIANTS.get(value('vsoModel')),placement=E('vsoAccessoriesMode')?.checked?'ACCESSORIES':'NET',r=window.VSO_VARIANTS.present(window.VSO_VARIANTS.calculate(loan,'AUTO',variant.id),placement);
+ const loan=Number(value('vsoLoan')),variant=window.VSO_VARIANTS.get(value('vsoModel')),placement=E('vsoAccessoriesMode')?.checked?'ACCESSORIES':'NET';
  const insurance=value('vsoInsurance');
- const fees=insurance!==''?{...variant.fees,insurance:Number(insurance)}:variant.fees;
- const net=Math.round((r.net+Number(variant.fees.insurance??0)-Number(fees.insurance??0))*100)/100;
- return {customer:value('vsoCustomer'),nric:value('vsoNric'),address:value('vsoAddress'),phone:value('vsoPhone'),email:value('vsoEmail'),year:value('vsoYear'),color:value('vsoColor'),period:value('vsoPeriod'),model:variant.model,fees,loan,otr:r.otr,net,placement,accessoriesExcess:r.accessoriesExcess,date:core.dateInMalaysia()};
+ const r=window.VSO_VARIANTS.present(window.VSO_VARIANTS.calculate(loan,'AUTO',variant.id),placement,insurance===''?undefined:Number(insurance));
+ return {customer:value('vsoCustomer'),nric:value('vsoNric'),address:value('vsoAddress'),phone:value('vsoPhone'),email:value('vsoEmail'),year:value('vsoYear'),color:value('vsoColor'),period:value('vsoPeriod'),model:variant.model,fees:r.fees,loan,otr:r.otr,net:r.net,placement,accessoriesExcess:r.accessoriesExcess,date:core.dateInMalaysia()};
 }
 const stamp=d=>JSON.stringify(d);
 async function assets(){

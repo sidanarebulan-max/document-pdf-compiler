@@ -155,9 +155,9 @@
       switchParty(party);
       if(metadata.id&&items.some(item=>item.profileFileId===metadata.id))continue;
       const added=await addFiles([file],{analyze:false,profileUpload:false});
-      if(metadata.id){added[0].profileFileId=metadata.id;added[0].profileCustomerId=metadata.customer_id||null;}
       if(added.length!==1)throw Error('Format fail tidak boleh dibuka dalam Compiler: '+file.name);
       const item=added[0],valid=categoriesFor(party).map(x=>x.id);
+      if(metadata.id){item.profileFileId=metadata.id;item.profileCustomerId=metadata.customer_id||null;}
       const manual=valid.includes(metadata.category);
       const guess=classifyForParty(party,file.name,'');
       item.category=manual?metadata.category:valid.includes(guess.category)?guess.category:'OTHER';

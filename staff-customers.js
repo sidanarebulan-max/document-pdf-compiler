@@ -48,12 +48,19 @@ function attachSharedProfile(){
  sharedFlow=runtime.create({customer,accountId:user.id,
   render(data, latest){
    if(customer?.lead.id!==latest.lead.id)return;
+   const changesInHistory=latest.tracking?.updated_at!==customer.tracking?.updated_at||
+    latest.profile.revision!==customer.profile.revision||latest.lead.updated_at!==customer.lead.updated_at;
    customer=latest;
    editRevision=latest.profile.revision;
    editStamp=latest.lead.updated_at;
+   if(changesInHistory)resetHistory();
    renderSharedValues(data);
    // Preserve unsaved sales-status fields while refreshing names, figures and dates.
    renderProfile(false);
+   if(changesInHistory){
+    if(tab==='history')loadHistory();
+    loadSalesDates();
+   }
   },
   notify(message,error){
    const status=$('customerWorkflowStatus');
@@ -556,14 +563,15 @@ function renderBanks(banks){
 function showBankEditor(bank=null,reschedule=false){
  if(!customer||busy)return;
  editingBank=bank;
+ const quote=sharedFlow?.data??{...customer.profile,...customer.profile.shared_fields,model:customer.lead.model};
  $('customerBankForm').reset();
  fillCatalogueSelect('cbName','Pilih nama bank',catalogue.banks,bank?.bank_name);
  for(const [id,key] of Object.entries(bankFields)){
   let value=bank?.[key]??'';
   if(key==='status')value=value||'draft';
-  if(key==='amount'&&!bank)value=sharedFlow?.data.loan_amount??customer.profile.loan_amount??'';
+  if(key==='amount'&&!bank)value=quote.loan_amount??'';
   if(key==='term_months'&&!bank){
-   const years=String(sharedFlow?.data.loan_term??customer.profile.shared_fields?.loan_term??'').match(/^([1-9]|10)(?:\s*tahun)?$/i);
+   const years=String(quote.loan_term??'').match(/^([1-9]|10)(?:\s*tahun)?$/i);
    if(years)value=Number(years[1])*12;
   }
   if(key==='follow_up_due_at')value=malaysiaInput(value);
@@ -571,9 +579,8 @@ function showBankEditor(bank=null,reschedule=false){
   $(id).value=value;
  }
  $('cbSelected').checked=bank?.selected===true;
- const loan=sharedFlow?.data.loan_amount??customer.profile.loan_amount;
- const selling=sharedFlow?.data.selling_price??customer.profile.selling_price;
- const car=[customer.lead.model,customer.profile.variant,customer.profile.colour].filter(Boolean).join(' · ');
+ const {loan_amount:loan,selling_price:selling}=quote;
+ const car=[quote.model,quote.variant,quote.colour].filter(Boolean).join(' · ');
  $('customerBankQuote').textContent=[car,selling==null?'':'Harga jualan: '+money(selling),loan==null?'':'Loan dipohon: '+money(loan)].filter(Boolean).join(' · ');
  $('customerBankTitle').textContent=bank?'Edit '+bank.bank_name:'Tambah bank';
  $('customerBankFeedback').textContent='';
