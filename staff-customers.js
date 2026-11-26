@@ -3,7 +3,7 @@
 const ROOT='https://qagsczjxzshjxmmxvkbq.supabase.co/functions/v1/',SESSION='faris_lead_hub_session_v2';
 const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const STATUSES={new:'Lead baharu',contacted:'Dihubungi',interested:'Berminat',documents:'Mengumpul dokumen',bank_submitted:'Permohonan bank',approved:'Diluluskan',delivery:'Urusan serahan',delivered:'Kereta diserahkan',on_hold:'Tangguh',cancelled:'Tidak diteruskan'};
-const BANKS={draft:'Belum dihantar',submitted:'Dihantar ke bank',documents:'Bank minta dokumen',approved:'Diluluskan',rejected:'Ditolak',cancelled:'Dibatalkan'};
+const BANKS={draft:'Belum dihantar',submitted:'Dihantar ke bank',review:'Dalam semakan',documents:'Bank minta dokumen',approved:'Diluluskan',rejected:'Ditolak',cancelled:'Dibatalkan'};
 const PARTIES={HIRER:'Pemohon',GUARANTOR:'Penjamin',REBATE:'COP Rebate'},CATS={AUTO:'Semak kategori',VSO:'VSO',IC:'Kad pengenalan',LESEN:'Lesen',PAYSLIP:'Slip gaji',BANK:'Penyata bank',OTHER:'Lain-lain',IC_FRONT:'IC hadapan',IC_BACK:'IC belakang',SURAT_KERJA:'Surat kerja',SIJIL_LAHIR:'Sijil lahir',SIJIL_NIKAH:'Sijil nikah'};
 const WA={new:'Belum diambil',claimed:'Sudah diambil',contacted:'Dihubungi',follow_up:'Follow-up',interested:'Berminat',booked:'Booking',not_interested:'Tidak berminat'};
 const when=v=>v?new Date(v).toLocaleString('ms-MY',{timeZone:'Asia/Kuala_Lumpur',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
@@ -24,12 +24,15 @@ async function mutate(action,data,lead=customer?.lead.id){
  const key=JSON.stringify([lead,action,data]);if(!operations.has(key))operations.set(key,crypto.randomUUID());
  const d=await request(action,{lead_id:lead,data,operation_id:operations.get(key)});operations.delete(key);return d;
 }
-function busyState(on){busy=on;document.querySelectorAll('#customerDetail button,#customerDetail input,#customerDetail select,#customerDetail textarea,#customerCaseDialog button,#customerCaseDialog input,#customerCaseDialog select,#customerCaseDialog textarea').forEach(n=>n.disabled=on);$('customersRefresh').disabled=on;if(!on)selection()}
+function busyState(on){busy=on;document.querySelectorAll('#customerDetail button,#customerDetail input,#customerDetail select,#customerDetail textarea,#customerCaseDialog button,#customerCaseDialog input,#customerCaseDialog select,#customerCaseDialog textarea,#customerBankDialog button,#customerBankDialog input,#customerBankDialog select,#customerBankDialog textarea,#customerActionDialog button,#customerActionDialog input').forEach(n=>n.disabled=on);$('customersRefresh').disabled=on;if(!on)selection()}
 const insightCore=window.FARIS_INSIGHTS;
 const countNumber=n=>Math.max(0,Number(n)||0).toLocaleString('ms-MY');
 const BUCKETS={lou:'LOU',delivered:'DELIVER',pending:'PENDING',trade_in:'TRADE IN'};
 function exactFilter(id){const value=$(id).value;return value===''?null:JSON.parse(value)}
-function insightFilters(){return {search:$('customersSearch').value,status:$('customersStatus').value,model:exactFilter('customersModel'),variant:exactFilter('customersVariant'),colour:exactFilter('customersColour'),bucket:$('customersBucket').value,staff_id:user?.role==='admin'?$('customersStaff').value:'',from:$('customerInsightsFrom').value,to:$('customerInsightsTo').value,group:$('customerInsightsGroup').value}}
+function insightFilters(){
+ const tracking=$('customerDateBasis').value;
+ return {...(tracking?{tracking:true,basis:tracking,bank:$('customersBank').value,bank_status:$('customersBankStatus').value,
+  bank_from:$('customersBankFrom').value,bank_to:$('customersBankTo').value,follow:$('customersFollow').value}:{}),search:$('customersSearch').value,status:$('customersStatus').value,model:exactFilter('customersModel'),variant:exactFilter('customersVariant'),colour:exactFilter('customersColour'),bucket:$('customersBucket').value,staff_id:user?.role==='admin'?$('customersStaff').value:'',from:$('customerInsightsFrom').value,to:$('customerInsightsTo').value,group:$('customerInsightsGroup').value}}
 function insightBars(title,data,total,kind,labels={}){
  return '<section class="insights-panel"><h4>'+esc(title)+'</h4>'+(data.length?'<ul class="insights-bars">'+data.map(x=>{
   const n=Number(x.value)||0,pct=total?Math.max(0,Math.min(100,n/total*100)):0;
@@ -48,16 +51,18 @@ function renderInsights(d,filters){
  renderFilterSummary(filters);
 }
 function renderFilterSummary(filters){
- const labels=[];for(const id of ['customersModel','customersVariant','customersColour','customersStatus','customersStaff'])if($(id).value)labels.push($(id).selectedOptions[0]?.textContent||'');
+ const labels=[];for(const id of ['customersModel','customersVariant','customersColour','customersStatus','customersStaff','customersFollow','customersBank','customersBankStatus'])if($(id).value)labels.push($(id).selectedOptions[0]?.textContent||'');
+ if(filters.bank_from||filters.bank_to)labels.push('Bank submit '+(filters.bank_from||'awal rekod')+' → '+(filters.bank_to||'terkini'));
  if(filters.bucket)labels.unshift(BUCKETS[filters.bucket]);if(filters.search)labels.push('Carian: '+filters.search);
  $('customerActiveFilters').textContent=labels.length?'Senarai: '+labels.join(' · '):'Senarai semua pelanggan dalam tempoh dipilih.';
- $('customersClearFilters').disabled=!labels.length;
+ $('customersClearFilters').disabled=!labels.length&&!filters.from&&!filters.to&&(!filters.basis||filters.basis==='received');
 }
 function fillDashboardOptions(options){
  for(const [id,items] of [
   ['customersModel',(options.models||[]).map(x=>[JSON.stringify(x.model),x.model||'Model belum dipilih'])],
   ['customersVariant',(options.variants||[]).map(x=>[JSON.stringify(x.value),x.label])],
   ['customersColour',(options.colours||[]).map(x=>[JSON.stringify(x.value),x.label])],
+  ['customersBank',(options.banks||[]).map(x=>[x.value,x.label])],
   ['customersStaff',(options.staff||[]).map(x=>[x.id,x.display_name+' ('+x.staff_code+')'])]
  ]){
   const node=$(id),previous=node.value,label=node.selectedOptions[0]?.textContent||previous,first=node.options[0].outerHTML;
@@ -68,7 +73,7 @@ function fillDashboardOptions(options){
 async function loadInsights(){return directory()}
 function insightPreset(){const range=insightCore.preset($('customerInsightsPeriod').value);$('customerInsightsFrom').value=range.from;$('customerInsightsTo').value=range.to}
 function renderDirectory(){
- $('customersList').innerHTML=rows.length?rows.map(r=>'<article class="customer-list-row"><div class="customer-row-identity"><button type="button" class="customer-name-open" data-customer-open="'+esc(r.id)+'">'+esc(r.customer_name)+'</button><small>'+esc(r.phone_e164)+'</small></div><div class="customer-row-vehicle"><small class="customer-label">Model / Varian / Warna</small><b>'+esc(r.model||'Belum dipilih')+'</b><small>'+esc(r.variant||'Varian belum diisi')+' · '+esc(r.colour||'Warna belum diisi')+'</small></div><div class="customer-row-status"><small class="customer-label">Status</small><button type="button" class="customer-status" data-customer-status-open="'+esc(r.id)+'" aria-haspopup="dialog" aria-controls="customerCaseDialog">'+esc(caseStage(r))+' ↗</button><small>'+(r.trade_in?'Trade In':'')+'</small></div><div class="customer-row-staff"><small class="customer-label">Staff urus</small><b>'+esc(r.staff_name||'Belum diagih')+'</b><small>'+esc(r.staff_code||'')+'</small></div><div class="customer-row-follow"><small class="customer-label">Follow-up</small><b>'+esc(day(r.follow_up_at))+'</b><small>'+esc(r.next_action||'Belum ditetapkan')+'</small></div><button class="customer-row-action '+(linkHandoff?'primary':'secondary')+'" type="button" '+(linkHandoff?'data-customer-link-target':'data-customer-open')+'="'+esc(r.id)+'">'+(linkHandoff?'Pautkan '+linkHandoff.ids.length+' Fail':'Lihat Profil')+'</button></article>').join(''):'<div class="empty">Tiada customer dalam tapisan ini. Tukar tapisan atau tempoh.</div>';
+ $('customersList').innerHTML=rows.length?rows.map(r=>'<article class="customer-list-row"><div class="customer-row-identity"><button type="button" class="customer-name-open" data-customer-open="'+esc(r.id)+'">'+esc(r.customer_name)+'</button><small>'+esc(r.phone_e164)+'</small></div><div class="customer-row-vehicle"><small class="customer-label">Model / Varian / Warna</small><b>'+esc(r.model||'Belum dipilih')+'</b><small class="customer-vehicle-details">'+esc(r.variant||'Varian belum diisi')+' · '+esc(r.colour||'Warna belum diisi')+'</small>'+mobileFollow(r)+'</div><div class="customer-row-status"><small class="customer-label">Status</small><button type="button" class="customer-status" data-customer-status-open="'+esc(r.id)+'" aria-haspopup="dialog" aria-controls="customerCaseDialog">'+esc(caseStage(r))+' ↗</button><small>'+(r.trade_in?'Trade In':'')+'</small>'+bankSummary(r)+'</div><div class="customer-row-staff"><small class="customer-label">Staff urus</small><b>'+esc(r.staff_name||'Belum diagih')+'</b><small>'+esc(r.staff_code||'')+'</small></div><div class="customer-row-follow"><small class="customer-label">Follow-up</small><b>'+esc(r.follow_up_due_at?when(r.follow_up_due_at):day(r.follow_up_at))+'</b><small>'+esc(r.next_action||'Belum ditetapkan')+'</small><small>Kemas kini '+esc(when(r.updated_at))+'</small></div><button class="customer-row-action '+(linkHandoff?'primary':'secondary')+'" type="button" '+(linkHandoff?'data-customer-link-target':'data-customer-open')+'="'+esc(r.id)+'">'+(linkHandoff?'Pautkan '+linkHandoff.ids.length+' Fail':'Lihat Profil')+'</button></article>').join(''):'<div class="empty">Tiada customer dalam tapisan ini. Tukar tapisan atau tempoh.</div>';
  $('customersMore').classList.toggle('hide',next===null);
  $('customersLinkBanner').classList.toggle('hide',!linkHandoff);if(linkHandoff)$('customersLinkMessage').textContent='Pilih customer untuk pautkan '+linkHandoff.ids.length+' fail · '+PARTIES[linkHandoff.party]+' / '+CATS[linkHandoff.category]+'.';
 }
@@ -81,7 +86,7 @@ async function directory(append=false){
   const d=await request('dashboard',{...filters,offset:append?next||0:0});if(gen!==epoch||id!==listing)return;
   if(stamp!==JSON.stringify(insightFilters())){rows=[];next=null;renderDirectory();$('customersTotal').textContent='Tapisan berubah. Tekan Cari / Lihat insight.';host.innerHTML='<p class="insights-empty">Tapisan berubah. Tekan Cari / Lihat insight untuk kemas kini.</p>';return}
   rows=append?[...new Map([...rows,...d.customers].map(r=>[r.id,r])).values()]:d.customers;next=d.next_offset;
-  fillDashboardOptions(d.options||{});renderInsights(d.insights,filters);$('customersTotal').textContent=rows.length+' daripada '+d.total+' pelanggan sepadan';renderDirectory();
+  fillDashboardOptions(d.options||{});if(d.reminders)renderReminders(d.reminders);renderInsights(d.insights,filters);$('customersTotal').textContent=rows.length+' daripada '+d.total+' pelanggan sepadan';renderDirectory();
  }catch(e){if(gen===epoch&&id===listing){if(!append){rows=[];next=null;renderDirectory();$('customersTotal').textContent='Senarai belum tersedia.';host.innerHTML='<p class="insights-error" role="alert">'+esc(e.message)+'</p>'}notice(e.message,true)}}
  finally{if(gen===epoch&&id===listing){host.setAttribute('aria-busy','false');$('customersList').setAttribute('aria-busy','false');$('customersMore').disabled=false}}
 }
@@ -113,7 +118,7 @@ async function loadWhatsappTrend(){
  }catch(e){if(gen===epoch&&id===whatsappTrendListing)host.innerHTML='<p class="insights-error" role="alert">'+esc(e.message)+'</p>'}
  finally{if(gen===epoch&&id===whatsappTrendListing)host.setAttribute('aria-busy','false')}
 }
-function showTab(value){tab=['summary','documents','history'].includes(value)?value:'summary';document.querySelectorAll('[data-customer-panel]').forEach(n=>n.classList.toggle('hide',n.dataset.customerPanel!==tab));document.querySelectorAll('[data-customer-tab]').forEach(n=>{if(n.dataset.customerTab===tab)n.setAttribute('aria-current','page');else n.removeAttribute('aria-current')});if(tab==='history'&&!historyLoaded)loadHistory()}
+function showTab(value){tab=['summary','documents','banks','history'].includes(value)?value:'summary';document.querySelectorAll('[data-customer-panel]').forEach(n=>n.classList.toggle('hide',n.dataset.customerPanel!==tab));document.querySelectorAll('[data-customer-tab]').forEach(n=>{if(n.dataset.customerTab===tab)n.setAttribute('aria-current','page');else n.removeAttribute('aria-current')});if(tab==='history'&&!historyLoaded)loadHistory()}
 function caseStage(profile){
  if(profile.sales_status==='delivered')return 'DELIVER · Kereta diserahkan';
  if(['on_hold','cancelled'].includes(profile.sales_status))return STATUSES[profile.sales_status];
@@ -134,10 +139,14 @@ function referenceFilesMarkup(files){
 function renderProfile(fill=true){
  const {lead:l,profile:p,staff}=customer;
  $('customerName').textContent=l.customer_name;$('customerIdentity').textContent=l.phone_e164+' · '+(l.model||'Model belum dipilih')+(p.variant?' / '+p.variant:'');$('customerOwner').textContent='Staff urus: '+(staff?staff.display_name+' ('+staff.staff_code+')':'Belum diagih');$('customerStatusBadge').textContent=STATUSES[p.sales_status]||p.sales_status;
- $('customerNextAction').innerHTML='<b>Tindakan seterusnya</b>'+esc(p.next_action||'Belum ditetapkan')+'<br>Follow-up: '+esc(day(l.follow_up_at));
+ $('customerNextAction').innerHTML='<b>Tindakan seterusnya</b>'+esc(p.next_action||'Belum ditetapkan')+'<br>Follow-up: '+esc(profileFollowStamp(l,p)?when(p.follow_up_due_at):day(l.follow_up_at));
+ $('customerFinishFollow').classList.toggle('hide',!l.follow_up_at);$('customerRescheduleFollow').classList.toggle('hide',!l.follow_up_at);
+ renderBanks(customer.banks||[]);
  const wa=$('customerWhatsapp');wa.setAttribute('aria-disabled',String(!l.consent_confirmed));if(l.consent_confirmed)wa.href='https://wa.me/'+l.phone_e164;else wa.removeAttribute('href');
- if(fill){for(const [id,value] of Object.entries({cpName:l.customer_name,cpPhone:l.phone_e164,cpModel:l.model,cpVariant:p.variant,cpColour:p.colour||'',cpStatus:p.sales_status,cpFollow:l.follow_up_at,cpNext:p.next_action,cpReason:p.closure_reason}))$(id).value=value??'';$('cpGuarantor').checked=p.guarantor_required;$('cpLou').checked=p.lou_received===true;$('cpTradeIn').checked=p.trade_in===true;editRevision=p.revision;editStamp=l.updated_at;dirty=false;reasonRequired()}
- $('customerSourceInfo').textContent='Sumber: '+(l.source||'—')+'\nLead diwujudkan: '+when(l.created_at)+'\nStatus WhatsApp: '+(WA[l.stage]||l.stage)+(l.pm_confirmed_at?' · PM disahkan '+when(l.pm_confirmed_at):'');
+ if(fill){for(const [id,value] of Object.entries({cpName:l.customer_name,cpPhone:l.phone_e164,cpModel:l.model,cpVariant:p.variant,cpColour:p.colour||'',cpStatus:p.sales_status,cpFollow:l.follow_up_at,cpFollowTime:profileFollowStamp(l,p).slice(11),cpReceived:malaysiaInput(p.lead_received_at),cpDelivered:p.sales_status==='delivered'?malaysiaInput(p.delivered_at):'',cpNext:p.next_action,cpReason:p.closure_reason}))$(id).value=value??'';$('cpGuarantor').checked=p.guarantor_required;$('cpLou').checked=p.lou_received===true;$('cpTradeIn').checked=p.trade_in===true;editRevision=p.revision;editStamp=l.updated_at;dirty=false;reasonRequired();syncVehicleOptions();toggleDelivered()}
+ $('customerSourceInfo').textContent='Sumber: '+(l.source||'—')+'\nLead diterima: '+when(p.lead_received_at||l.created_at)+'\nRekod dimasukkan: '+when(l.created_at)+
+ '\nKemas kini terakhir: '+when(customer.tracking?.updated_at||p.updated_at||l.updated_at)+(customer.tracking?.updated_by?' · '+customer.tracking.updated_by:'')+
+ '\nHubungan terakhir: '+when(p.last_contacted_at||l.pm_confirmed_at)+'\nTarikh serahan: '+when(p.delivered_at)+'\nStatus WhatsApp: '+(WA[l.stage]||l.stage)+(l.pm_confirmed_at?' · PM disahkan '+when(l.pm_confirmed_at):'');
  $('customerLegacyNotes').textContent=l.notes?'Catatan WhatsApp semasa:\n'+l.notes:'Belum ada catatan WhatsApp.';
  $('customerDocCount').textContent=customer.files.length;
  selected=new Set([...selected].filter(id=>customer.files.some(f=>f.id===id)));
@@ -151,7 +160,7 @@ function reasonRequired(){$('cpReason').required=['on_hold','cancelled'].include
 async function open(id){
  if(!user||busy)return;if(dirty&&!confirm('Buka customer lain dan tinggalkan perubahan profil yang belum disimpan?'))return;
  const gen=epoch,seq=++opening;customer=null;window.FARIS_NAV.show('customers',{scroll:false});dirty=false;selected.clear();historySeq++;historyRows=[];historyNext=null;historyLoaded=false;$('customerDetail').classList.add('hide');$('customersDirectory').classList.add('hide');notice('Memuatkan profil customer…');
- try{const d=await request('get',{lead_id:id});if(gen!==epoch||seq!==opening)return;customer=d.customer;$('customerDetail').classList.remove('hide');$('customersNotice').classList.add('hide');renderProfile();showTab('summary');$('workspace-customers').scrollIntoView({block:'start'})}
+ try{const d=await request('get',{lead_id:id});if(gen!==epoch||seq!==opening)return;customer=d.customer;$('customerDetail').classList.remove('hide');$('customersNotice').classList.add('hide');renderProfile();showTab('summary');$('workspace-customers').scrollIntoView({block:'start'});return true}
  catch(e){if(gen===epoch&&seq===opening){notice(e.message,true);$('customersDirectory').classList.remove('hide')}}
 }
 async function refreshProfile(force=false){
@@ -160,7 +169,15 @@ async function refreshProfile(force=false){
 }
 function profileValues(){
  const p=customer?.profile||{};
- return {customer_name:$('cpName').value.trim(),model:$('cpModel').value.trim(),variant:$('cpVariant').value.trim(),colour:$('cpColour').value.trim(),sales_status:$('cpStatus').value,follow_up_at:$('cpFollow').value||null,next_action:$('cpNext').value.trim(),closure_reason:$('cpReason').value.trim(),guarantor_required:$('cpGuarantor').checked,lou_received:$('cpLou').checked,trade_in:$('cpTradeIn').checked,booking_status:p.booking_status||'none',booking_amount:p.booking_amount??null,selling_price:p.selling_price??null,deposit:p.deposit??null,loan_amount:p.loan_amount??null,expected_revision:editRevision,expected_lead_updated_at:editStamp};
+ const date=$('cpFollow').value,time=$('cpFollowTime').value;
+ const timestamps={};
+ if(customer?.lead){
+  const fields=[['lead_received_at',$('cpReceived').value,p.lead_received_at],['delivered_at',$('cpDelivered').value,p.delivered_at]];
+  for(const [key,value,old] of fields)if(value!==malaysiaInput(old))timestamps[key]=value||null;
+  const next=date&&time?date+'T'+time:'';
+  if(next!==profileFollowStamp(customer.lead,p)||(!next&&p.follow_up_due_at))timestamps.follow_up_due_at=next||null;
+ }
+ return {...timestamps,customer_name:$('cpName').value.trim(),model:$('cpModel').value.trim(),variant:$('cpVariant').value.trim(),colour:$('cpColour').value.trim(),sales_status:$('cpStatus').value,follow_up_at:$('cpFollow').value||null,next_action:$('cpNext').value.trim(),closure_reason:$('cpReason').value.trim(),guarantor_required:$('cpGuarantor').checked,lou_received:$('cpLou').checked,trade_in:$('cpTradeIn').checked,booking_status:p.booking_status||'none',booking_amount:p.booking_amount??null,selling_price:p.selling_price??null,deposit:p.deposit??null,loan_amount:p.loan_amount??null,expected_revision:editRevision,expected_lead_updated_at:editStamp};
 }
 async function runWrite(action,data,success,button=null){
  if(busy||!customer)return false;const gen=epoch,id=customer.lead.id;busyState(true);if(button)button.disabled=true;
@@ -175,13 +192,22 @@ async function upload(){
  }catch(e){if(gen===epoch)notice(linked+' fail dipautkan. '+(saved>linked?'Fail yang sudah diupload kekal dalam Fail Masuk. ':'')+e.message,true)}
  finally{if(gen===epoch){$('customerUpload').value='';busyState(false);try{await refreshProfile()}catch(e){notice(e.message,true)}}}
 }
-const fieldNames={lou_received:'LOU diterima',trade_in:'Trade In',sales_status:'Status jualan',colour:'Warna kereta',variant:'Varian',next_action:'Tindakan seterusnya',closure_reason:'Sebab',guarantor_required:'Perlu penjamin',booking_status:'Status booking',booking_amount:'Jumlah booking',selling_price:'Harga jualan',deposit:'Deposit',loan_amount:'Jumlah pinjaman',customer_name:'Nama',model:'Model',follow_up_at:'Follow-up'};
-function displayField(key,value){if(value===null||value===undefined||value==='')return '—';if(['booking_amount','selling_price','deposit','loan_amount','amount'].includes(key))return money(value);if(key==='sales_status')return STATUSES[value]||value;if(key==='status')return BANKS[value]||value;if(key==='booking_status')return {none:'Belum booking',pending:'Belum dibayar',paid:'Dibayar',refunded:'Dipulangkan'}[value]||value;if(typeof value==='boolean')return value?'Ya':'Tidak';if(key==='follow_up_at')return day(value);return String(value)}
+const fieldNames={lou_received:'LOU diterima',trade_in:'Trade In',sales_status:'Status jualan',colour:'Warna kereta',lead_received_at:'Lead diterima',delivered_at:'Serahan sebenar',follow_up_due_at:'Tarikh dan masa reminder',variant:'Varian',next_action:'Tindakan seterusnya',closure_reason:'Sebab',guarantor_required:'Perlu penjamin',booking_status:'Status booking',booking_amount:'Jumlah booking',selling_price:'Harga jualan',deposit:'Deposit',loan_amount:'Jumlah pinjaman',customer_name:'Nama',model:'Model',follow_up_at:'Follow-up'};
+function displayField(key,value){if(value===null||value===undefined||value==='')return '—';if(['booking_amount','selling_price','deposit','loan_amount','amount','approved_amount'].includes(key))return money(value);if(key==='sales_status')return STATUSES[value]||value;if(key==='status')return BANKS[value]||value;if(key==='booking_status')return {none:'Belum booking',pending:'Belum dibayar',paid:'Dibayar',refunded:'Dipulangkan'}[value]||value;if(typeof value==='boolean')return value?'Ya':'Tidak';if(key==='follow_up_at')return day(value);if(['lead_received_at','delivered_at','follow_up_due_at'].includes(key))return when(value);return String(value)}
 function historyDetail(event){
  const d=event.details||{};
  if(event.event_type==='profile_updated')return '<ul>'+Object.entries(fieldNames).filter(([k])=>JSON.stringify(d.before?.[k])!==JSON.stringify(d.after?.[k])).map(([k,label])=>'<li>'+label+': '+esc(displayField(k,d.before?.[k]))+' → '+esc(displayField(k,d.after?.[k]))+'</li>').join('')+'</ul>';
+ if(event.event_type==='follow_up_completed'||event.event_type==='contact_recorded')return '<p>'+esc([d.bank,d.task,d.note].filter(Boolean).join(' · '))+'</p>';
  if(event.event_type==='note_added')return '<p>'+esc(d.note)+'</p>';
- if(event.event_type==='bank_updated'||event.event_type==='bank_removed')return '<p>'+esc((d.after||d.before)?.bank_name||'Bank')+' · '+esc(BANKS[d.before?.status]||'Tiada rekod')+' → '+esc(event.event_type==='bank_removed'?'Rekod dipadam':BANKS[d.after?.status]||'')+'\nJumlah: '+esc(money((d.after||d.before)?.amount))+((d.after||d.before)?.notes?'\n'+esc((d.after||d.before).notes):'')+'</p>';
+ if(event.event_type==='bank_updated'||event.event_type==='bank_removed'){
+  const bank=d.after||d.before;
+  const changed={...fieldNames,bank_name:'Bank',status:'Status bank',submitted_at:'Tarikh submit',submitted_time:'Masa submit',amount:'Jumlah dipohon',
+   term_months:'Tempoh dipohon',approved_amount:'Jumlah lulus',approved_rate:'Kadar lulus',approved_term_months:'Tempoh lulus',
+   officer_name:'Nama pegawai',officer_phone:'Telefon pegawai',selected:'Bank pilihan pelanggan',notes:'Catatan'};
+  return '<p><b>'+esc(bank?.bank_name||'Bank')+'</b>'+ (d.previous_selected?' · Pilihan sebelumnya '+esc(d.previous_selected):'')+'</p><ul>'+
+   Object.entries(changed).filter(([k])=>(d.before?.[k]??null)!==(d.after?.[k]??null))
+    .map(([k,label])=>'<li>'+esc(label)+' · '+esc(displayField(k,d.before?.[k]))+' → '+esc(displayField(k,d.after?.[k]))+'</li>').join('')+'</ul>';
+ }
  if(event.event_type==='documents_linked')return '<p>'+esc(PARTIES[d.party]+' / '+CATS[d.category])+'\n'+esc((d.files||[]).map(f=>f.name).join('\n'))+'</p>';
  if(event.event_type==='document_unlinked')return '<p>'+esc(d.name)+' · Fail asal kekal dalam Fail Masuk.</p>';
  if(event.event_type==='checklist_updated')return '<p>'+esc(PARTIES[d.party]+' / '+CATS[d.category])+': '+esc(({auto:'Automatik ikut fail',missing:'Belum diterima',received:'Diterima / disemak',replace:'Perlu ganti',not_required:'Tidak diperlukan'})[d.after]||d.after)+'</p>';
@@ -190,7 +216,7 @@ function historyDetail(event){
  if(event.event_type==='whatsapp_details_updated')return '<p>'+esc(d.note_changed?'Catatan sebelum: '+(d.notes_before||'—')+'\nCatatan selepas: '+(d.notes_after||'—'):'')+'\nFollow-up: '+esc(day(d.follow_up_before))+' → '+esc(day(d.follow_up_after))+'</p>';
  if(event.event_type==='lead_created')return '<p>Sumber: '+esc(d.source||'—')+'</p>';return '';
 }
-function renderHistory(){const labels={profile_updated:'Profil dikemas kini',note_added:'Nota ditambah',bank_updated:'Permohonan bank dikemas kini',bank_removed:'Rekod bank dipadam',documents_linked:'Dokumen dipautkan / dikategorikan',document_unlinked:'Dokumen dinyahpaut',checklist_updated:'Checklist dokumen dikemas kini',claimed:'Nombor diclaim',assigned:'Customer diagihkan',legacy_assignment:'Rekod agihan lama',pm_confirmed:'PM disahkan oleh staff',whatsapp_opened:'WhatsApp dibuka',status_updated:'Status WhatsApp berubah',whatsapp_details_updated:'Catatan / follow-up WhatsApp berubah',lead_created:'Lead diwujudkan'};
+function renderHistory(){const labels={profile_updated:'Profil dikemas kini',note_added:'Nota ditambah',bank_updated:'Permohonan bank dikemas kini',bank_removed:'Rekod bank dipadam',follow_up_completed:'Follow-up selesai',contact_recorded:'Pelanggan dihubungi',documents_linked:'Dokumen dipautkan / dikategorikan',document_unlinked:'Dokumen dinyahpaut',checklist_updated:'Checklist dokumen dikemas kini',claimed:'Nombor diclaim',assigned:'Customer diagihkan',legacy_assignment:'Rekod agihan lama',pm_confirmed:'PM disahkan oleh staff',whatsapp_opened:'WhatsApp dibuka',status_updated:'Status WhatsApp berubah',whatsapp_details_updated:'Catatan / follow-up WhatsApp berubah',lead_created:'Lead diwujudkan'};
  $('customerHistory').innerHTML=historyRows.length?historyRows.map(e=>'<article class="customer-history-item"><b>'+esc(labels[e.event_type]||e.event_type)+'</b><br><small>'+esc(when(e.created_at))+' · '+esc(e.actor_name?e.actor_name+' ('+e.actor_code+')':'Rekod sistem')+'</small>'+historyDetail(e)+'</article>').join(''):'<div class="empty">Belum ada sejarah untuk customer ini.</div>';$('customerHistoryMore').classList.toggle('hide',historyNext===null);
 }
 async function loadPicker(append=false){
@@ -216,22 +242,169 @@ async function download(id,button){const gen=epoch;button.disabled=true;try{cons
 function compiler(){if(!customer||!selected.size||busy)return;const files=customer.files.filter(f=>selected.has(f.id));if(files.length>30||files.reduce((n,f)=>n+f.byte_size,0)>80*1048576)return notice('Pilih maksimum 30 fail dan 80 MB sekali untuk Compiler.',true);sessionStorage.setItem('faris_inbox_compiler_v1',JSON.stringify({ids:[...selected],account_id:user.id,created_at:Date.now()}));location.assign('/?tool=COMPILER&origin=staff&inbox=1')}
 function forgetCustomer(){
  opening++;historySeq++;customer=null;dirty=false;selected.clear();historyRows=[];historyNext=null;historyLoaded=false;
- for(const id of ['customerPreview','customerInboxDialog','customerCaseDialog'])if($(id).open)$(id).close();clearPreview();
+ for(const id of ['customerPreview','customerInboxDialog','customerCaseDialog','customerBankDialog','customerActionDialog'])if($(id).open)$(id).close();clearPreview();
  for(const id of ['customerFiles','customerHistory','customerNotes','customerName','customerIdentity','customerOwner','customerNextAction','customerSourceInfo','customerLegacyNotes'])$(id).textContent='';
  $('customerProfileForm').reset();$('customerCaseForm').reset();$('customerCaseFeedback').textContent='';$('customerNoteForm').reset();$('customerWhatsapp').removeAttribute('href');$('customerDetail').classList.add('hide');$('customersDirectory').classList.remove('hide');directory();
 }
 function reset(){epoch++;whatsappTrendListing++;$('whatsappTrendResult').innerHTML='';$('whatsappTrendResult').setAttribute('aria-busy','false');$('whatsappTrendContext').textContent='';$('whatsappTrendForm').reset();whatsappTrendPreset();$('customerInsightsResult').innerHTML='';$('customerInsightsContext').textContent='';listing++;opening++;historySeq++;pickerSeq++;user=null;customer=null;rows=[];next=null;historyRows=[];historyNext=null;historyLoaded=false;selected.clear();pickerRows=[];pickerSelected.clear();operations.clear();linkHandoff=null;busy=false;dirty=false;
- for(const id of ['customerPreview','customerInboxDialog','customerCaseDialog'])if($(id).open)$(id).close();clearPreview();$('customerDetail').classList.add('hide');$('customersDirectory').classList.remove('hide');$('customersList').innerHTML='';$('customerFiles').innerHTML='';$('customerHistory').innerHTML='';$('customerNotes').innerHTML='';$('customerInboxList').innerHTML='';$('customerName').textContent='';$('customerIdentity').textContent='';$('customerOwner').textContent='';$('customerNextAction').textContent='';$('customerSourceInfo').textContent='';$('customerLegacyNotes').textContent='';$('customerWhatsapp').removeAttribute('href');$('customerProfileForm').reset();$('customerCaseForm').reset();$('customerCaseFeedback').textContent='';$('customerNoteForm').reset();$('customersFilterForm').reset();$('customerActiveFilters').textContent='';$('customersTotal').textContent='';$('customerUpload').value='';$('customersNotice').classList.add('hide');$('customersLinkBanner').classList.add('hide');$('customersRefresh').disabled=false;busyState(false)}
+ for(const id of ['customerPreview','customerInboxDialog','customerCaseDialog','customerBankDialog','customerActionDialog'])if($(id).open)$(id).close();clearPreview();$('customerDetail').classList.add('hide');$('customersDirectory').classList.remove('hide');$('customersList').innerHTML='';$('customerFiles').innerHTML='';$('customerHistory').innerHTML='';$('customerNotes').innerHTML='';$('customerInboxList').innerHTML='';$('customerName').textContent='';$('customerIdentity').textContent='';$('customerOwner').textContent='';$('customerNextAction').textContent='';$('customerSourceInfo').textContent='';$('customerLegacyNotes').textContent='';$('customerWhatsapp').removeAttribute('href');$('customerProfileForm').reset();$('customerCaseForm').reset();$('customerCaseFeedback').textContent='';$('customerNoteForm').reset();$('customersFilterForm').reset();$('customerDateBasis').value='received';$('customerReminders').open=false;$('customerReminderItems').replaceChildren();$('customerReminderCounts').textContent='';$('customerBankList').replaceChildren();$('customerBankForm').reset();$('customerActionForm').reset();$('customerActiveFilters').textContent='';$('customersTotal').textContent='';$('customerUpload').value='';$('customersNotice').classList.add('hide');$('customersLinkBanner').classList.add('hide');$('customersRefresh').disabled=false;busyState(false)}
+const vehicleOptions={
+ 'e.MAS 7 EV':{variants:['Premium','Premium Plus'],colours:['Lithium White','Turquoise Green','Slate Grey','Platinum Silver','Quartz Rose','Obsidian Black']},
+ 'e.MAS 7 PHEV':{variants:['Prime','Premium','Premium Plus'],colours:['Obsidian Black','Lithium White','Mercury Silver','Galena Grey','Aquamarine Blue','Emerald Green']},
+ 'e.MAS 5':{variants:['Prime','Premium'],colours:['Moonstone White','Graphite Silver','Slate Grey','Marble Cream','Quartz Rose','Jade Green']}
+};
+const malaysiaFormDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
+function malaysiaInput(value){
+ if(!value)return '';
+ const date=new Date(value);if(Number.isNaN(date.getTime()))return '';
+ const parts=Object.fromEntries(malaysiaFormDate.formatToParts(date).map(({type,value})=>[type,value]));
+ return parts.year+'-'+parts.month+'-'+parts.day+'T'+parts.hour+':'+parts.minute;
+}
+function profileFollowStamp(lead,profile){
+ const stamp=malaysiaInput(profile.follow_up_due_at);
+ return stamp&&stamp.slice(0,10)===lead.follow_up_at?stamp:'';
+}
+function syncVehicleOptions(){
+ const model=$('cpModel').value.trim().toLowerCase();
+ const options=Object.entries(vehicleOptions).find(([name])=>name.toLowerCase()===model)?.[1];
+ for(const [id,items] of [['customerVariantOptions',options?.variants],['customerColourOptions',options?.colours]]){
+  $(id).replaceChildren(...(items||[]).map(value=>new Option(value)));
+ }
+}
+function toggleDelivered(){
+ $('customerDeliveredField').classList.toggle('hide',$('cpStatus').value!=='delivered');
+}
+function mobileFollow(row){
+ if(!row.follow_up_at)return '';
+ return '<small class="customer-mobile-follow">Follow-up · '+esc(row.follow_up_due_at?when(row.follow_up_due_at):day(row.follow_up_at))+'</small>';
+}
+function bankSummary(row){
+ if(row.bank_count===undefined)return '';
+ const n=Number(row.bank_count)||0;
+ const label=n?n+' bank · '+Number(row.bank_processing)+' diproses · '+Number(row.bank_approved)+' lulus':'Tambah bank';
+ return '<button type="button" class="customer-bank-summary'+(n?'':' no-banks')+'" data-customer-open="'+esc(row.id)+'" data-profile-target="banks">'+esc(label)+'</button>';
+}
+function renderReminders(queue){
+ $('customerReminderCounts').textContent=countNumber(queue.today)+' hari ini · '+countNumber(queue.overdue)+' terlepas';
+ const items=queue.items||[];
+ $('customerReminderItems').innerHTML=items.length?
+  '<ul class="customer-reminder-list">'+items.map(item=>'<li><button type="button" class="secondary" data-customer-open="'+esc(item.id)+'"'+
+   (item.bank_id?' data-profile-target="banks" data-bank-target="'+esc(item.bank_id)+'"':'')+'><b>'+esc(item.customer_name+(item.bank_name?' · '+item.bank_name:''))+'</b> · '+
+   esc(item.next_action||'Follow-up')+' · '+esc(item.due_at?when(item.due_at):day(item.due_date))+(item.staff_name?' · '+esc(item.staff_name):'')+'</button></li>').join('')+'</ul>'+
+   (items.length===50?'<p class="muted small">50 reminder terawal. Guna tapisan Hari ini atau Terlepas untuk semak senarai penuh pelanggan.</p>':''):
+  '<p class="muted small">Tiada reminder hari ini atau terlepas.</p>';
+}
+async function openLinkedCustomer(button){
+ const id=button.dataset.customerOpen,gen=epoch;
+ if(!await open(id))return;
+ if(gen!==epoch||customer?.lead.id!==id)return;
+ if(button.dataset.profileTarget)showTab(button.dataset.profileTarget);
+ if(button.dataset.bankTarget)document.getElementById('customer-bank-'+button.dataset.bankTarget)?.scrollIntoView({block:'center'});
+}
+const bankFields={
+ cbName:'bank_name',cbStatus:'status',cbOfficer:'officer_name',cbPhone:'officer_phone',cbSubmitted:'submitted_at',cbSubmittedTime:'submitted_time',
+ cbAmount:'amount',cbTerm:'term_months',cbApprovedAmount:'approved_amount',cbRate:'approved_rate',cbApprovedTerm:'approved_term_months',
+ cbDue:'follow_up_due_at',cbNext:'next_action',cbNotes:'notes'
+};
+let editingBank=null,trackingAction=null;
+function renderBanks(banks){
+ $('customerBankCount').textContent=banks.length;
+ $('customerBankList').innerHTML=banks.length?banks.map(bank=>{
+  const submitted=bank.submitted_at?day(bank.submitted_at)+(bank.submitted_time?' · '+bank.submitted_time.slice(0,5)+' MYT':''):'Belum direkodkan';
+  const offer=[bank.approved_amount==null?'':money(bank.approved_amount),bank.approved_rate==null?'':bank.approved_rate+'%',bank.approved_term_months?bank.approved_term_months+' bulan':''].filter(Boolean);
+  const lines=['Submit · '+submitted];
+  if(bank.officer_name||bank.officer_phone)lines.push('Pegawai · '+[bank.officer_name,bank.officer_phone].filter(Boolean).join(' · '));
+  if(bank.amount!=null||bank.term_months)lines.push('Dipohon · '+[bank.amount!=null?money(bank.amount):'',bank.term_months?bank.term_months+' bulan':''].filter(Boolean).join(' · '));
+  if(offer.length)lines.push('Lulus · '+offer.join(' · '));
+  if(bank.next_action||bank.follow_up_due_at)lines.push([bank.next_action,bank.follow_up_due_at?when(bank.follow_up_due_at):''].filter(Boolean).join(' · '));
+  if(bank.notes)lines.push(bank.notes);
+  return '<article class="customer-bank" id="customer-bank-'+esc(bank.id)+'"><h4>'+esc(bank.bank_name)+'</h4><div class="customer-bank-meta"><span class="customer-status">'+esc(BANKS[bank.status]||bank.status)+'</span>'+
+    (bank.selected?'<span class="customer-status">Bank pilihan pelanggan</span>':'')+'</div><p>'+esc(lines.join('\n'))+'</p>'+
+    '<small>Kemas kini '+esc(when(bank.updated_at))+'</small><div class="customer-tracking-actions">'+
+    '<button type="button" class="secondary" data-bank-edit="'+esc(bank.id)+'">Edit bank</button>'+
+    (bank.follow_up_due_at?'<button type="button" class="secondary" data-bank-edit="'+esc(bank.id)+'" data-reschedule-bank>Jadual semula</button><button type="button" class="secondary" data-bank-finish="'+esc(bank.id)+'">Selesai follow-up</button>':'')+'</div></article>';
+ }).join(''):'<p class="muted small">Belum ada permohonan bank.</p>';
+}
+function showBankEditor(bank=null,reschedule=false){
+ if(!customer||busy)return;
+ editingBank=bank;
+ $('customerBankForm').reset();
+ for(const [id,key] of Object.entries(bankFields)){
+  let value=bank?.[key]??'';
+  if(key==='status')value=value||'draft';
+  if(key==='follow_up_due_at')value=malaysiaInput(value);
+  if(key==='submitted_time')value=value.slice(0,5);
+  $(id).value=value;
+ }
+ $('cbSelected').checked=bank?.selected===true;
+ $('customerBankTitle').textContent=bank?'Edit '+bank.bank_name:'Tambah bank';
+ $('customerBankFeedback').textContent='';
+ $('customerBankDialog').showModal();
+ if(reschedule)$('cbDue').focus();
+}
+function showTrackingAction(action,bank=null){
+ if(!customer||busy)return;
+ if(dirty){notice('Simpan perubahan profil dahulu.',true);return}
+ trackingAction={action,bank};
+ $('customerActionForm').reset();
+ $('customerActionTitle').textContent=action==='record_contact'?'Catat pelanggan dihubungi':bank?'Selesai follow-up '+bank.bank_name:'Selesai follow-up';
+ $('customerActionFeedback').textContent='';
+ $('customerActionDialog').showModal();
+}
+function bindTracking(){
+ for(const id of ['customersBankStatus','cbStatus'])$(id).insertAdjacentHTML('beforeend',Object.entries(BANKS).map(([k,label])=>'<option value="'+k+'">'+label+'</option>').join(''));
+ for(const id of ['customerDateBasis','customersFollow','customersBank','customersBankStatus'])$(id).addEventListener('change',()=>directory());
+ $('customerReminders').addEventListener('click',e=>{
+  const button=e.target.closest('[data-tracking-filter]');if(!button)return;
+  $('customersFilterForm').reset();$('customerDateBasis').value='received';$('customerInsightsPeriod').value='all';insightPreset();
+  $('customersFollow').value=button.dataset.trackingFilter;
+  directory().then(()=>{if(user&&!customer)$('customerListHeading').scrollIntoView({block:'start',behavior:'smooth'})});
+ });
+ $('cpModel').addEventListener('input',syncVehicleOptions);
+ $('cpStatus').addEventListener('change',toggleDelivered);
+ $('customerAddBank').addEventListener('click',()=>showBankEditor());
+ $('customerBankClose').addEventListener('click',()=>$('customerBankDialog').close());
+ $('customerBankDialog').addEventListener('close',()=>{editingBank=null;$('customerBankForm').reset()});
+ $('customerBankList').addEventListener('click',e=>{
+  const button=e.target.closest('[data-bank-edit],[data-bank-finish]');if(!button)return;
+  const bank=customer?.banks?.find(b=>b.id===(button.dataset.bankEdit||button.dataset.bankFinish));if(!bank)return;
+  if(button.dataset.bankEdit)showBankEditor(bank,button.hasAttribute('data-reschedule-bank'));else showTrackingAction('complete_follow_up',bank);
+ });
+ $('customerBankForm').addEventListener('submit',async e=>{
+  e.preventDefault();if(!customer||busy)return;
+  const data=Object.fromEntries(Object.entries(bankFields).map(([id,key])=>[key,$(id).value.trim()]));
+  data.selected=$('cbSelected').checked;
+  if(editingBank){data.id=editingBank.id;data.expected_updated_at=editingBank.updated_at}
+  if(await runWrite('save_bank',data,'Permohonan bank disimpan.'))$('customerBankDialog').close();
+  else $('customerBankFeedback').textContent=$('customersNotice').textContent;
+ });
+ $('customerRecordContact').addEventListener('click',()=>showTrackingAction('record_contact'));
+ $('customerFinishFollow').addEventListener('click',()=>showTrackingAction('complete_follow_up'));
+ $('customerRescheduleFollow').addEventListener('click',()=>{$('cpFollow').focus();$('cpFollow').scrollIntoView({block:'center'})});
+ $('customerActionClose').addEventListener('click',()=>$('customerActionDialog').close());
+ $('customerActionDialog').addEventListener('close',()=>{trackingAction=null;$('customerActionForm').reset()});
+ $('customerActionForm').addEventListener('submit',async e=>{
+  e.preventDefault();if(!trackingAction||!customer||busy)return;
+  const {action,bank}=trackingAction;
+  const data={note:$('customerActionNote').value};
+  if(action==='complete_follow_up')Object.assign(data,bank?{id:bank.id,expected_updated_at:bank.updated_at}:
+   {expected_revision:customer.profile.revision,expected_lead_updated_at:customer.lead.updated_at});
+  if(await runWrite(action,data,action==='record_contact'?'Hubungan direkodkan.':'Follow-up ditandakan selesai.'))$('customerActionDialog').close();
+  else $('customerActionFeedback').textContent=$('customersNotice').textContent;
+ });
+}
 window.FARIS_CUSTOMERS={onLogin(account){reset();user=account;$('customersStaff').classList.toggle('hide',user.role!=='admin')},onLogout:reset,onWhatsappShow:loadWhatsappTrend,onShow(){const params=new URLSearchParams(location.search),target=params.get('customer');if(target&&/^[a-f0-9-]{36}$/i.test(target)){const requestedTab=params.get('customer_tab');params.delete('customer');params.delete('customer_tab');history.replaceState(null,'',location.pathname+(params.size?'?'+params:'')+location.hash);open(target).then(()=>{if(customer?.lead.id===target&&requestedTab==='documents')showTab('documents')});return}if(customer){const gen=epoch;refreshProfile().catch(e=>{if(gen===epoch)notice(e.message,true)})}else directory()},open,
  linkFromInbox(data){if(!user||busy||!data.ids?.length)return;linkHandoff=data;customer=null;dirty=false;$('customerDetail').classList.add('hide');$('customersDirectory').classList.remove('hide');window.FARIS_NAV.show('customers');renderDirectory()}};
 document.addEventListener('DOMContentLoaded',()=>{
- insightPreset();whatsappTrendPreset();
+ insightPreset();whatsappTrendPreset();bindTracking();
  $('whatsappTrendForm').addEventListener('submit',e=>{e.preventDefault();loadWhatsappTrend()});
  $('whatsappWeekDate').addEventListener('change',loadWhatsappTrend);
  $('whatsappWeekPrevious').addEventListener('click',()=>whatsappShiftWeek(-1));
  $('whatsappWeekNext').addEventListener('click',()=>whatsappShiftWeek(1));
  $('whatsappWeekCurrent').addEventListener('click',()=>{whatsappTrendPreset();loadWhatsappTrend()});
- $('customersClearFilters').addEventListener('click',()=>{$('customersFilterForm').reset();directory()});
+ $('customersClearFilters').addEventListener('click',()=>{
+  $('customersFilterForm').reset();$('customerDateBasis').value='received';$('customerInsightsPeriod').value='all';insightPreset();directory();
+ });
  $('customerInsightsResult').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.hasAttribute('data-insight-bucket')){$('customersBucket').value=$('customersBucket').value===b.dataset.insightBucket?'':b.dataset.insightBucket}else if(b.hasAttribute('data-insight-model')){$('customersModel').value=b.dataset.insightModel;const v=$('customersVariant');if(![...v.options].some(o=>o.value===b.dataset.insightVariant))v.add(new Option(JSON.parse(b.dataset.insightVariant)||'Varian belum diisi',b.dataset.insightVariant));v.value=b.dataset.insightVariant}else if(b.hasAttribute('data-insight-colour')){$('customersColour').value=b.dataset.insightColour}else if(b.hasAttribute('data-insight-status')){$('customersStatus').value=b.dataset.insightStatus}else return;directory().then(()=>{if(user)$('customerListHeading').scrollIntoView({behavior:'smooth',block:'start'})})});
  $('customerInsightsForm').addEventListener('submit',e=>{e.preventDefault();loadInsights()});
  $('customerInsightsPeriod').addEventListener('change',()=>{if($('customerInsightsPeriod').value!=='custom'){insightPreset();loadInsights()}});
@@ -240,8 +413,8 @@ document.addEventListener('DOMContentLoaded',()=>{
 
  for(const id of ['customersStatus','cpStatus','customerCaseStatus'])$(id).insertAdjacentHTML('beforeend',Object.entries(STATUSES).map(([v,label])=>'<option value="'+v+'">'+label+'</option>').join(''));
 
- document.addEventListener('click',e=>{const b=e.target.closest('[data-customer-open]');if(b)open(b.dataset.customerOpen)});
- $('customersFilterForm').addEventListener('submit',e=>{e.preventDefault();directory()});for(const id of ['customersStatus','customersVariant','customersColour','customersBucket','customersStaff'])$(id).addEventListener('change',()=>directory());$('customersModel').addEventListener('change',()=>{$('customersVariant').value='';directory()});$('customersMore').addEventListener('click',()=>directory(true));
+ document.addEventListener('click',e=>{const b=e.target.closest('[data-customer-open]');if(b)openLinkedCustomer(b)});
+ $('customersFilterForm').addEventListener('submit',e=>{e.preventDefault();directory()});for(const id of ['customersStatus','customersVariant','customersColour','customersBucket','customersStaff'])$(id).addEventListener('change',()=>directory());$('customersModel').addEventListener('change',()=>{$('customersVariant').value='';$('customersColour').value='';directory()});$('customersMore').addEventListener('click',()=>directory(true));
  $('customersRefresh').addEventListener('click',async()=>{if(busy)return;try{if(customer){if(dirty&&!confirm('Buang perubahan belum disimpan dan refresh profil?'))return;await refreshProfile(true)}else await directory()}catch(e){notice(e.message,true)}});
  $('customerBack').addEventListener('click',()=>{if(busy||dirty&&!confirm('Tinggalkan perubahan profil yang belum disimpan?'))return;opening++;customer=null;dirty=false;historySeq++;$('customerDetail').classList.add('hide');$('customersDirectory').classList.remove('hide');directory()});
  $('customersLinkCancel').addEventListener('click',()=>{linkHandoff=null;renderDirectory()});
@@ -249,7 +422,7 @@ document.addEventListener('DOMContentLoaded',()=>{
  document.querySelectorAll('[data-customer-tab]').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.customerTab)));
  document.addEventListener('invalid',e=>{if(e.target.form?.id==='customerProfileForm'){const panel=e.target.closest('[data-customer-panel]');if(panel)showTab(panel.dataset.customerPanel)}},true);
  document.addEventListener('input',e=>{if(customer&&(e.target.form?.id==='customerProfileForm'))dirty=true});$('cpStatus').addEventListener('change',reasonRequired);
- $('customerProfileForm').addEventListener('submit',e=>{e.preventDefault();runWrite('save_profile',profileValues(),'Profil customer disimpan.')});
+ $('customerProfileForm').addEventListener('submit',e=>{e.preventDefault();if($('cpFollowTime').value&&!$('cpFollow').value){notice('Pilih tarikh untuk masa follow-up.',true);$('cpFollow').focus();return}runWrite('save_profile',profileValues(),'Profil customer disimpan.')});
  $('customerNoteForm').addEventListener('submit',async e=>{e.preventDefault();if(await runWrite('add_note',{note:$('customerNote').value.trim()},'Nota ditambah ke profil dan sejarah.'))$('customerNote').value=''});
  $('customerStatusBadge').addEventListener('click',openCaseStatus);
  document.addEventListener('click',async e=>{const b=e.target.closest('[data-customer-status-open]');if(!b||busy)return;const gen=epoch,id=b.dataset.customerStatusOpen;await open(id);if(gen===epoch&&customer?.lead.id===id)openCaseStatus()});

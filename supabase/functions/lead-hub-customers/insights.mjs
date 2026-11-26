@@ -16,3 +16,14 @@ export function dashboardFilters(b,statuses,isId){
  if(!['','lou','delivered','pending','trade_in'].includes(bucket)||!Number.isInteger(offset)||offset<0||offset>1000000000)throw Error('Tapisan atau halaman tidak sah.');
  return {...f,_model:b.model==null?null:b.model.trim(),_variant:exact(b.variant,120),_colour:exact(b.colour,80),_bucket:bucket,_offset:offset};
 }
+
+export function trackingFilters(b, statuses, bankStatuses, isId){
+ const filters=dashboardFilters(b,statuses,isId);
+ const basis=b.basis||'received',follow=b.follow||'',bankStatus=b.bank_status||'';
+ if(!['received','created','updated','delivered'].includes(basis)||
+    !['','today','overdue','no_action','missing_vehicle','mine'].includes(follow)||
+    (bankStatus&&!Object.hasOwn(bankStatuses,bankStatus)&&bankStatus!=='not_submitted'))throw Error('Tapisan tracking tidak sah.');
+ const dates=insightsFilters({from:b.bank_from,to:b.bank_to},statuses,isId);
+ return {...filters,_basis:basis,_follow:follow,_bank_status:bankStatus,_bank:String(b.bank||'').trim().toLowerCase().slice(0,100),
+  _bank_from:bankStatus==='not_submitted'?null:dates._from,_bank_to:bankStatus==='not_submitted'?null:dates._to};
+}

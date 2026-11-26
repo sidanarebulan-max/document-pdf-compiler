@@ -12,7 +12,7 @@
  <meta name="description" content="Portal staf Proton: masuk menggunakan ID dan passcode, ambil nombor pelanggan, buka WhatsApp dalam telefon.">
  <link rel="stylesheet" href="/staff.css?v=customers-v39-20261028">
  <link rel="stylesheet" href="/staff-gallery.css?v=gallery-catalogue-20261111">
- <link rel="stylesheet" href="/staff-customers.css?v=whatsapp-week-v60-20261109">
+ <link rel="stylesheet" href="/staff-customers.css?v=tracking-20261126">
  <style>
   .credential{border:1px solid #405e98;background:linear-gradient(135deg,#101d38,#1d3156);border-radius:14px;padding:16px;margin-top:10px}
   .credential strong{display:block;color:#96baff;font-size:10px;letter-spacing:1.5px}
@@ -420,24 +420,30 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
  <div id="customersLinkBanner" class="notice hide"><span id="customersLinkMessage"></span> <button type="button" class="secondary mini" id="customersLinkCancel">Batal pautan fail</button></div>
  <div id="customersDirectory">
  <section class="customer-insights" aria-labelledby="customerInsightsTitle">
-  <div class="insights-heading"><div><p class="eyebrow">SALES INSIGHTS</p><h3 id="customerInsightsTitle">Gambaran jualan pelanggan</h3><p class="muted small">Ringkasan status semasa bagi pelanggan dalam tempoh lead masuk yang dipilih.</p></div><span class="insights-live">Data sebenar</span></div>
+  <div class="insights-heading"><div><p class="eyebrow">SALES INSIGHTS</p><h3 id="customerInsightsTitle">Gambaran jualan pelanggan</h3><p class="muted small">Ringkasan status semasa mengikut tapisan dan tempoh yang dipilih.</p></div><span class="insights-live">Data sebenar</span></div>
   <details class="customer-mobile-fold" data-customer-fold="dates"><summary>Tempoh &amp; tarikh</summary>
   <form id="customerInsightsForm" class="insights-filters customer-date-filters">
    <label>Tempoh<select id="customerInsightsPeriod"><option value="today">Hari ini</option><option value="week">Minggu ini</option><option value="month" selected>Bulan ini</option><option value="all">Semua tarikh</option><option value="custom">Pilih tarikh</option></select></label>
+   <label>Kira ikut<select id="customerDateBasis"><option value="received">Lead diterima</option><option value="created">Rekod dimasukkan</option><option value="updated">Kemas kini terakhir</option><option value="delivered">Tarikh serahan</option></select></label>
    <label>Dari tarikh<input id="customerInsightsFrom" type="date" min="2000-01-01" max="2100-12-31"></label>
    <label>Hingga tarikh<input id="customerInsightsTo" type="date" min="2000-01-01" max="2100-12-31"></label>
    <input id="customerInsightsGroup" type="hidden" value="day">
    <button type="submit" class="primary">Lihat insight</button>
   </form>
   <p class="muted small insights-context" id="customerInsightsContext">Memuatkan ringkasan…</p>
-  <details class="insights-definition"><summary>Bagaimana angka ini dikira?</summary><p>LOU: profil ditanda “LOU telah diterima” dan kereta belum diserahkan. DELIVER: status Kereta diserahkan. PENDING: pelanggan aktif yang belum LOU atau Deliver. Tangguh dan Tidak diteruskan tidak termasuk LOU / Pending. TRADE IN: semua profil ditanda Trade In; boleh bertindih dengan kategori lain. Kotak angka mengikut semua tapisan kecuali pilihan kategori kotak. Pecahan dan senarai mengikut kategori yang dipilih. Penapis tarikh berdasarkan tarikh lead masuk (waktu Malaysia). Warna diambil daripada medan Warna kereta dalam profil.</p></details>
+  <details class="insights-definition"><summary>Bagaimana angka ini dikira?</summary><p>LOU: profil ditanda “LOU telah diterima” dan kereta belum diserahkan. DELIVER: status Kereta diserahkan. PENDING: pelanggan aktif yang belum LOU atau Deliver. Tangguh dan Tidak diteruskan tidak termasuk LOU / Pending. TRADE IN: semua profil ditanda Trade In; boleh bertindih dengan kategori lain. Kotak angka mengikut semua tapisan kecuali pilihan kategori kotak. Pecahan dan senarai mengikut kategori yang dipilih. Penapis tarikh ikut pilihan Kira ikut (waktu Malaysia). Jika tarikh lead diterima belum diisi, tarikh rekod dimasukkan digunakan. Warna diambil daripada medan Warna kereta dalam profil.</p></details>
   </details>
   <div id="customerInsightsResult" aria-live="polite" aria-busy="false"></div>
 
  </section>
+ <details class="panel customer-reminders" id="customerReminders">
+ <summary><strong>Reminder</strong> <span id="customerReminderCounts" class="muted small"></span></summary>
+ <div class="customer-tracking-actions"><button type="button" class="secondary" data-tracking-filter="today">Hari ini</button><button type="button" class="secondary" data-tracking-filter="overdue">Terlepas</button></div>
+ <div id="customerReminderItems" aria-live="polite"></div>
+ </details>
  <div class="customer-list-heading" id="customerListHeading"><div><h3>Senarai pelanggan</h3><p class="muted small" id="customerActiveFilters" aria-live="polite"></p></div></div>
  <details class="customer-mobile-fold customer-filter-fold" data-customer-fold="filters"><summary>Cari &amp; tapis pelanggan</summary>
- <button type="button" class="secondary" id="customersClearFilters">Kosongkan tapisan</button>
+ <button type="button" class="secondary" id="customersClearFilters">Kosongkan semua tapisan</button>
  <form id="customersFilterForm" class="customer-filters customer-drill-filters">
  <input id="customersSearch" type="search" maxlength="100" placeholder="Cari nama atau nombor telefon…" aria-label="Cari customer">
  <select id="customersModel" aria-label="Tapis model"><option value="">Semua model</option></select>
@@ -446,15 +452,28 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
  <select id="customersStatus" aria-label="Tapis status"><option value="">Semua status</option></select>
  <select id="customersBucket" aria-label="Tapis kategori dashboard"><option value="">Semua kategori</option><option value="lou">LOU</option><option value="delivered">DELIVER</option><option value="pending">PENDING</option><option value="trade_in">TRADE IN</option></select>
  <select id="customersStaff" class="hide" aria-label="Tapis staff"><option value="">Semua staff</option></select>
+ <select id="customersFollow" aria-label="Tapis tindakan"><option value="">Semua tindakan</option><option value="today">Follow-up hari ini</option><option value="overdue">Terlepas follow-up</option><option value="no_action">Belum ada tindakan pelanggan</option><option value="missing_vehicle">Maklumat kereta belum lengkap</option><option value="mine">Pelanggan saya</option></select>
+ <select id="customersBank" aria-label="Tapis bank"><option value="">Semua bank</option></select>
+ <select id="customersBankStatus" aria-label="Tapis status bank"><option value="">Semua status bank</option><option value="not_submitted">Belum submit bank</option></select>
+ <label>Bank submit dari<input id="customersBankFrom" type="date"></label>
+ <label>Bank submit hingga<input id="customersBankTo" type="date"></label>
  <button type="submit" class="primary">Cari</button></form></details><p id="customersTotal" class="muted small" aria-live="polite"></p><div id="customersList" class="customer-list" aria-busy="false"></div><button type="button" class="secondary hide" id="customersMore">Muat lagi customer</button><p class="muted small">Profil menggunakan lead sedia ada. Untuk customer baharu, tambah nombor melalui WhatsApp.</p></div>
  <div id="customerDetail" class="hide"><button type="button" class="secondary" id="customerBack">← Senarai Pelanggan</button><div class="customer-hero"><div><button type="button" id="customerStatusBadge" class="customer-status-button" aria-haspopup="dialog" aria-controls="customerCaseDialog" title="Tekan untuk kemas kini status kes"></button><h2 id="customerName"></h2><p id="customerIdentity" class="muted"></p><p id="customerOwner" class="muted"></p></div><a id="customerWhatsapp" class="wa" target="_blank" rel="noopener noreferrer">Buka WhatsApp</a></div>
- <nav class="customer-tabs" aria-label="Bahagian profil"><button type="button" data-customer-tab="summary" aria-current="page">Ringkasan</button><button type="button" data-customer-tab="documents">Dokumen <span id="customerDocCount">0</span></button><button type="button" data-customer-tab="history">Sejarah</button></nav>
- <section data-customer-panel="summary" class="panel"><h3>Maklumat & status jualan</h3><p class="muted small">Status jualan berasingan daripada status PM WhatsApp. Setiap simpanan direkodkan bersama nama staff.</p><div id="customerNextAction" class="customer-next"></div><form id="customerProfileForm"><div class="customer-form-grid"><label>Nama customer<input id="cpName" required maxlength="120"></label><label>Nombor telefon<input id="cpPhone" readonly></label><label>Model<input id="cpModel" maxlength="120" list="customerModelOptions"><datalist id="customerModelOptions"><option>e.MAS 7 PHEV</option><option>e.MAS 7 EV</option><option>e.MAS 5</option></datalist></label><label>Varian<input id="cpVariant" maxlength="120" placeholder="Contoh: Prime / Premium"></label><label>Warna kereta<input id="cpColour" maxlength="80" list="customerColourOptions" placeholder="Contoh: Putih / Snow White"><datalist id="customerColourOptions"><option>Putih</option><option>Hitam</option><option>Silver</option><option>Kelabu</option><option>Biru</option><option>Merah</option><option>Hijau</option><option>Rose Pink</option></datalist></label><label>Status jualan<select id="cpStatus"></select></label><label>Follow-up seterusnya<input id="cpFollow" type="date"></label><label class="customer-wide">Tindakan seterusnya<textarea id="cpNext" maxlength="500" rows="2" placeholder="Contoh: Minta penyata bank terkini"></textarea></label><label class="customer-wide">Sebab tangguh / tidak diteruskan<textarea id="cpReason" maxlength="1000" rows="2" placeholder="Wajib untuk status Tangguh atau Tidak diteruskan"></textarea></label><label class="checkline customer-wide"><input id="cpLou" type="checkbox"> LOU telah diterima</label><label class="checkline customer-wide"><input id="cpTradeIn" type="checkbox"> Customer ada Trade In</label><label class="checkline customer-wide"><input id="cpGuarantor" type="checkbox"> Customer ini memerlukan penjamin</label></div><button type="submit" class="primary" data-profile-save>Simpan Profil</button></form><div id="customerSourceInfo" class="customer-readonly muted"></div><div id="customerLegacyNotes" class="customer-readonly"></div><section class="customer-summary-notes" aria-labelledby="customerNotesTitle"><h3 id="customerNotesTitle">Nota pelanggan</h3><form id="customerNoteForm"><label>Tambah nota<textarea id="customerNote" required maxlength="4000" rows="3" placeholder="Keperluan customer, hasil perbualan atau perkara untuk tindakan seterusnya…"></textarea></label><button type="submit" class="primary" id="customerNoteSave">Simpan Nota</button></form><div id="customerNotes" class="customer-note-list"></div></section></section>
+ <nav class="customer-tabs" aria-label="Bahagian profil"><button type="button" data-customer-tab="summary" aria-current="page">Ringkasan</button><button type="button" data-customer-tab="documents">Dokumen <span id="customerDocCount">0</span></button><button type="button" data-customer-tab="banks">Bank <span id="customerBankCount">0</span></button><button type="button" data-customer-tab="history">Sejarah</button></nav>
+ <section data-customer-panel="summary" class="panel"><h3>Maklumat & status jualan</h3><p class="muted small">Status jualan berasingan daripada status PM WhatsApp. Setiap simpanan direkodkan bersama nama staff.</p><div id="customerNextAction" class="customer-next"></div>
+ <div class="customer-tracking-actions"><button type="button" class="secondary hide" id="customerFinishFollow">Selesai follow-up</button><button type="button" class="secondary hide" id="customerRescheduleFollow">Jadual semula</button><button type="button" class="secondary" id="customerRecordContact">Catat pelanggan dihubungi</button></div><form id="customerProfileForm"><div class="customer-form-grid"><label>Nama customer<input id="cpName" required maxlength="120"></label><label>Nombor telefon<input id="cpPhone" readonly></label><label>Model<input id="cpModel" maxlength="120" list="customerModelOptions"><datalist id="customerModelOptions"><option>e.MAS 7 PHEV</option><option>e.MAS 7 EV</option><option>e.MAS 5</option></datalist></label><label>Varian<input id="cpVariant" maxlength="120" list="customerVariantOptions" placeholder="Contoh: Prime / Premium"></label><datalist id="customerVariantOptions"></datalist><label>Warna kereta<input id="cpColour" maxlength="80" list="customerColourOptions" placeholder="Belum pilih"><datalist id="customerColourOptions"><option>Putih</option><option>Hitam</option><option>Silver</option><option>Kelabu</option><option>Biru</option><option>Merah</option><option>Hijau</option><option>Rose Pink</option></datalist></label><label>Status jualan<select id="cpStatus"></select></label><label>Tarikh follow-up<input id="cpFollow" type="date"></label>
+ <label>Masa follow-up (MYT)<input id="cpFollowTime" type="time"></label>
+ <label>Lead diterima (MYT)<input id="cpReceived" type="datetime-local"></label>
+ <label id="customerDeliveredField">Serahan sebenar (MYT)<input id="cpDelivered" type="datetime-local"></label><label class="customer-wide">Tindakan seterusnya<textarea id="cpNext" maxlength="500" rows="2" placeholder="Contoh: Minta penyata bank terkini"></textarea></label><label class="customer-wide">Sebab tangguh / tidak diteruskan<textarea id="cpReason" maxlength="1000" rows="2" placeholder="Wajib untuk status Tangguh atau Tidak diteruskan"></textarea></label><label class="checkline customer-wide"><input id="cpLou" type="checkbox"> LOU telah diterima</label><label class="checkline customer-wide"><input id="cpTradeIn" type="checkbox"> Customer ada Trade In</label><label class="checkline customer-wide"><input id="cpGuarantor" type="checkbox"> Customer ini memerlukan penjamin</label></div><button type="submit" class="primary" data-profile-save>Simpan Profil</button></form><div id="customerSourceInfo" class="customer-readonly muted"></div><div id="customerLegacyNotes" class="customer-readonly"></div><section class="customer-summary-notes" aria-labelledby="customerNotesTitle"><h3 id="customerNotesTitle">Nota pelanggan</h3><form id="customerNoteForm"><label>Tambah nota<textarea id="customerNote" required maxlength="4000" rows="3" placeholder="Keperluan customer, hasil perbualan atau perkara untuk tindakan seterusnya…"></textarea></label><button type="submit" class="primary" id="customerNoteSave">Simpan Nota</button></form><div id="customerNotes" class="customer-note-list"></div></section></section>
  <section data-customer-panel="documents" class="panel hide customer-documents-panel">
   <div class="customer-doc-heading"><div><h3>Dokumen rujukan</h3><p class="muted small">Simpan dokumen yang sudah lengkap atau dokumen sokongan. Upload terus tanpa memilih kategori.</p></div><div class="customer-document-actions"><button type="button" class="primary" id="customerUploadButton">+ Upload Dokumen</button><button type="button" class="secondary" id="customerPickInbox">Pilih dari Fail Masuk</button></div></div>
   <input type="file" id="customerUpload" multiple hidden accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.docx,.xlsx,.xls,.txt">
   <p class="muted small customer-doc-note">Maksimum 20 MB setiap fail. Tahap kes dipaparkan dan dikemas kini melalui kolum Status di senarai utama.</p>
   <div id="customerFiles" class="customer-files"></div><div class="customer-doc-bottom"><span id="customerSelectedCount" class="small muted">0 fail dipilih</span><button type="button" class="primary" id="customerOpenCompiler">Buka Pilihan dalam Compiler</button></div>
+ </section>
+ <section data-customer-panel="banks" class="panel hide">
+ <div class="customer-doc-heading"><h3>Permohonan Bank</h3><button type="button" class="primary" id="customerAddBank">+ Tambah Bank</button></div>
+ <div class="customer-bank-list" id="customerBankList"></div>
  </section>
  <section data-customer-panel="history" class="panel hide"><h3>Sejarah Customer</h3><p class="muted small">Status, dokumen, nota, bank, claim dan aktiviti WhatsApp untuk customer ini sahaja.</p><div id="customerHistory" class="customer-history"></div><button type="button" class="secondary hide" id="customerHistoryMore">Muat lagi sejarah</button></section>
  </div>
@@ -650,6 +669,36 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
    </section></div></section></section><div id="appNotice" class="notice hide" role="status"></div></section>
 <footer>FARIS R+PROTON · Staff Lead Operations · Sambungan selamat melalui HTTPS</footer>
 </div>
+<dialog id="customerBankDialog" class="customer-dialog" aria-labelledby="customerBankTitle">
+ <div class="customer-dialog-head"><h3 id="customerBankTitle">Tambah bank</h3><button type="button" class="secondary" id="customerBankClose">Tutup</button></div>
+ <form id="customerBankForm">
+  <div class="customer-form-grid">
+   <label>Bank<input id="cbName" required maxlength="100" list="customerBankNames"></label>
+   <label>Status<select id="cbStatus"></select></label>
+   <label>Nama pegawai<input id="cbOfficer" maxlength="120"></label>
+   <label>Telefon pegawai<input id="cbPhone" type="tel" maxlength="40"></label>
+   <label>Tarikh submit<input id="cbSubmitted" type="date"></label>
+   <label>Masa submit (MYT)<input id="cbSubmittedTime" type="time"></label>
+   <label>Jumlah dipohon (RM)<input id="cbAmount" type="number" min="0" max="100000000" step="0.01"></label>
+   <label>Tempoh dipohon (bulan)<input id="cbTerm" type="number" min="1" max="120"></label>
+   <label>Jumlah lulus (RM)<input id="cbApprovedAmount" type="number" min="0" max="100000000" step="0.01"></label>
+   <label>Kadar lulus (%)<input id="cbRate" type="number" min="0" max="100" step="0.01"></label>
+   <label>Tempoh lulus (bulan)<input id="cbApprovedTerm" type="number" min="1" max="120"></label>
+   <label>Follow-up bank (MYT)<input id="cbDue" type="datetime-local"></label>
+   <label class="customer-wide">Tindakan seterusnya<input id="cbNext" maxlength="500"></label>
+   <label class="customer-wide">Catatan<textarea id="cbNotes" maxlength="2000" rows="2"></textarea></label>
+   <label class="checkline customer-wide"><input id="cbSelected" type="checkbox"> Bank pilihan pelanggan</label>
+  </div>
+  <datalist id="customerBankNames"><option>Maybank</option><option>Public Bank</option><option>CIMB</option><option>Hong Leong Bank</option><option>RHB Bank</option><option>AmBank</option><option>Affin Bank</option><option>Bank Islam</option><option>Bank Muamalat</option><option>BSN</option><option>Alliance Bank</option><option>Bank Rakyat</option></datalist>
+  <p class="muted small" id="customerBankFeedback" role="status"></p>
+  <button type="submit" class="primary">Simpan Bank</button>
+ </form>
+</dialog>
+<dialog id="customerActionDialog" class="customer-dialog" aria-labelledby="customerActionTitle">
+ <div class="customer-dialog-head"><h3 id="customerActionTitle"></h3><button type="button" class="secondary" id="customerActionClose">Tutup</button></div>
+ <form id="customerActionForm"><label>Catatan hasil<input id="customerActionNote" maxlength="500"></label>
+ <p class="muted small" id="customerActionFeedback" role="status"></p><button type="submit" class="primary">Simpan</button></form>
+</dialog>
 <dialog id="customerCaseDialog" class="customer-dialog customer-case-dialog" aria-labelledby="customerCaseTitle"><div class="customer-dialog-head"><h3 id="customerCaseTitle">Kemas kini status kes</h3><button type="button" class="secondary" id="customerCaseClose" aria-label="Tutup status kes">✕</button></div><p class="muted small">Status dan tanda LOU / Trade In disimpan pada profil serta direkodkan dalam Sejarah.</p><form id="customerCaseForm"><label>Tahap kes<select id="customerCaseStatus" required></select></label><label><span id="customerCaseReasonLabel">Sebab</span><textarea id="customerCaseReason" maxlength="1000" rows="3" placeholder="Wajib jika kes ditangguh atau tidak diteruskan"></textarea></label><label class="checkline"><input type="checkbox" id="customerCaseLou"> LOU telah diterima</label><label class="checkline"><input type="checkbox" id="customerCaseTradeIn"> Customer ada Trade In</label><p id="customerCaseFeedback" class="small muted" role="status" aria-live="polite"></p><div class="customer-row-actions"><button type="submit" class="primary" id="customerCaseSave">Simpan status</button><button type="button" class="secondary" id="customerCaseCancel">Batal</button></div></form></dialog>
 <dialog id="customerInboxDialog" class="customer-dialog" aria-labelledby="customerInboxDialogTitle"><div class="customer-dialog-head"><h3 id="customerInboxDialogTitle">Pilih fail yang belum dipautkan</h3><button type="button" class="secondary" id="customerInboxClose" aria-label="Tutup pemilih fail">✕</button></div><p class="muted small">Fail akan dipautkan kepada customer yang sedang dibuka.</p><form id="customerInboxSearchForm" class="customer-picker-search"><input id="customerInboxSearch" type="search" placeholder="Cari nama fail…" aria-label="Cari fail"><button type="submit" class="secondary">Cari</button></form><p id="customerInboxStatus" class="small muted" role="status"></p><div id="customerInboxList"></div><button type="button" id="customerInboxMore" class="secondary hide">Muat lagi fail</button><button type="button" id="customerInboxLink" class="primary">Pautkan Fail Dipilih</button></dialog>
 <dialog id="customerPreview" class="customer-dialog" aria-labelledby="customerPreviewTitle"><div class="customer-dialog-head"><h3 id="customerPreviewTitle">Pratonton dokumen</h3><button type="button" class="secondary" id="customerPreviewClose" aria-label="Tutup pratonton">✕</button></div><div id="customerPreviewBody"></div><p id="customerPreviewStatus" class="small muted" role="status"></p><button type="button" class="primary" id="customerPreviewDownload">Download Fail Asal</button></dialog>
@@ -659,7 +708,7 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
 <script src="/inbox-client.js?v=gallery-v38-20261028"></script>
 <script src="/staff-gallery.js?v=gallery-model-colours-20261111"></script>
 <script src="/customer-insights-core.js?v=whatsapp-week-v60-20261109"></script>
-<script src="/staff-customers.js?v=whatsapp-week-v60-20261109"></script>
+<script src="/staff-customers.js?v=tracking-20261126"></script>
 <script src="/staff-inbox.js?v=customers-v39-20261028"></script>
 <script src="/staff-navigation.js?v=customers-v39-20261028"></script>
 <script src="/staff-passcode.js?v=application-v42-20261028-customers-v39-20261028"></script>

@@ -32,3 +32,33 @@ button.insights-kpi{display:block;text-align:left;color:var(--text);font:inherit
 @media(max-width:760px){#whatsappTrend .whatsapp-week-heading{gap:12px}#whatsappTrend .whatsapp-week-heading h3{font-size:17px}#whatsappTrend .whatsapp-week-nav{width:100%;display:grid;grid-template-columns:44px 1fr 44px}#whatsappTrend .whatsapp-week-picker{grid-template-columns:minmax(0,1fr) auto;justify-content:stretch}#whatsappTrend .whatsapp-week-picker button{padding:10px 12px;font-size:12px}#whatsappTrend .insights-panel{padding:10px}#whatsappTrend .insights-trend th,#whatsappTrend .insights-trend td{padding:9px 6px}}
 
 @media(max-width:760px){#whatsappTrend .insights-trend table{table-layout:fixed}#whatsappTrend .insights-trend th,#whatsappTrend .insights-trend td{padding:9px 3px;font-size:10px}#whatsappTrend .insights-trend th:first-child{width:28%}#whatsappTrend .insights-trend thead th{white-space:normal}}
+
+/* Tracking and multi-bank applications */
+.customer-tabs{grid-template-columns:repeat(4,minmax(0,1fr))}
+.customer-reminders{margin:14px 0}
+.customer-reminders summary{cursor:pointer;min-height:38px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.customer-reminders summary::before{content:"▸";color:var(--accent-text)}
+.customer-reminders[open] summary::before{content:"▾"}
+.customer-tracking-actions{display:flex;gap:8px;flex-wrap:wrap;margin:9px 0}
+.customer-reminder-list{display:grid;gap:7px;padding:0;list-style:none}
+.customer-reminder-list button{width:100%;text-align:left;white-space:normal}
+.customer-bank-summary{background:none;box-shadow:none;padding:0;color:var(--accent-text);text-align:left;font-size:11px;min-height:30px}
+.customer-bank-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.customer-bank-meta .customer-status{margin-bottom:6px}
+.customer-bank-list .customer-bank{overflow-wrap:anywhere}
+#customerActionDialog input{width:100%}
+#customerBankDialog{max-width:720px}
+@media(max-width:760px){
+ .customer-tabs{grid-template-columns:repeat(4,minmax(0,1fr))}
+ .customer-tracking-actions button,.customer-bank-summary{min-height:44px}
+}
+@media(min-width:1081px){
+ .customer-date-filters{grid-template-columns:1.1fr 1.1fr 1fr 1fr auto}
+}
+.customer-list-row .customer-mobile-follow{display:none}
+@media(max-width:760px){
+ html[data-ios-theme] .faris-staff #customersList .customer-vehicle-details,
+ html[data-ios-theme] .faris-staff #customersList .customer-mobile-follow{display:block;line-height:1.4}
+ html[data-ios-theme] .faris-staff #customersList .customer-bank-summary{width:100%;text-align:center;padding:4px 1px;line-height:1.3}
+ html[data-ios-theme] .faris-staff #customersList .customer-bank-summary.no-banks{display:none}
+}
