@@ -15,7 +15,7 @@ function dummy(id,name,phone){
 }
 async function mock(context){
  const records=new Map([[leadId,dummy(leadId,'Pelanggan','60100000001')],[otherId,dummy(otherId,'Pelanggan Kedua','60100000002')]]);
- const events=[],uploads=[];let seq=0;
+ const events=[],uploads=[];let seq=0,holdRead,failSave=false;
  const c=records.get(leadId);
  function activity(customer,event_type,details){
   const at=new Date(Date.UTC(2026,10,27,0,0,++seq)).toISOString();
@@ -60,6 +60,10 @@ async function mock(context){
   if(action==='me')return reply({ok:true,user:staff});
   if(action==='get'||action==='shared_profile'){
    if(!customer)return reply({ok:false,error:'Tiada profil'},403);
+   if(action==='shared_profile'&&body.changes&&failSave){
+    failSave=false;
+    return reply({ok:false,error:'Simpanan tergendala sekejap.'},503);
+   }
    for(const [key,value] of Object.entries(body.changes||{})){
     if(['customer_name','model'].includes(key))customer.lead[key]=value;
     else if(commonKeys.has(key))customer.profile[key]=value;
@@ -68,6 +72,14 @@ async function mock(context){
    if(body.changes){
     customer.profile.revision++;
     activity(customer,'shared_fields_updated',{fields:Object.keys(body.changes)});
+   }
+   if(action==='shared_profile'&&!body.changes&&holdRead?.page===req.frame().page()){
+    const test=holdRead;
+    holdRead=null;
+    const snapshot=structuredClone(customer);
+    test.started();
+    await test.gate;
+    return reply({ok:true,customer:snapshot,account_id:staff.id});
    }
    return reply({ok:true,customer,account_id:staff.id});
   }
@@ -86,7 +98,13 @@ async function mock(context){
   }
   return reply({ok:true,leads:[c.lead],history:[],my_pm:[],staff:[],files:c.files,team:{},personal:{},available_count:0,next_offset:null});
  });
- return {records,uploads};
+ return {records,uploads,failNextSave(){failSave=true;},holdNextRead(page){
+  let release,started;
+  const gate=new Promise(resolve=>{release=resolve;});
+  const pending=new Promise(resolve=>{started=resolve;});
+  holdRead={page,gate,started};
+  return {release,pending};
+ }};
 }
 const input=(page,id)=>page.locator('#'+id).inputValue();
 const assertField=async(page,id,value)=>assert.equal(await input(page,id),value,id);
@@ -123,7 +141,12 @@ async function run(browser,mobile){
    return title+'\n'+fields.filter(f=>f.section===section).map(f=>f.label+values[f.id]).join('\n');
   }).join('\n'));
   await page.locator('#applicationRead').click();
-  await flush(page);
+  scenario.failNextSave();
+  await assert.rejects(flush(page),/Simpanan tergendala sekejap/);
+  assert.equal(scenario.uploads.length,0);
+  await assertField(page,'application_applicant_nric','000101010001');
+  await page.locator('#staffWorkflowRetry').click();
+  await page.waitForFunction(()=>document.querySelector('#staffWorkflowStatus')?.textContent==='Maklumat pelanggan disimpan.');
   for(const [id,value] of Object.entries(values))await assertField(page,'application_'+id,value);
   assert.match(await page.locator('#applicationReadStatus').innerText(),new RegExp(fields.length+' daripada '+fields.length));
 
@@ -171,7 +194,6 @@ async function run(browser,mobile){
   },'https://files.test/'+scenario.uploads[1].id);
   for(const amount of ['71,792.00','3,300.00','61,000.00'])assert.ok(vsoText.includes(amount),amount+' in the saved VSO PDF');
   await observer.waitForFunction(()=>document.querySelector('#customerHistory').textContent.includes('VSO DRAF.pdf'));
-  await observer.close();
   await page.locator('[data-main="APPLICATION"]').click();
   await assertField(page,'application_applicant_email','vso@example.test');
   await assertField(page,'application_applicant_permanent_address','34 Jalan Ujian');
@@ -199,14 +221,27 @@ async function run(browser,mobile){
   assert.equal(scenario.uploads.length,3);
   const source=await PDFDocument.create();source.addPage().drawText('Dokumen dummy');
   const bytes=Buffer.from(await source.save());
-  for(const party of ['HIRER','GUARANTOR','REBATE','TRADEIN']){
-   await page.locator('[data-party="'+party+'"]').click();
-   const name=party+'-dummy.pdf';
-   await page.locator('#fileInput').setInputFiles({name,mimeType:'application/pdf',buffer:bytes});
-   await page.waitForFunction(filename=>document.querySelector('#staffWorkflowStatus')?.textContent.includes('Disimpan dalam Dokumen Pelanggan · '+filename),name);
-   assert.equal(scenario.uploads.at(-1).party,party);
-   assert.equal(scenario.uploads.at(-1).customer_id,leadId);
-  }
+  await observer.waitForFunction(()=>document.querySelector('#customerDocCount')?.textContent==='3');
+  const slow=scenario.holdNextRead(observer);
+  const readRequest=observer.waitForRequest(req=>req.url().endsWith('lead-hub-customers')&&req.postDataJSON()?.action==='shared_profile',{timeout:10000});
+  readRequest.catch(()=>{});
+  try{
+   for(const party of ['HIRER','GUARANTOR','REBATE','TRADEIN']){
+    await page.locator('[data-party="'+party+'"]').click();
+    const name=party+'-dummy.pdf';
+    await page.locator('#fileInput').setInputFiles({name,mimeType:'application/pdf',buffer:bytes});
+    await page.waitForFunction(filename=>document.querySelector('#staffWorkflowStatus')?.textContent.includes('Disimpan dalam Dokumen Pelanggan · '+filename),name);
+    if(party==='HIRER'){
+     await readRequest;
+     await slow.pending;
+    }
+    assert.equal(scenario.uploads.at(-1).party,party);
+    assert.equal(scenario.uploads.at(-1).customer_id,leadId);
+   }
+  }finally{slow.release();}
+  await observer.waitForFunction(()=>document.querySelector('#customerDocCount')?.textContent==='7');
+  await observer.waitForFunction(()=>document.querySelector('#customerHistory')?.textContent.includes('TRADEIN-dummy.pdf'));
+  await observer.close();
 
   await page.locator('#staffWorkflowBack').click();
   await page.locator('#cpName').waitFor();
@@ -249,7 +284,7 @@ async function run(browser,mobile){
   await flush(page);
   await assertField(page,'application_applicant_nric','000101010022');
   assert.deepEqual(errors,[]);
-  console.log('PASS '+(mobile?'phone':'desktop')+': '+fields.length+' Application fields, profile round trip, VSO, Compiler, bank, audit, seven stored PDFs and isolation');
+  console.log('PASS '+(mobile?'phone':'desktop')+': '+fields.length+' fields, save retry, VSO, Compiler, bank, seven stored PDFs, slow cross-tab catch-up and isolation');
  }finally{await context.close()}
 }
 (async()=>{

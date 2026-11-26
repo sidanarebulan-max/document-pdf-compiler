@@ -39,7 +39,8 @@ async function fetchProfile(payload, retry = true) {
  return data;
 }
 function create({customer, accountId, render, notify}) {
- let snapshot = values(customer), pending = new Map(), inFlight, timer, refreshPending = false, closed = false;
+ let snapshot = values(customer), pending = new Map(), inFlight, timer, closed = false;
+ let refreshing = false, refreshRequested = false, writeVersion = 0;
  const id = customer.lead.id;
  const belongs = file => file.customer_id === id;
  const report = (message, error = false) => { if (!closed) notify(message, error); };
@@ -64,7 +65,10 @@ function create({customer, accountId, render, notify}) {
   if (pending.size) {
    report('Menyimpan maklumat pelanggan…');
    timer = setTimeout(() => flush().catch(() => {}), 650);
-  } else report('Profil dipautkan.');
+  } else {
+   report('Profil dipautkan.');
+   if(refreshRequested)void refresh();
+  }
  }
  async function flush() {
   clearTimeout(timer);
@@ -72,6 +76,7 @@ function create({customer, accountId, render, notify}) {
   while (inFlight) await inFlight;
   if (!pending.size) return;
   const batch = new Map(pending);
+  writeVersion++;
   inFlight = (async () => {
    try {
     const {customer} = await fetchProfile({lead_id:id,account_id:accountId,
@@ -94,15 +99,26 @@ function create({customer, accountId, render, notify}) {
   })();
   await inFlight;
   if (pending.size) return flush();
+  if(refreshRequested)void refresh();
  }
  async function refresh() {
-  if (closed || pending.size || inFlight || refreshPending) return;
-  refreshPending = true;
+  if(closed)return;
+  refreshRequested=true;
+  if(refreshing||pending.size||inFlight)return;
+  refreshing=true;
   try {
-   const {customer} = await fetchProfile({lead_id:id,account_id:accountId});
-   if (!closed && !pending.size && !inFlight) apply(customer);
-  } catch(error) { report(error.message,true); }
-  finally { refreshPending = false; }
+   while(refreshRequested&&!closed&&!pending.size&&!inFlight){
+    refreshRequested=false;
+    const readVersion=writeVersion;
+    try{
+     const {customer}=await fetchProfile({lead_id:id,account_id:accountId});
+     if(closed)return;
+     // A reply to an older read must never replace the snapshot from a newer write.
+     if(readVersion!==writeVersion||pending.size||inFlight)refreshRequested=true;
+     else apply(customer);
+    }catch(error){report(error.message,true);}
+   }
+  }finally{refreshing=false;}
  }
  const instance = {
   id, accountId, belongs, queue, flush, refresh,
@@ -110,6 +126,7 @@ function create({customer, accountId, render, notify}) {
   get dirty(){ return !!(pending.size || inFlight); },
   async upload(file, party='HIRER', category='OTHER') {
    await flush();
+   if(closed)throw Error('Buka semula profil pelanggan.');
    const result = await window.FARIS_INBOX_CLIENT.upload(file,{customer_id:id,account_id:accountId,party,category});
    if (!result.files?.length || result.files.some(f=>f.customer_id!==id)) throw Error('Fail belum dipautkan ke profil. Cuba semula.');
    channel?.postMessage(id);
