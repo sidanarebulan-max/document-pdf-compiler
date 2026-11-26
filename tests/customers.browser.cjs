@@ -56,6 +56,9 @@ try{for(const role of ['staff','admin'])for(const mobile of [true,false]){
  await page.goto('https://customers.test/staff.html#customers');await page.locator('#customersList .customer-name-open[data-customer-open="'+leadId+'"]').waitFor();
  if(mobile){assert.equal(await page.locator('[data-customer-fold][open]').count(),0);assert.equal(await page.locator('.customer-row-staff').first().isVisible(),false);assert.equal(await page.locator('.customer-row-identity>small').first().isVisible(),false);await page.locator('[data-customer-fold="filters"]>summary').click();await page.locator('[data-customer-fold="analysis"]>summary').click();}
  assert.equal(await page.locator('#customersStaff').isVisible(),role==='admin');await page.locator('.insights-kpi').first().waitFor();assert.equal(await page.locator('.insights-kpi').count(),4);assert.match(await page.locator('#customerInsightsResult').innerText(),/Premium/);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+ assert.equal(await page.locator('#customersList .customer-row-staff').count(),0);
+ assert.equal(await page.locator('#customersList .customer-row-updated time').isVisible(),true);
+ assert.ok(await page.locator('#customersList .customer-row-updated time').evaluate(e=>parseFloat(getComputedStyle(e).fontSize)>=17));
  await page.locator('[data-insight-model]').click();await page.waitForFunction(()=>document.getElementById('customersVariant').value==='\"premium\"'&&document.querySelectorAll('#customersList .customer-name-open').length===1);
  await page.locator('[data-insight-colour]').click();await page.waitForFunction(()=>document.getElementById('customersColour').value==='\"white\"'&&document.querySelectorAll('#customersList .customer-name-open').length===1);
  await page.locator('[data-insight-status]').click();await page.waitForFunction(()=>document.getElementById('customersStatus').value==='new'&&document.querySelectorAll('#customersList .customer-name-open').length===1);
@@ -72,6 +75,20 @@ try{for(const role of ['staff','admin'])for(const mobile of [true,false]){
  page.once('dialog',d=>d.accept());await page.locator('[data-customer-unlink="'+uploadId+'"]').click();await page.locator('[data-customer-preview="'+uploadId+'"]').waitFor({state:'detached'});
  await page.locator('[data-customer-tab="history"]').click();await page.locator('.customer-history-item').first().waitFor();assert.match(await page.locator('#customerHistory').innerText(),/Profil dikemas kini/);assert.match(await page.locator('#customerHistory').innerText(),/Permohonan bank/);assert.match(await page.locator('#customerHistory').innerText(),/Nota ditambah/);assert.match(await page.locator('#customerHistory').innerText(),/Faris Test/);
  await page.locator('[data-customer-tab="summary"]').click();if(mobile)await page.locator('[data-theme-choice="light"]').click();await page.screenshot({path:'/tmp/faris-customers-'+role+(mobile?'-phone':'-desktop')+'.png',fullPage:true});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+ // Approval and delivery remain visible even when LOU has already been received.
+ for(const [status,label] of [['approved','Loan Lulus – Tunggu Delivery'],['delivered','Dah Delivery']]){
+  await page.locator('#customerStatusBadge').click();await page.locator('#customerCaseStatus').selectOption(status);await page.locator('#customerCaseSave').click();
+  await page.waitForFunction(()=>!document.getElementById('customerCaseDialog').open);
+  assert.equal(await page.locator('#customerStatusBadge').innerText(),label);
+  assert.equal(await page.locator('#customerLastUpdated time').isVisible(),true);
+  await page.locator('#customerBack').click();await page.locator('#customersList .customer-name-open').waitFor();
+  assert.match(await page.locator('#customersList .customer-status').innerText(),new RegExp(label));
+  assert.equal(await page.locator('#customersList .customer-row-staff').count(),0);
+  assert.equal(await page.locator('#customersList .customer-row-updated time').isVisible(),true);
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+  await page.screenshot({path:'/tmp/faris-delivery-'+status+'-'+role+(mobile?'-phone':'-desktop')+'.png',fullPage:true});
+  await page.locator('#customersList .customer-name-open').click();await page.locator('#cpName').waitFor();
+ }
  // Start a link from the existing Inbox rather than creating a duplicate upload.
  const nav=page.locator(mobile?'#mobileDock':'#workspaceNav');await nav.locator('[data-'+(mobile?'mobile':'workspace')+'-nav="docs"]').click();await page.locator('[data-inbox-id="'+uploadId+'"]').check();await page.locator('#inboxLinkProfile').click();await page.locator('[data-customer-link-target]').waitFor();await page.locator('[data-customer-link-target]').click();await page.locator('[data-customer-preview="'+uploadId+'"]').waitFor();assert.equal(await page.locator('.customer-file').count(),3);
  await page.locator('[data-customer-file="'+fileId+'"]').check();await page.locator('[data-customer-file="'+unlinkedId+'"]').check();await page.locator('#customerOpenCompiler').click();await page.waitForURL('**/?tool=COMPILER&origin=staff&inbox=1');const handoff=await page.evaluate(()=>JSON.parse(sessionStorage.getItem('faris_inbox_compiler_v1')));assert.deepEqual(handoff.ids,[fileId,unlinkedId]);assert.equal(handoff.account_id,user.id);

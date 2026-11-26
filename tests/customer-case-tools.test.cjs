@@ -3,7 +3,7 @@ const src=fs.readFileSync('staff-customers.js','utf8');
 function fixture(){
  const nodes=new Map(),node=id=>{if(!nodes.has(id))nodes.set(id,{value:'',checked:false,textContent:'',required:false,options:[],showModal(){this.shown=true},scrollIntoView(){this.scrolled=true}});return nodes.get(id)};
  const saved={customer_name:'Customer',model:'e.MAS 5',variant:'Premium',colour:'White',sales_status:'documents',booking_status:'paid',booking_amount:'100',deposit:'5000',selling_price:'75800',loan_amount:'60000',guarantor_required:true,lou_received:false,trade_in:false,closure_reason:'',expected_revision:7,expected_lead_updated_at:'2026-10-30T01:00:00Z'};
- const ctx={esc:s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),when:()=> '30/10/2026',$:node,STATUSES:{documents:'Mengumpul dokumen',delivered:'Kereta diserahkan',on_hold:'Tangguh',cancelled:'Tidak diteruskan'},PARTIES:{HIRER:'Pemohon',GUARANTOR:'Penjamin',REBATE:'Rebate'},profileValues:()=>({...saved}),notice:t=>node('notice').textContent=t,showTab:t=>node('tab').value=t,document:{querySelectorAll:()=>[]}};
+ const ctx={esc:s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),when:()=> '30/10/2026',$:node,STATUSES:{documents:'Mengumpul dokumen',approved:'Loan Lulus – Tunggu Delivery',delivery:'Persiapan Delivery',delivered:'Dah Delivery',on_hold:'Tangguh',cancelled:'Tidak diteruskan'},PARTIES:{HIRER:'Pemohon',GUARANTOR:'Penjamin',REBATE:'Rebate'},profileValues:()=>({...saved}),notice:t=>node('notice').textContent=t,showTab:t=>node('tab').value=t,document:{querySelectorAll:()=>[]}};
  vm.createContext(ctx);vm.runInContext("let selected=new Set(),customer={files:[],profile:{sales_status:'documents',lou_received:false,trade_in:false,closure_reason:''}},busy=false,dirty=false;"+src.slice(src.indexOf('function caseStage('),src.indexOf('function renderProfile('))+";globalThis.markup=referenceFilesMarkup;globalThis.show=openCaseStatus;globalThis.values=caseStatusValues;globalThis.reason=caseReasonRequired;globalThis.stage=caseStage;globalThis.makeDirty=()=>{dirty=true};",ctx);
  return {ctx,node,saved};
 }
@@ -19,7 +19,9 @@ test('Status editor requires stop reasons and does not discard an unsaved profil
  ctx.makeDirty();ctx.show();assert.notEqual(node('customerCaseDialog').shown,true);assert.equal(node('tab').value,'summary');assert.match(node('notice').textContent,/Simpan perubahan profil/);
 });
 test('Case stage distinguishes LOU, delivery and inactive cases',()=>{
- const {ctx}=fixture();assert.match(ctx.stage({sales_status:'documents',lou_received:true}),/LOU/);assert.match(ctx.stage({sales_status:'delivered',lou_received:true}),/DELIVER/);assert.equal(ctx.stage({sales_status:'cancelled',lou_received:true}),'Tidak diteruskan');
+ const {ctx}=fixture();assert.match(ctx.stage({sales_status:'documents',lou_received:true}),/LOU/);assert.match(ctx.stage({sales_status:'delivered',lou_received:true}),/Dah Delivery/);assert.equal(ctx.stage({sales_status:'cancelled',lou_received:true}),'Tidak diteruskan');
+ assert.equal(ctx.stage({sales_status:'approved',lou_received:true}),'Loan Lulus – Tunggu Delivery');
+ assert.equal(ctx.stage({sales_status:'delivery',lou_received:true}),'Persiapan Delivery');
 });
 
 test('Reference list includes old and unknown classifications without per-document states',()=>{

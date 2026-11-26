@@ -62,3 +62,20 @@ button.insights-kpi{display:block;text-align:left;color:var(--text);font:inherit
  html[data-ios-theme] .faris-staff #customersList .customer-bank-summary{width:100%;text-align:center;padding:4px 1px;line-height:1.3}
  html[data-ios-theme] .faris-staff #customersList .customer-bank-summary.no-banks{display:none}
 }
+
+/* Clear sales outcomes and readable update times across desktop and phone. */
+.customer-list-row{grid-template-columns:minmax(140px,1.3fr) minmax(100px,1fr) minmax(140px,1fr) minmax(110px,1fr) minmax(170px,1.1fr) auto}
+#customersList .customer-row-updated,.customer-updated-summary{border-left:3px solid var(--blue);padding:8px 12px;background:var(--accent-soft);border-radius:8px}
+#customersList .customer-row-updated>span,.customer-updated-summary>span{display:block;font-size:.875rem;font-weight:650;color:var(--muted);line-height:1.5}
+#customersList .customer-row-updated>time,.customer-updated-summary>time{display:block;font-size:1.0625rem;font-weight:750;color:var(--text);line-height:1.6}
+#customersList .customer-row-updated>small,.customer-updated-summary>small{display:block;font-size:.875rem;color:var(--muted)}
+.customer-updated-summary{margin:18px 0 10px}
+#customerInsightsContext{font-size:.9375rem;line-height:1.7}
+@media(min-width:761px) and (max-width:1080px){.customer-list-row{grid-template-columns:1.4fr 1fr 1fr}.customer-row-updated{grid-column:2}}
+@media(max-width:760px){
+ .customer-list-row{grid-template-columns:1fr 1fr}
+ #customersList .customer-row-updated{grid-column:1/-1;grid-row:auto;margin-top:8px}
+ html[data-ios-theme] .faris-staff #customersList .customer-row-updated{display:block;grid-column:1/-1;grid-row:3;margin:8px 0 2px}
+ html[data-ios-theme] .faris-staff #customersList .customer-row-action.primary{grid-row:4}
+ #customersList .customer-row-status .customer-status{white-space:normal;overflow-wrap:normal;font-size:.875rem;line-height:1.4}
+}
