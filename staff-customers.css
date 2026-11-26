@@ -79,3 +79,10 @@ button.insights-kpi{display:block;text-align:left;color:var(--text);font:inherit
  html[data-ios-theme] .faris-staff #customersList .customer-row-action.primary{grid-row:4}
  #customersList .customer-row-status .customer-status{white-space:normal;overflow-wrap:normal;font-size:.875rem;line-height:1.4}
 }
+
+/* Bank name and status are enough for a quick application record. */
+#customerBankDialog .customer-bank-help{font-size:.875rem;line-height:1.6;margin:10px 0 16px}
+#customerBankDialog .customer-bank-optional{margin:0 0 18px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+#customerBankDialog .customer-bank-optional>summary{cursor:pointer;padding:14px 0;font-size:.9375rem;font-weight:650;min-height:44px}
+#customerBankDialog .customer-bank-optional>summary span{font-weight:400;color:var(--muted)}
+#customerBankDialog .customer-bank-optional .customer-form-grid{margin:0 0 16px}

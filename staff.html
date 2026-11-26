@@ -12,7 +12,7 @@
  <meta name="description" content="Portal staf Proton: masuk menggunakan ID dan passcode, ambil nombor pelanggan, buka WhatsApp dalam telefon.">
  <link rel="stylesheet" href="/staff.css?v=customers-v39-20261028">
  <link rel="stylesheet" href="/staff-gallery.css?v=gallery-catalogue-20261111">
- <link rel="stylesheet" href="/staff-customers.css?v=tracking-delivery-20261126-v2">
+ <link rel="stylesheet" href="/staff-customers.css?v=tracking-bank-simple-20261126-v3">
  <style>
   .credential{border:1px solid #405e98;background:linear-gradient(135deg,#101d38,#1d3156);border-radius:14px;padding:16px;margin-top:10px}
   .credential strong{display:block;color:#96baff;font-size:10px;letter-spacing:1.5px}
@@ -673,8 +673,13 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
  <div class="customer-dialog-head"><h3 id="customerBankTitle">Tambah bank</h3><button type="button" class="secondary" id="customerBankClose">Tutup</button></div>
  <form id="customerBankForm">
   <div class="customer-form-grid">
-   <label>Bank<input id="cbName" required maxlength="100" list="customerBankNames"></label>
-   <label>Status<select id="cbStatus"></select></label>
+   <label>Nama bank<input id="cbName" required maxlength="100" list="customerBankNames" placeholder="Contoh: Maybank"></label>
+   <label>Status<select id="cbStatus" required></select></label>
+  </div>
+  <p class="muted small customer-bank-help">Nama bank dan status sahaja wajib. Maklumat lain boleh diisi kemudian.</p>
+  <details id="customerBankOptional" class="customer-bank-optional">
+   <summary>Maklumat tambahan <span>(pilihan)</span></summary>
+   <div class="customer-form-grid">
    <label>Nama pegawai<input id="cbOfficer" maxlength="120"></label>
    <label>Telefon pegawai<input id="cbPhone" type="tel" maxlength="40"></label>
    <label>Tarikh submit<input id="cbSubmitted" type="date"></label>
@@ -688,7 +693,8 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
    <label class="customer-wide">Tindakan seterusnya<input id="cbNext" maxlength="500"></label>
    <label class="customer-wide">Catatan<textarea id="cbNotes" maxlength="2000" rows="2"></textarea></label>
    <label class="checkline customer-wide"><input id="cbSelected" type="checkbox"> Bank pilihan pelanggan</label>
-  </div>
+   </div>
+  </details>
   <datalist id="customerBankNames"><option>Maybank</option><option>Public Bank</option><option>CIMB</option><option>Hong Leong Bank</option><option>RHB Bank</option><option>AmBank</option><option>Affin Bank</option><option>Bank Islam</option><option>Bank Muamalat</option><option>BSN</option><option>Alliance Bank</option><option>Bank Rakyat</option></datalist>
   <p class="muted small" id="customerBankFeedback" role="status"></p>
   <button type="submit" class="primary">Simpan Bank</button>
@@ -708,7 +714,7 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
 <script src="/inbox-client.js?v=gallery-v38-20261028"></script>
 <script src="/staff-gallery.js?v=gallery-model-colours-20261111"></script>
 <script src="/customer-insights-core.js?v=whatsapp-week-v60-20261109"></script>
-<script src="/staff-customers.js?v=tracking-delivery-20261126-v2"></script>
+<script src="/staff-customers.js?v=tracking-bank-simple-20261126-v3"></script>
 <script src="/staff-inbox.js?v=customers-v39-20261028"></script>
 <script src="/staff-navigation.js?v=customers-v39-20261028"></script>
 <script src="/staff-passcode.js?v=application-v42-20261028-customers-v39-20261028"></script>

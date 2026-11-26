@@ -29,13 +29,11 @@ export function validate(action,d={}){
   const bank={id:d.id||null,bank_name:text(d.bank_name,100,'Nama bank',true),status:d.status,amount:money(d.amount),notes:text(d.notes,2000,'Nota bank'),submitted_at:date(d.submitted_at)};
   if(Object.hasOwn(d,'officer_name')){
    const submittedTime=time(d.submitted_time),due=malaysiaStamp(d.follow_up_due_at);
-   if(submittedTime&&!bank.submitted_at)throw Error('Isi tarikh submit bersama masa.');
-   if(['submitted','review','documents','approved','rejected'].includes(bank.status)&&!bank.submitted_at&&!d.id)throw Error('Isi tarikh submit.');
    const rate=money(d.approved_rate);
    if(rate!==null&&rate>100)throw Error('Kadar mesti antara 0% dan 100%.');
    Object.assign(bank,{submitted_time:submittedTime,officer_name:text(d.officer_name,120,'Nama pegawai'),officer_phone:text(d.officer_phone,40,'Telefon pegawai'),
     term_months:months(d.term_months),approved_amount:money(d.approved_amount),approved_rate:rate,approved_term_months:months(d.approved_term_months),
-    selected:d.selected===true,follow_up_due_at:due,next_action:text(d.next_action,500,'Tindakan bank',!!due)});
+    selected:d.selected===true,follow_up_due_at:due,next_action:text(d.next_action,500,'Tindakan bank')});
    if(d.id)bank.expected_updated_at=stamp(d.expected_updated_at);
   }
   return bank;

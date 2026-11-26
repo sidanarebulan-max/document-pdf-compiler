@@ -341,6 +341,7 @@ function showBankEditor(bank=null,reschedule=false){
  $('cbSelected').checked=bank?.selected===true;
  $('customerBankTitle').textContent=bank?'Edit '+bank.bank_name:'Tambah bank';
  $('customerBankFeedback').textContent='';
+ $('customerBankOptional').open=reschedule||!!bank&&(bank.selected===true||Object.values(bankFields).some(key=>!['bank_name','status'].includes(key)&&bank[key]!==null&&bank[key]!==undefined&&bank[key]!==''));
  $('customerBankDialog').showModal();
  if(reschedule)$('cbDue').focus();
 }
