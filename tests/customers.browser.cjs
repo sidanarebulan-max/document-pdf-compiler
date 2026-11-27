@@ -2,12 +2,14 @@ const uiAsset=require('./ui-assets.cjs');
 const {chromium}=require('playwright');
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=','base64');
-const leadId='00000000-0000-4000-8000-000000000001',fileId='10000000-0000-4000-8000-000000000001',unlinkedId='10000000-0000-4000-8000-000000000002',uploadId='10000000-0000-4000-8000-000000000003';
+const leadId='00000000-0000-4000-8000-000000000001',manualId='00000000-0000-4000-8000-000000000002',fileId='10000000-0000-4000-8000-000000000001',unlinkedId='10000000-0000-4000-8000-000000000002',uploadId='10000000-0000-4000-8000-000000000003';
 (async()=>{const browser=await chromium.launch({headless:true,executablePath:process.env.FARIS_TEST_CHROMIUM_PATH||undefined,args:['--no-sandbox','--disable-dev-shm-usage','--use-gl=angle','--use-angle=swiftshader','--disable-gpu-sandbox']});
 try{for(const role of ['staff','admin'])for(const mobile of [true,false]){
  const user={id:'00000000-0000-4000-8000-000000000009',role,display_name:'Faris Test',staff_code:role==='admin'?'FARIS01':'SAZ0001'};
  let revoked=false,tick=0,events=[],allFiles=[{id:fileId,customer_id:leadId,original_name:'IC-customer.png',mime_type:'image/png',byte_size:png.length,party:'HIRER',category:'IC',created_at:'2026-10-28T01:00:00Z'},{id:unlinkedId,customer_id:null,original_name:'Penyata-bank.png',mime_type:'image/png',byte_size:png.length,party:'HIRER',category:'BANK',created_at:'2026-10-28T01:00:00Z'}];
  const customer={lead:{id:leadId,customer_name:'Customer Ujian',phone_e164:'60100000111',model:'e.MAS 5',source:'Browser Test',stage:'claimed',notes:'Catatan WhatsApp asal',consent_confirmed:true,assigned_id:user.id,follow_up_at:null,created_at:'2026-10-28T01:00:00Z',updated_at:'2026-10-28T01:00:00Z'},profile:{lead_id:leadId,sales_status:'new',variant:'Premium',colour:'White',lou_received:false,trade_in:false,next_action:'',closure_reason:'',guarantor_required:false,booking_status:'none',booking_amount:null,selling_price:null,deposit:null,loan_amount:null,revision:0},staff:user,files:[],banks:[],checklist:[],notes:[]};
+ const {validate}=await import('../supabase/functions/lead-hub-customers/validation.mjs');
+ let manualCustomer,createCalls=0;
  const ctx=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1400,height:1000},isMobile:mobile,hasTouch:mobile,acceptDownloads:true});await ctx.addInitScript(()=>localStorage.setItem('faris_lead_hub_session_v2','customer-fixture-session'));
  const page=await ctx.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.route('**/*',async route=>{
@@ -29,7 +31,19 @@ try{for(const role of ['staff','admin'])for(const mobile of [true,false]){
      result={ok:true,customers:visible?[row]:[],total:n,next_offset:null,options:{models:[{model:row.model}],variants:[{value:norm(row.variant),label:row.variant}],colours:[{value:norm(row.colour),label:row.colour}],staff:[user]},insights:{total:n,stats:{total:base?1:0,lou:base&&outcome==='lou'?1:0,delivered:base&&outcome==='delivered'?1:0,pending:base&&outcome==='pending'?1:0,trade_in:base&&row.trade_in?1:0,on_hold:0,cancelled:0},vehicles:visible?[{model:row.model,variant:norm(row.variant),label:row.model+' · '+row.variant,value:1}]:[],colours:visible?[{key:norm(row.colour),label:row.colour,value:1}]:[],statuses:visible?[{label:row.sales_status,value:1}]:[],trend:visible?[{bucket:'2026-10-28',total:1,lou:outcome==='lou'?1:0,delivered:outcome==='delivered'?1:0,pending:outcome==='pending'?1:0,trade_in:row.trade_in?1:0}]:[],generated_at:'2026-10-30T01:00:00Z'}};
     }
     else if(b.action==='insights')result={ok:true,insights:{total:1,confirm:0,pending:1,on_hold:0,cancelled:0,coloured:0,missing_colour:1,colours:[{label:'Belum diisi',value:1}],models:[{label:'e.MAS 5',value:1}],statuses:[{label:'new',value:1}],trend:[{bucket:'2026-10-28',total:1,confirm:0,pending:1}],generated_at:'2026-10-30T01:00:00Z'}};
-    else if(b.action==='get'||b.action==='shared_profile')result={ok:true,customer,account_id:user.id};
+    else if(b.action==='create_customer'){
+     createCalls++;
+     assert.equal(b.account_id,user.id);
+     const respond=(status,data)=>route.fulfill({status,headers,contentType:'application/json',json:data});
+     let values;
+     try{values=validate(b.action,b.data)}catch(error){return respond(400,{ok:false,error:error.message})}
+     if(values.phone_e164==='60120000999')return respond(409,{ok:false,error:'Nombor ini sudah berdaftar. Hubungi admin untuk semak agihan pelanggan.'});
+     if(manualCustomer)return respond(200,{ok:true,created:false,lead_id:manualId});
+     manualCustomer={...structuredClone(customer),lead:{...customer.lead,...values,id:manualId,stage:'new',consent_confirmed:false,notes:'',follow_up_at:null},
+      profile:{...customer.profile,lead_id:manualId,sales_status:'new',variant:'',colour:'',lou_received:false,trade_in:false,next_action:'',revision:0},files:[],banks:[],notes:[]};
+     return respond(201,{ok:true,created:true,lead_id:manualId});
+    }
+    else if(b.action==='get'||b.action==='shared_profile')result={ok:true,customer:b.lead_id===manualId?manualCustomer:customer,account_id:user.id};
     else if(b.action==='timeline')result={ok:true,events,next_offset:null};
     else if(b.action==='unlinked_files')result={ok:true,files:allFiles.filter(f=>!f.customer_id),total:allFiles.filter(f=>!f.customer_id).length,next_offset:null};
     else{
@@ -113,6 +127,40 @@ try{for(const role of ['staff','admin'])for(const mobile of [true,false]){
  // Start a link from the existing Inbox rather than creating a duplicate upload.
  const nav=page.locator(mobile?'#mobileDock':'#workspaceNav');await nav.locator('[data-'+(mobile?'mobile':'workspace')+'-nav="docs"]').click();await page.locator('[data-inbox-id="'+uploadId+'"]').check();await page.locator('#inboxLinkProfile').click();await page.locator('[data-customer-link-target]').waitFor();await page.locator('[data-customer-link-target]').click();await page.locator('[data-customer-preview="'+uploadId+'"]').waitFor();assert.equal(await page.locator('.customer-file').count(),3);
  await page.locator('[data-customer-file="'+fileId+'"]').check();await page.locator('[data-customer-file="'+unlinkedId+'"]').check();await page.locator('#customerOpenCompiler').click();await page.waitForURL(url=>url.searchParams.get('origin')==='staff'&&url.searchParams.get('tool')==='COMPILER'&&url.searchParams.get('customer')===leadId&&url.searchParams.get('inbox')==='1');const handoff=await page.evaluate(()=>JSON.parse(sessionStorage.getItem('faris_inbox_compiler_v1')));assert.deepEqual(handoff.ids,[fileId,unlinkedId]);assert.equal(handoff.account_id,user.id);
- await page.goto('https://customers.test/staff.html?customer='+leadId+'&customer_tab=documents#customers');await page.locator('#customerFiles .customer-file').first().waitFor();assert.equal(await page.locator('[data-customer-panel="documents"]').isVisible(),true);await page.locator('[data-customer-tab="summary"]').click();await page.locator('#cpName').waitFor();assert.equal(new URL(page.url()).searchParams.has('customer'),false);revoked=true;await page.locator('#customersRefresh').click();await page.waitForFunction(()=>document.getElementById('customerDetail').classList.contains('hide')&&document.getElementById('cpName').value==='');revoked=false;await page.locator('#customersRefresh').click();await page.locator('#customersList .customer-name-open').click();await page.locator('#cpName').waitFor();await page.locator('#signoutBtn').click();await page.waitForFunction(()=>document.getElementById('customerFiles').children.length===0);assert.equal(await page.locator('#cpName').inputValue(),'');assert.equal(await page.locator('#customerPreview').isVisible(),false);assert.deepEqual(errors,[]);
+ await page.goto('https://customers.test/staff.html?customer='+leadId+'&customer_tab=documents#customers');await page.locator('#customerFiles .customer-file').first().waitFor();assert.equal(await page.locator('[data-customer-panel="documents"]').isVisible(),true);await page.locator('[data-customer-tab="summary"]').click();await page.locator('#cpName').waitFor();assert.equal(new URL(page.url()).searchParams.has('customer'),false);revoked=true;await page.locator('#customersRefresh').click();await page.waitForFunction(()=>document.getElementById('customerDetail').classList.contains('hide')&&document.getElementById('cpName').value==='');revoked=false;await page.locator('#customersRefresh').click();await page.locator('#customersList .customer-name-open').click();await page.locator('#cpName').waitFor();
+
+ const form=page.locator('#customerCreateForm'),save=page.locator('#customerCreateSave');
+ await page.locator('#customerCreateOpen').click();
+ await save.click();
+ assert.equal(createCalls,0,'empty form does not send a request');
+ await form.locator('[name="customer_name"]').fill('Pelanggan Walk-in Ujian');
+ await form.locator('[name="phone"]').fill('0300000123');
+ await form.locator('[name="source"]').selectOption('Walk-in');
+ await save.click();
+ await page.getByText('Masukkan nombor telefon bimbit Malaysia yang sah.',{exact:true}).waitFor();
+ await form.locator('[name="phone"]').fill('012-000 0999');
+ await save.click();
+ await page.getByText('Nombor ini sudah berdaftar. Hubungi admin untuk semak agihan pelanggan.',{exact:true}).waitFor();
+ assert.equal(await form.locator('[name="customer_name"]').inputValue(),'Pelanggan Walk-in Ujian');
+ await form.locator('[name="phone"]').fill('+60 (12) 000-0123');
+ if(!mobile)await page.locator('#customerCreateModel').selectOption('Proton Saga');
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+ await save.click();
+ await page.getByText('Pelanggan baharu berjaya ditambah.',{exact:true}).waitFor();
+ assert.equal(await page.locator('#cpName').inputValue(),'Pelanggan Walk-in Ujian');
+ assert.equal(await page.locator('#cpPhone').inputValue(),'60120000123');
+ assert.equal(await page.locator('#cpModel').inputValue(),mobile?'':'Proton Saga');
+ assert.match(await page.locator('#customerSourceInfo').innerText(),/Walk-in/);
+ assert.equal(await page.locator('#customerWhatsapp').getAttribute('href'),null);
+ await page.locator('#customerCreateOpen').click();
+ await form.locator('[name="customer_name"]').fill('Nama daripada cubaan pendua');
+ await form.locator('[name="phone"]').fill('0120000123');
+ await form.locator('[name="source"]').selectOption('Rujukan');
+ await save.click();
+ await page.getByText('Nombor ini sudah berdaftar. Profil sedia ada dibuka.',{exact:true}).waitFor();
+ assert.equal(await page.locator('#cpName').inputValue(),'Pelanggan Walk-in Ujian');
+
+ await page.locator('#signoutBtn').click();await page.waitForFunction(()=>document.getElementById('customerFiles').children.length===0);assert.equal(await page.locator('#cpName').inputValue(),'');assert.equal(await page.locator('#customerPreview').isVisible(),false);assert.deepEqual(errors,[]);
+ console.log('PASS '+role+'/'+(mobile?'phone':'desktop')+': manual customer creation, phone validation and duplicate handling');
  console.log('PASS '+role+'/'+(mobile?'phone light':'desktop dark')+': profile/status/follow-up, notes in summary, general references, upload/link/unlink/preview/download, Inbox handoff, Compiler IDs, timeline, access-revocation cleanup, logout cleanup and no overflow/errors');await ctx.close();
 }}finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});

@@ -12,8 +12,17 @@ const malaysiaStamp=v=>{
 const stamp=v=>{if(typeof v!=='string'||!Number.isFinite(Date.parse(v)))throw Error('Refresh profil sebelum menyimpan.');return v};
 const months=v=>{if(v===null||v===undefined||v==='')return null;const n=Number(v);if(!Number.isInteger(n)||n<1||n>120)throw Error('Tempoh mestilah 1 hingga 120 bulan.');return n};
 const money=v=>{if(v===null||v===undefined||v==='')return null;const n=Number(v);if(!Number.isFinite(n)||n<0||n>100000000||Math.abs(n*100-Math.round(n*100))>.0001)throw Error('Jumlah wang mesti positif dengan maksimum dua titik perpuluhan.');return n};
+const manualSources=new Set(['Walk-in','Rujukan','Panggilan telefon','Media sosial','Lain-lain']);
 export function validate(action,d={}){
  if(!d||typeof d!=='object'||Array.isArray(d))throw Error('Maklumat tidak sah.');
+ if(action==='create_customer'){
+  const phone=typeof d.phone==='string'&&/^\+?[0-9 ().-]+$/.test(d.phone.trim())?normalPhone(d.phone):null;
+  if(!phone)throw Error('Masukkan nombor telefon bimbit Malaysia yang sah.');
+  if(typeof d.customer_name!=='string')throw Error('Nama pelanggan tidak sah.');
+  if(!manualSources.has(d.source))throw Error('Pilih sumber pelanggan.');
+  if(d.model!=null&&typeof d.model!=='string')throw Error('Model kereta tidak sah.');
+  return {customer_name:text(d.customer_name,120,'Nama pelanggan',true),phone_e164:phone,source:d.source,model:text(d.model,100,'Model kereta')};
+ }
  if(action==='save_profile'){
   if(!Object.hasOwn(STATUSES,d.sales_status)||!['none','pending','paid','refunded'].includes(d.booking_status))throw Error('Status tidak sah.');
   if(!Number.isInteger(d.expected_revision)||d.expected_revision<0||!Number.isFinite(Date.parse(d.expected_lead_updated_at)))throw Error('Refresh profil sebelum menyimpan.');

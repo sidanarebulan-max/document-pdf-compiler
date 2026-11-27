@@ -1,5 +1,19 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const modulePromise=import('../supabase/functions/lead-hub-customers/validation.mjs');
+test('Manual customer creation normalizes phone numbers and accepts an optional model',async()=>{
+ const {validate}=await modulePromise;
+ const data={customer_name:' Walk-in Ujian ',source:'Walk-in'};
+ for(const phone of ['012-000 0123','+60 (12) 000-0123','60120000123']){
+  assert.deepEqual(validate('create_customer',{...data,phone}),{
+   customer_name:'Walk-in Ujian',phone_e164:'60120000123',source:'Walk-in',model:''
+  });
+ }
+ const valid={...data,phone:'01100000123',model:'Proton Saga'};
+ assert.equal(validate('create_customer',valid).model,'Proton Saga');
+ for(const patch of [{phone:'No 0120000123'},{phone:'+60120000123 ext 3'},{phone:'0300000123'},{customer_name:'   '},{customer_name:{}},{source:''},{source:'WhatsApp'},{model:{}}]){
+  assert.throws(()=>validate('create_customer',{...valid,...patch}));
+ }
+});
 const profile=()=>({customer_name:' Test ',model:'e.MAS 5',sales_status:'documents',booking_status:'none',expected_revision:0,expected_lead_updated_at:'2026-10-28T01:00:00Z',follow_up_at:'2026-11-01'});
 test('sales and bank validation rejects invalid money, status, dates and blank stop reasons',async()=>{const {validate}=await modulePromise;assert.equal(validate('save_profile',profile()).customer_name,'Test');for(const patch of [{sales_status:'pm_sent'},{sales_status:'on_hold'},{deposit:-1},{loan_amount:'NaN'},{booking_amount:'1.005'},{follow_up_at:'2026-02-30'},{expected_revision:null}])assert.throws(()=>validate('save_profile',{...profile(),...patch}));assert.throws(()=>validate('save_bank',{bank_name:'Bank',status:'unknown'}))});
 test('document links validate identifiers, batches and matching party/category',async()=>{const {validate}=await modulePromise;const id='00000000-0000-4000-8000-000000000001';assert.deepEqual(validate('link_files',{ids:[id,id],party:'HIRER',category:'BANK'}),{ids:[id],party:'HIRER',category:'BANK'});assert.throws(()=>validate('link_files',{ids:[id],party:'REBATE',category:'PAYSLIP'}));assert.throws(()=>validate('link_files',{ids:['bad'],party:'HIRER',category:'IC'}));assert.throws(()=>validate('checklist',{party:'HIRER',category:'AUTO',status:'received'}));assert.throws(()=>validate('add_note',{note:' '}))});

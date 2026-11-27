@@ -418,7 +418,7 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
      </div>
    </div>
  </section></section><section id="workspace-customers" class="workspace-page hide" hidden data-workspace-page="customers" aria-labelledby="customersTitle">
- <div class="workspace-heading"><div><p class="eyebrow">URUSAN JUALAN & DOKUMEN</p><h2 id="customersTitle">Pelanggan</h2><p class="muted">Satu profil untuk status, dokumen dan sejarah setiap customer.</p></div><div class="workspace-actions"><button type="button" class="secondary" id="customersRefresh">↻ Refresh</button></div></div>
+ <div class="workspace-heading"><div><p class="eyebrow">URUSAN JUALAN & DOKUMEN</p><h2 id="customersTitle">Pelanggan</h2><p class="muted">Satu profil untuk status, dokumen dan sejarah setiap customer.</p></div><div class="workspace-actions"><button type="button" class="primary" id="customerCreateOpen" aria-haspopup="dialog" aria-controls="customerCreateDialog">+ Tambah Pelanggan</button><button type="button" class="secondary" id="customersRefresh">↻ Refresh</button></div></div>
  <div id="customersNotice" class="notice hide" role="status" aria-live="polite"></div>
  <div id="customersLinkBanner" class="notice hide"><span id="customersLinkMessage"></span> <button type="button" class="secondary mini" id="customersLinkCancel">Batal pautan fail</button></div>
  <div id="customersDirectory">
@@ -460,7 +460,7 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
  <select id="customersBankStatus" aria-label="Tapis status bank"><option value="">Semua status bank</option><option value="not_submitted">Belum submit bank</option></select>
  <label>Bank submit dari<input id="customersBankFrom" type="date"></label>
  <label>Bank submit hingga<input id="customersBankTo" type="date"></label>
- <button type="submit" class="primary">Cari</button></form></details><p id="customersTotal" class="muted small" aria-live="polite"></p><div id="customersList" class="customer-list" aria-busy="false"></div><button type="button" class="secondary hide" id="customersMore">Muat lagi customer</button><p class="muted small">Profil menggunakan lead sedia ada. Untuk customer baharu, tambah nombor melalui WhatsApp.</p></div>
+ <button type="submit" class="primary">Cari</button></form></details><p id="customersTotal" class="muted small" aria-live="polite"></p><div id="customersList" class="customer-list" aria-busy="false"></div><button type="button" class="secondary hide" id="customersMore">Muat lagi customer</button></div>
  <div id="customerDetail" class="hide"><button type="button" class="secondary" id="customerBack">← Senarai Pelanggan</button><div class="customer-hero"><div><button type="button" id="customerStatusBadge" class="customer-status-button" aria-haspopup="dialog" aria-controls="customerCaseDialog" title="Tekan untuk kemas kini status kes"></button><h2 id="customerName"></h2><p id="customerIdentity" class="muted"></p><p id="customerOwner" class="muted"></p></div><a id="customerWhatsapp" class="wa" target="_blank" rel="noopener noreferrer">Buka WhatsApp</a></div>
  <div class="customer-workflow-actions" aria-label="Alatan pelanggan">
  <button type="button" class="secondary" data-customer-tool="VSO">Buka VSO</button>
@@ -697,6 +697,17 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
    </section></div></section></section><div id="appNotice" class="notice hide" role="status"></div></section>
 <footer>FARIS R+PROTON · Staff Lead Operations · Sambungan selamat melalui HTTPS</footer>
 </div>
+<dialog id="customerCreateDialog" class="customer-dialog" aria-labelledby="customerCreateTitle">
+ <div class="customer-dialog-head"><h3 id="customerCreateTitle">Tambah Pelanggan</h3><button type="button" class="secondary" id="customerCreateClose">Tutup</button></div>
+ <form id="customerCreateForm">
+  <label>Nama pelanggan<input name="customer_name" maxlength="120" autocomplete="off" required autofocus></label>
+  <label>Nombor telefon bimbit<input name="phone" type="tel" maxlength="30" autocomplete="off" placeholder="Contoh 0123456789" required></label>
+  <label>Sumber pelanggan<select name="source" required><option value="">Pilih sumber</option><option>Walk-in</option><option>Rujukan</option><option>Panggilan telefon</option><option>Media sosial</option><option>Lain-lain</option></select></label>
+  <label>Model kereta (jika sudah tahu)<select name="model" id="customerCreateModel"><option value="">Pilih model</option></select></label>
+  <p class="muted small" id="customerCreateFeedback" role="status" aria-live="polite"></p>
+  <button type="submit" class="primary" id="customerCreateSave">Simpan Pelanggan</button>
+ </form>
+</dialog>
 <dialog id="customerBankDialog" class="customer-dialog" aria-labelledby="customerBankTitle">
  <div class="customer-dialog-head"><h3 id="customerBankTitle">Tambah bank</h3><button type="button" class="secondary" id="customerBankClose">Tutup</button></div>
  <form id="customerBankForm">
@@ -747,7 +758,7 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
 <script src="/vso-variants.js?v=profile-sync-20261127"></script>
 <script src="/customer-workflow.js?v=profile-sync-retry-20261127"></script>
 <script src="/customer-catalogue.js?v=20261126"></script>
-<script src="/staff-customers.js?v=profile-sync-20261127"></script>
+<script src="/staff-customers.js?v=manual-customers-20261127"></script>
 <script src="/staff-inbox.js?v=customer-workflow-v1"></script>
 <script src="/staff-navigation.js?v=customers-v39-20261028"></script>
 <script src="/staff-passcode.js?v=customer-workflow-v1"></script>

@@ -153,6 +153,7 @@ function insightPreset(){const range=insightCore.preset($('customerInsightsPerio
 function renderDirectory(){
  $('customersList').innerHTML=rows.length?rows.map(r=>'<article class="customer-list-row"><div class="customer-row-identity"><button type="button" class="customer-name-open" data-customer-open="'+esc(r.id)+'">'+esc(r.customer_name)+'</button><small>'+esc(r.phone_e164)+'</small></div><div class="customer-row-vehicle"><small class="customer-label">Model / Varian / Warna</small><b>'+esc(r.model||'Belum dipilih')+'</b><small class="customer-vehicle-details">'+esc(r.variant||'Varian belum diisi')+' · '+esc(r.colour||'Warna belum diisi')+'</small>'+mobileFollow(r)+'</div><div class="customer-row-status"><small class="customer-label">Status</small><button type="button" class="customer-status" data-customer-status-open="'+esc(r.id)+'" aria-haspopup="dialog" aria-controls="customerCaseDialog">'+esc(caseStage(r))+' ↗</button><small>'+(r.trade_in?'Trade In':'')+'</small>'+bankSummary(r)+'</div><div class="customer-row-follow"><small class="customer-label">Follow-up</small><b>'+esc(r.follow_up_due_at?when(r.follow_up_due_at):day(r.follow_up_at))+'</b><small>'+esc(r.next_action||'Belum ditetapkan')+'</small></div><div class="customer-row-updated"><span>Terakhir Dikemas Kini</span><time datetime="'+esc(r.updated_at||'')+'">'+esc(when(r.updated_at))+'</time><small>Waktu Malaysia</small></div><button class="customer-row-action '+(linkHandoff?'primary':'secondary')+'" type="button" '+(linkHandoff?'data-customer-link-target':'data-customer-open')+'="'+esc(r.id)+'">'+(linkHandoff?'Pautkan '+linkHandoff.ids.length+' Fail':'Lihat Profil')+'</button></article>').join(''):'<div class="empty">Tiada customer dalam tapisan ini. Tukar tapisan atau tempoh.</div>';
  $('customersMore').classList.toggle('hide',next===null);
+ $('customerCreateOpen').classList.toggle('hide',!!linkHandoff);
  $('customersLinkBanner').classList.toggle('hide',!linkHandoff);if(linkHandoff)$('customersLinkMessage').textContent='Pilih customer untuk pautkan '+linkHandoff.ids.length+' fail · '+PARTIES[linkHandoff.party]+' / '+CATS[linkHandoff.category]+'.';
 }
 async function directory(append=false){
@@ -316,6 +317,46 @@ async function open(id){
  try{const d=await request('get',{lead_id:id});if(gen!==epoch||seq!==opening)return;customer=d.customer;$('customerDetail').classList.remove('hide');$('customersNotice').classList.add('hide');renderProfile();attachSharedProfile();showTab('summary');loadSalesDates();$('workspace-customers').scrollIntoView({block:'start'});return true}
  catch(e){if(gen===epoch&&seq===opening){notice(e.message,true);$('customersDirectory').classList.remove('hide')}}
 }
+function bindCustomerCreation(){
+ const dialog=$('customerCreateDialog'),form=$('customerCreateForm'),feedback=$('customerCreateFeedback');
+ $('customerCreateOpen').addEventListener('click',()=>{
+  if(!user||busy||linkHandoff||dialog.open)return;
+  if(dirty){notice('Simpan perubahan profil pelanggan dahulu.',true);return}
+  form.reset();
+  feedback.textContent='';
+  feedback.classList.remove('error');
+  fillCatalogueSelect('customerCreateModel','Pilih model',catalogue.vehicles.map(vehicle=>[vehicle.model,vehicle.name]));
+  dialog.showModal();
+ });
+ $('customerCreateClose').addEventListener('click',()=>{if(!busy)dialog.close()});
+ dialog.addEventListener('cancel',e=>{if(busy)e.preventDefault()});
+ form.addEventListener('submit',async e=>{
+  e.preventDefault();
+  if(!user||busy||!dialog.open)return;
+  const gen=epoch, data=Object.fromEntries(new FormData(form));
+  const controls=dialog.querySelectorAll('button,input,select');
+  busyState(true);
+  controls.forEach(control=>control.disabled=true);
+  feedback.textContent='Menyimpan pelanggan…';
+  feedback.classList.remove('error');
+  let result;
+  try{
+   await sharedFlow?.flush();
+   if(gen===epoch)result=await request('create_customer',{account_id:user.id,data});
+  }
+  catch(error){
+   if(gen===epoch){feedback.textContent=error.message;feedback.classList.add('error')}
+  }finally{
+   if(gen===epoch){
+    controls.forEach(control=>control.disabled=false);
+    busyState(false);
+   }
+  }
+  if(gen!==epoch||!result)return;
+  dialog.close();
+  if(await open(result.lead_id)&&gen===epoch)notice(result.created?'Pelanggan baharu berjaya ditambah.':'Nombor ini sudah berdaftar. Profil sedia ada dibuka.');
+ });
+}
 async function refreshProfile(force=false){
  if(!customer||!user)return;const gen=epoch,id=customer.lead.id,seq=++opening;
  let d;try{d=await request('get',{lead_id:id})}catch(e){if(gen===epoch&&customer?.lead.id===id&&e.status===403)forgetCustomer();throw e}if(gen!==epoch||seq!==opening||customer?.lead.id!==id)return;customer=d.customer;resetHistory();renderProfile(force||!dirty);if(sharedFlow&&!sharedFlow.dirty){sharedFlow.close();sharedFlow=null;attachSharedProfile()}if(tab==='history')loadHistory();loadSalesDates();
@@ -466,6 +507,10 @@ function forgetCustomer(){
  $('customerProfileForm').reset();$('customerCaseForm').reset();$('customerCaseFeedback').textContent='';$('customerNoteForm').reset();$('customerWhatsapp').removeAttribute('href');$('customerDetail').classList.add('hide');$('customersDirectory').classList.remove('hide');directory();
 }
 function reset(){
+ const createDialog=$('customerCreateDialog');
+ if(createDialog.open)createDialog.close();
+ $('customerCreateForm').reset();
+ createDialog.querySelectorAll('button,input,select').forEach(control=>control.disabled=false);
  sharedFlow?.close();sharedFlow=null;epoch++;whatsappTrendListing++;$('whatsappTrendResult').innerHTML='';$('whatsappTrendResult').setAttribute('aria-busy','false');$('whatsappTrendContext').textContent='';$('whatsappTrendForm').reset();whatsappTrendPreset();$('customerInsightsResult').innerHTML='';$('customerInsightsContext').textContent='';listing++;opening++;pickerSeq++;user=null;customer=null;rows=[];next=null;resetHistory();selected.clear();pickerRows=[];pickerSelected.clear();operations.clear();linkHandoff=null;busy=false;dirty=false;
  for(const id of ['customerPreview','customerInboxDialog','customerCaseDialog','customerBankDialog','customerActionDialog'])if($(id).open)$(id).close();clearPreview();$('customerDetail').classList.add('hide');$('customersDirectory').classList.remove('hide');$('customersList').innerHTML='';$('customerFiles').innerHTML='';$('customerHistory').innerHTML='';$('customerNotes').innerHTML='';$('customerInboxList').innerHTML='';$('customerName').textContent='';$('customerIdentity').textContent='';$('customerOwner').textContent='';$('customerNextAction').textContent='';$('customerSourceInfo').textContent='';$('customerLastUpdated').textContent='';$('customerLegacyNotes').textContent='';$('customerWhatsapp').removeAttribute('href');$('customerProfileForm').reset();$('customerCaseForm').reset();$('customerCaseFeedback').textContent='';$('customerNoteForm').reset();$('customersFilterForm').reset();$('customerDateBasis').value='received';$('customerReminders').open=false;$('customerReminderItems').replaceChildren();$('customerReminderCounts').textContent='';$('customerBankList').replaceChildren();$('customerBankForm').reset();$('customerActionForm').reset();$('customerActiveFilters').textContent='';$('customersTotal').textContent='';$('customerUpload').value='';$('customersNotice').classList.add('hide');$('customersLinkBanner').classList.add('hide');$('customersRefresh').disabled=false;busyState(false)}
 const malaysiaFormDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
@@ -643,7 +688,7 @@ window.FARIS_CUSTOMERS={onLogin(account){reset();user=account;$('customersStaff'
  linkFromInbox(data){if(!user||busy||!data.ids?.length)return;linkHandoff=data;sharedFlow?.flush().then(()=>{if(!customer){sharedFlow?.close();sharedFlow=null}}).catch(e=>notice(e.message,true));customer=null;dirty=false;$('customerDetail').classList.add('hide');$('customersDirectory').classList.remove('hide');window.FARIS_NAV.show('customers');renderDirectory()}};
 document.addEventListener('DOMContentLoaded',()=>{
  if(window.FARIS_CUSTOMER_WORKFLOW&&window.FARIS_APPLICATION_CORE)mountSharedProfile();
- insightPreset();whatsappTrendPreset();bindTracking();
+ insightPreset();whatsappTrendPreset();bindTracking();bindCustomerCreation();
  document.querySelectorAll('[data-customer-tool]').forEach(button=>button.addEventListener('click',()=>leaveForTool(button.dataset.customerTool)));
  for(const id of Object.keys(sharedProfileFields)){
   if(id==='cpModel')continue;

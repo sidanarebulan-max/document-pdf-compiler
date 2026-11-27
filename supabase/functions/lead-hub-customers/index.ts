@@ -24,6 +24,21 @@ async function handler(req:Request){
  if(req.method!=="POST")return json(req,{ok:false,error:"Gunakan POST."},405);
  const a=await account(req);if(!a)return json(req,{ok:false,error:"Sesi tamat. Log masuk semula."},401);
  let b;try{b=await body(req)}catch{return json(req,{ok:false,error:"Permintaan JSON tidak sah atau terlalu besar."},400)}
+ if(b.action==="create_customer"){
+  if(b.account_id!==a.id)return json(req,{ok:false,error:"Akaun telah berubah. Buka semula bahagian Pelanggan."},403);
+  let values;try{values=validate(b.action,b.data)}catch(e){return json(req,{ok:false,error:e.message},400)}
+  const {data:created,error}=await db.from("lead_hub_leads")
+   .upsert({...values,assigned_id:a.id,created_by:a.id,stage:"new",consent_confirmed:false},{onConflict:"phone_e164",ignoreDuplicates:true})
+   .select("id").maybeSingle();
+  if(error)throw error;
+  if(created)return json(req,{ok:true,lead_id:created.id,created:true},201);
+  let existingQuery=db.from("lead_hub_leads").select("id").eq("phone_e164",values.phone_e164);
+  if(a.role!=="admin")existingQuery=existingQuery.eq("assigned_id",a.id);
+  const {data:existing,error:lookupError}=await existingQuery.maybeSingle();
+  if(lookupError)throw lookupError;
+  if(existing)return json(req,{ok:true,lead_id:existing.id,created:false});
+  return json(req,{ok:false,error:"Nombor ini sudah berdaftar. Hubungi admin untuk semak agihan pelanggan."},409);
+ }
  if(b.action==="shared_profile"){
   const lead=isId(b.lead_id)?b.lead_id:null,phone=normalPhone(b.phone);
   if(!lead&&!phone)return json(req,{ok:false,error:"Nombor pelanggan tidak sah."},400);
