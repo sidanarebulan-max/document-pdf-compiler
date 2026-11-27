@@ -30,7 +30,10 @@ const {fixture}=require('./application-form.test.cjs');
      else if(b.action==='list'&&u.pathname.endsWith('/lead-hub-customers'))result={ok:true,customers:[target],total:1,next_offset:null};
      else if(b.action==='shared_profile'){
       if(!b.changes){lookups.push(b.lead_id||b.phone);if(profileDelay)await profileDelay;}
-      assert.ok(b.lead_id===target.id||b.phone===target.phone_e164);
+      if(b.lead_id!==target.id&&b.phone!==target.phone_e164){
+       assert.equal(b.changes,undefined,'an unlinked form must never write customer data');
+       return route.fulfill({status:403,headers,json:{ok:false,error:'Profil atau fail ini bukan di bawah akses anda. Refresh senarai.'}});
+      }
       for(const [key,value] of Object.entries(b.changes||{})){
        if(['customer_name','model'].includes(key))target[key]=value;
        else if(Object.hasOwn(customer.profile,key))customer.profile[key]=value;
@@ -50,6 +53,27 @@ const {fixture}=require('./application-form.test.cjs');
   await page.locator('#applicationWorkspace:visible').waitFor();assert.equal(await page.locator('[data-main]').count(),3);assert.equal(await page.locator('[data-main="APPLICATION"]').getAttribute('aria-selected'),'true');
   assert.equal(await page.locator('#vsoWorkspace').isVisible(),false);assert.equal(await page.locator('.app').isVisible(),false);
   await page.locator('#applicationGenerate').click();assert.match(await page.locator('#applicationStatus').innerText(),/nama pemohon/);
+  const standalone='Nama: Pemohon Ujian Tanpa Profil\nNo. IC: 000101010042\nNombor telefon: 0190000042';
+  await page.locator('#applicationPaste').fill(standalone);
+  const deniedLookup=page.waitForResponse(r=>r.status()===403&&r.request().postDataJSON().phone==='60190000042');
+  await page.locator('#applicationRead').click();
+  await deniedLookup;
+  await page.waitForFunction(()=>!window.FARIS_WORKSPACE_PROFILE.loading);
+  await page.locator('#applicationGenerate').click();
+  await page.locator('#applicationStatus').waitFor({state:'visible'});
+  await page.waitForFunction(()=>!document.querySelector('#applicationGenerate').disabled);
+  assert.equal(await page.locator('#applicationDownload').isEnabled(),true,await page.locator('#applicationStatus').textContent());
+  assert.equal(await page.locator('#applicationPreview canvas').count(),2);
+  assert.match(await page.locator('#applicationStatus').innerText(),/Pautkan profil pelanggan/);
+  const [standaloneDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#applicationDownload').click()]);
+  assert.equal(standaloneDownload.suggestedFilename(),'Pemohon Ujian Tanpa Profil - Application Form.pdf');
+  assert.equal((await PDFDocument.load(fs.readFileSync(await standaloneDownload.path()))).getPageCount(),2);
+  await page.locator('#applicationToCompiler').click();
+  await page.locator('[data-main="COMPILER"][aria-selected="true"]').waitFor();
+  assert.equal(await page.locator('#fileCount').innerText(),'1 fail');
+  assert.equal(uploads.length,0,'unlinked PDFs are never uploaded automatically');
+  await page.goto('https://application.test/?tool=APPLICATION&origin=staff');
+  await page.locator('#applicationWorkspace:visible').waitFor();
   const pasted=fixture.replace('MAKLUMAT PEMOHON','*MAKLUMAT DIRI*').replace('Nama : Nor Farah\nI/C No : 000101010001','*Nama penuh:* Nor Farah | No. I/C: 000101–01–0001').replace('No HP : 0100000001','Nombor WhatsApp = +60 (10) 000-0001');
   await page.locator('#applicationPaste').fill(pasted);assert.equal(await page.locator('#applicationGenerate').isDisabled(),true);await page.locator('#applicationRead').click();
   await page.locator('#application_applicant_phone[readonly]').waitFor();
@@ -112,6 +136,6 @@ const {fixture}=require('./application-form.test.cjs');
   assert.match(await page.locator('#applicationReadStatus').innerText(),/berbeza daripada profil/);
   assert.equal(await page.locator('#application_applicant_name').inputValue(),'Customer Baharu');
   assert.deepEqual(errors,[]);
-  console.log('PASS staff/'+(mobile?'phone':'desktop')+': Word and WhatsApp parse, phone-matched profile, wrong phone blocked, PDF preview/download/auto-save, Compiler import and VSO with linked identity, no overflow/errors');await ctx.close();
+  console.log('PASS staff/'+(mobile?'phone':'desktop')+': unlinked PDF after access-denied lookup, Word and WhatsApp parse, phone-matched profile, wrong phone blocked, PDF preview/download/auto-save, Compiler import and VSO with linked identity, no overflow/errors');await ctx.close();
  }}finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exitCode=1});

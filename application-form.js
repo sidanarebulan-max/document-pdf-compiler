@@ -46,18 +46,20 @@ async function preview(blob,generation){
 }
 async function generate(){
  if(busy||pasteDirty)return;
- if(window.FARIS_WORKSPACE_PROFILE?.loading){status('Tunggu profil pelanggan selesai dimuatkan sebelum jana PDF.',true);return}
+ const workspace=window.FARIS_WORKSPACE_PROFILE;
+ if(workspace?.loading){status('Tunggu profil pelanggan selesai dimuatkan sebelum jana PDF.',true);return}
  const data=values();if(!data.applicant_name){status('Isi nama pemohon dahulu.',true);$('application_applicant_name').focus();return}
  invalidate();const snapshot=stamp(),generation=epoch,name=filename();busy=true;controls();status('Menjana Application Form…');
  try{
-  await window.FARIS_WORKSPACE_PROFILE?.flush();
+  await workspace?.flush();
   const assets=await loadAssets(),built=await core.buildPdf({PDFLib:window.PDFLib,...assets,values:data});
   if(snapshot!==stamp()||generation!==epoch){status('Maklumat berubah semasa menjana. Jana PDF semula.',true);return}
   const blob=new Blob([built.bytes],{type:'application/pdf'});result={blob,name,stamp:snapshot,url:URL.createObjectURL(blob)};
   window.FARIS_GENERATED?.publish('application',{blob,name,party:'HIRER',category:'OTHER',valid:()=>!pasteDirty&&snapshot===stamp()});
   try{await preview(blob,generation)}catch(e){if(generation===epoch){$('applicationPreview').innerHTML='<div class="afPlaceholder">PDF siap. Pratonton tidak dapat dimuatkan.<br>Download PDF untuk semak.</div>'}}
-  if(generation===epoch)status('✓ Application Form siap · '+built.pages+' halaman · '+name);
- }catch(e){status(e.message||'Borang tidak dapat dijana.',true)}finally{busy=false;controls()}
+  if(generation===epoch)status('✓ Application Form siap · '+built.pages+' halaman · '+name+
+   (workspace&&!workspace.active?' · Pautkan profil pelanggan untuk simpan secara automatik.':''));
+ }catch(e){status(e.status===403?'Akses profil berubah. Semak agihan pelanggan dengan admin sebelum menyimpan semula.':e.message||'Borang tidak dapat dijana.',true)}finally{busy=false;controls()}
 }
 function showIssues(issues){
  const list=$('applicationIssueList'),panel=$('applicationIssues');

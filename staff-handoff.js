@@ -159,7 +159,16 @@ async function start(selector, initial = {}) {
  status('Profil dipautkan. Maklumat disimpan automatik.');
  queueMicrotask(()=>window.FARIS_WORKSPACE_PROFILE?.trackInputs(window.FARIS_COMPILER?.pendingFiles?.()||[]).catch(()=>{}));
 }
-$('staffWorkflowLookup').addEventListener('submit',async e => {
+function linkProfile(selector,draft) {
+ // The lookup must settle before document tools can use the optional profile.
+ ready=start(selector,draft).catch(error=>{
+  $('staffWorkflowLookup').hidden=false;
+  status(error.status===403
+   ? 'Profil belum dipautkan. Dokumen masih boleh dijana. Untuk simpan ke profil, daftar pelanggan baharu atau semak agihan pelanggan dengan admin.'
+   : 'Carian profil gagal. '+error.message,true);
+ });
+}
+$('staffWorkflowLookup').addEventListener('submit',e => {
  e.preventDefault();
  if(loadingProfile)return;
  const activeTool=document.querySelector('[data-main][aria-selected="true"]')?.dataset.main||tool;
@@ -176,8 +185,7 @@ $('staffWorkflowLookup').addEventListener('submit',async e => {
  const model=activeTool==='APPLICATION'?$('application_financing_model').value:'';
  if(activeTool==='VSO'&&$('vsoModel').dataset.workflowEdited)Object.assign(draft,modelPatch($('vsoModel').value,true));
  if(model) Object.assign(draft,modelPatch(model,false));
- try { ready=start({phone},draft); await ready; }
- catch(error){ status(error.status===403?'Profil nombor ini tiada dalam akses kau. Ambil nombor di Lead Hub dahulu.':error.message,true); }
+ linkProfile({phone},draft);
 });
 document.addEventListener('input',e=>{if(!syncing&&(e.target.id in ids||e.target.id==='vsoModel'))e.target.dataset.workflowEdited='1'});
 document.addEventListener('change',e=>{
@@ -266,12 +274,11 @@ try {
  sessionStorage.removeItem('faris_lead_handoff_v1');
  if(raw){const data=JSON.parse(raw);if(!initialId&&Date.now()-data.created_at<600000)initialId=data.lead_id;}
 }catch{}
-let ready=initialId?start({lead_id:initialId}).catch(error=>{
- status(error.message,true);
- $('staffWorkflowLookup').hidden=false;
-}):Promise.resolve();
-ready.catch(()=>{});
-if(initialId)$('staffWorkflowLookup').hidden=true;
+let ready=Promise.resolve();
+if(initialId){
+ $('staffWorkflowLookup').hidden=true;
+ linkProfile({lead_id:initialId});
+}
 if(tool==='APPLICATION')window.VSO_CENTER.openApplication();
 else if(tool==='COMPILER')window.VSO_CENTER.openCompiler();
 else window.VSO_CENTER.openVso();
