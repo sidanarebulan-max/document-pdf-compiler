@@ -39,9 +39,25 @@ try{for(const role of ['staff','admin'])for(const mobile of [true,false]){
      try{values=validate(b.action,b.data)}catch(error){return respond(400,{ok:false,error:error.message})}
      if(values.phone_e164==='60120000999')return respond(409,{ok:false,error:'Nombor ini sudah berdaftar. Hubungi admin untuk semak agihan pelanggan.'});
      if(manualCustomer)return respond(200,{ok:true,created:false,lead_id:manualId});
-     manualCustomer={...structuredClone(customer),lead:{...customer.lead,...values,id:manualId,stage:'new',consent_confirmed:false,notes:'',follow_up_at:null},
+     manualCustomer={...structuredClone(customer),additional_phones:[],lead:{...customer.lead,...values,id:manualId,stage:'new',consent_confirmed:false,notes:'',follow_up_at:null},
       profile:{...customer.profile,lead_id:manualId,sales_status:'new',variant:'',colour:'',lou_received:false,trade_in:false,next_action:'',revision:0},files:[],banks:[],notes:[]};
      return respond(201,{ok:true,created:true,lead_id:manualId});
+    }
+    else if(b.action==='save_phones'){
+     assert.equal(b.account_id,user.id);
+     assert.equal(b.lead_id,leadId);
+     const respond=(status,json)=>route.fulfill({status,headers,json});
+     let values;
+     try{values=validate(b.action,b.data)}catch(error){return respond(400,{ok:false,error:error.message})}
+     const { _primary:primary,_additional:additional,_previous_primary:previous,_previous_additional:previousAdditional,_consent:consent }=values;
+     assert.equal(previous,customer.lead.phone_e164);
+     assert.deepEqual(previousAdditional,customer.additional_phones||[]);
+     if([primary,...additional].includes('60120000999'))return respond(409,{ok:false,error:'Satu nombor sudah digunakan pada profil lain.'});
+     if(primary!==previous)customer.lead.consent_confirmed=consent;
+     customer.lead.phone_e164=primary;
+     customer.additional_phones=additional;
+     events.unshift({key:'phone-'+(++tick),event_type:'phone_numbers_updated',actor_name:user.display_name,actor_code:user.staff_code,created_at:'2026-10-28T01:14:00Z',details:{primary_before:previous,primary_after:primary,additional_after:additional}});
+     result={ok:true,customer};
     }
     else if(b.action==='get'||b.action==='shared_profile')result={ok:true,customer:b.lead_id===manualId?manualCustomer:customer,account_id:user.id};
     else if(b.action==='timeline')result={ok:true,events,next_offset:null};
@@ -83,6 +99,33 @@ try{for(const role of ['staff','admin'])for(const mobile of [true,false]){
  await page.locator('[data-insight-bucket=\"lou\"]').click();await page.waitForFunction(()=>document.getElementById('customersTotal').textContent==='0 daripada 0 pelanggan sepadan');assert.equal(await page.locator('#customersList .customer-name-open').count(),0);
  await page.locator('#customersClearFilters').click();await page.locator('#customersList .customer-name-open').waitFor();
  await page.locator('#customersList .customer-name-open').click();await page.locator('#cpName').waitFor();assert.equal(await page.locator('#cpName').inputValue(),'Customer Ujian');assert.match(await page.locator('#customerLegacyNotes').innerText(),/Catatan WhatsApp asal/);
+ const phoneDialog=page.locator('#customerPhoneDialog'),editPhone=page.locator('#customerPhoneOpen');
+ const primary=phoneDialog.locator('#customerPhonePrimary'),additional=phoneDialog.locator('#customerPhoneAdditional');
+ const savePhones=phoneDialog.getByRole('button',{name:'Simpan Nombor',exact:true});
+ await editPhone.click();
+ assert.equal(await primary.inputValue(),'+60100000111');
+ assert.equal(await phoneDialog.locator('#customerPhoneChangeOptions').isVisible(),false);
+ await primary.fill('011-000 01234');
+ await additional.fill('0120000999');
+ await savePhones.click();
+ await phoneDialog.getByText('Satu nombor sudah digunakan pada profil lain.',{exact:true}).waitFor();
+ assert.equal(await primary.inputValue(),'011-000 01234');
+ await additional.fill('016-000 0111\n+60 (17) 000 0111');
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+ await savePhones.click();await phoneDialog.waitFor({state:'hidden'});
+ assert.equal(await page.locator('#cpPhone').inputValue(),'601100001234');
+ assert.match(await page.locator('#customerAdditionalPhones').innerText(),/60100000111.*60160000111.*60170000111/);
+ assert.equal(await page.locator('#customerWhatsapp').getAttribute('href'),null);
+ await editPhone.click();
+ await primary.fill('0160000111');
+ await phoneDialog.locator('#customerPhoneKeepPrevious').uncheck();
+ await phoneDialog.locator('#customerPhoneConsent').check();
+ await additional.fill('0160000111\n0170000111');
+ await savePhones.click();await phoneDialog.waitFor({state:'hidden'});
+ assert.equal(await page.locator('#cpPhone').inputValue(),'60160000111');
+ assert.equal(await page.locator('#customerAdditionalPhones').innerText(),'Nombor tambahan · +60170000111');
+ assert.equal(await page.locator('#customerWhatsapp').getAttribute('href'),'https://wa.me/60160000111');
+ assert.equal(await page.locator('#customerDocCount').innerText(),'1');
  await page.locator('#cpStatus').selectOption('documents');await page.locator('#cpNext').fill('Minta penyata bank');await page.locator('#cpFollow').fill('2026-11-01');await page.locator('#cpVariant').selectOption('Premium');await page.locator('#cpGuarantor').check();await page.locator('#cpLou').check();await page.locator('#cpTradeIn').check();await page.locator('#customerProfileForm [data-profile-save]').click();await page.waitForFunction(()=>document.getElementById('customerStatusBadge').textContent==='Mengumpul dokumen');assert.match(await page.locator('#customerNextAction').innerText(),/Minta penyata bank/);
  await page.locator('#customerNote').fill('Customer mahu warna hijau <script>');await page.locator('#customerNoteSave').click();await page.getByText('Customer mahu warna hijau <script>',{exact:true}).waitFor();assert.equal(await page.locator('#customerNotes script').count(),0);
  assert.equal(await page.locator('#cpModel option').count(),9);

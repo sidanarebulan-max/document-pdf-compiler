@@ -6,7 +6,8 @@ const {fixture}=require('./application-form.test.cjs');
  const browser=await chromium.launch({headless:true,executablePath:process.env.FARIS_TEST_CHROMIUM_PATH||undefined,args:['--no-sandbox','--disable-dev-shm-usage','--use-gl=angle','--use-angle=swiftshader','--disable-gpu-sandbox']});
  try{for(const mobile of [true,false]){
   const user={id:'10000000-0000-4000-8000-000000000001',display_name:'Test Staff',staff_code:'TEST01',role:'staff'},target={id:'20000000-0000-4000-8000-000000000001',customer_name:'Pelanggan',phone_e164:'60100000001',model:''};
-  const customer={lead:target,profile:{shared_fields:{},variant:'',colour:'',selling_price:null,loan_amount:null,deposit:null}};
+  const additionalPhone='60160000042';
+  const customer={lead:target,additional_phones:[additionalPhone],profile:{shared_fields:{},variant:'',colour:'',selling_price:null,loan_amount:null,deposit:null}};
   const fileId='30000000-0000-4000-8000-000000000001';
   const ctx=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:1000},isMobile:mobile,hasTouch:mobile,acceptDownloads:true});await ctx.addInitScript(()=>localStorage.setItem('faris_lead_hub_session_v2','application-fixture'));
   const page=await ctx.newPage(),errors=[],uploads=[],links=[],network=[];page.on('pageerror',e=>errors.push(e.message));
@@ -30,7 +31,7 @@ const {fixture}=require('./application-form.test.cjs');
      else if(b.action==='list'&&u.pathname.endsWith('/lead-hub-customers'))result={ok:true,customers:[target],total:1,next_offset:null};
      else if(b.action==='shared_profile'){
       if(!b.changes){lookups.push(b.lead_id||b.phone);if(profileDelay)await profileDelay;}
-      if(b.lead_id!==target.id&&b.phone!==target.phone_e164){
+      if(b.lead_id!==target.id&&b.phone!==target.phone_e164&&b.phone!==additionalPhone){
        assert.equal(b.changes,undefined,'an unlinked form must never write customer data');
        return route.fulfill({status:403,headers,json:{ok:false,error:'Profil atau fail ini bukan di bawah akses anda. Refresh senarai.'}});
       }
@@ -75,10 +76,15 @@ const {fixture}=require('./application-form.test.cjs');
   await page.goto('https://application.test/?tool=APPLICATION&origin=staff');
   await page.locator('#applicationWorkspace:visible').waitFor();
   const pasted=fixture.replace('MAKLUMAT PEMOHON','*MAKLUMAT DIRI*').replace('Nama : Nor Farah\nI/C No : 000101010001','*Nama penuh:* Nor Farah | No. I/C: 000101–01–0001').replace('No HP : 0100000001','Nombor WhatsApp = +60 (10) 000-0001');
-  await page.locator('#applicationPaste').fill(pasted);assert.equal(await page.locator('#applicationGenerate').isDisabled(),true);await page.locator('#applicationRead').click();
+  await page.locator('#applicationPaste').fill(pasted.replace('+60 (10) 000-0001','+60 (16) 000-0042'));assert.equal(await page.locator('#applicationGenerate').isDisabled(),true);await page.locator('#applicationRead').click();
   await page.locator('#application_applicant_phone[readonly]').waitFor();
+  assert.equal(lookups.at(-1),additionalPhone);
   assert.equal(await page.locator('#application_applicant_name').inputValue(),'Nor Farah');assert.equal(await page.locator('#application_spouse_name').inputValue(),'Pasangan Contoh');assert.equal(await page.locator('#application_reference_name').inputValue(),'Rujukan Contoh');assert.equal(await page.locator('#application_applicant_phone').inputValue(),'0100000001');
   assert.equal(await page.locator('#application_applicant_nric').inputValue(),'000101010001');
+  await page.locator('#applicationPaste').fill('Nama: Nor Farah\nNo. telefon: 0160000042');
+  await page.locator('#applicationRead').click();
+  assert.match(await page.locator('#applicationReadStatus').innerText(),/medan dibaca/);
+  assert.equal(await page.locator('#application_applicant_phone').inputValue(),'0100000001');
   assert.equal(uploads.length,0,'PDF only uploads after generation');
   await page.locator('#applicationPaste').fill('Nama: Pelanggan Lain\nNo. IC: 000101010002\nNombor telefon: +60190000001');
   await page.locator('#applicationRead').click();

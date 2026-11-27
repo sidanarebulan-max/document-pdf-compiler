@@ -137,14 +137,11 @@ async function handler(req:Request){
   if(lookupError)throw lookupError;
   if(current?.length!==ids.length)return json(req,{ok:false,error:"Sebahagian fail tidak ditemui atau akses telah berubah."},403);
   if(metadata.customer_phone&&!target){
-   const {data:lead,error:leadError}=await db.from("lead_hub_leads").select("id").eq("phone_e164",metadata.customer_phone).maybeSingle();
+   const {data:leadId,error:leadError}=await db.rpc("lead_hub_customer_phone_link",{_actor:a.id,_phone:metadata.customer_phone,
+    _data:{ids,party:metadata.party,category:metadata.category},_operation:crypto.randomUUID()});
+   if(leadError?.code==="40001")return json(req,{ok:false,error:"Nombor pelanggan telah berubah. Semak sebelum pautkan fail."},409);
    if(leadError)throw leadError;
-   if(lead){
-    const {error}=await db.rpc("lead_hub_customer_write",{_actor:a.id,_lead:lead.id,_action:"link_files",
-     _data:{ids,party:metadata.party,category:metadata.category},_operation:crypto.randomUUID()});
-    if(error)throw error;
-    return json(req,{ok:true,ids,customer_id:lead.id});
-   }
+   if(leadId)return json(req,{ok:true,ids,customer_id:leadId});
   }
   const {data,error}=await db.rpc("lead_hub_inbox_assign",{_actor:a.id,_ids:ids,_customer:metadata.customer_name,_phone:metadata.customer_phone,_party:metadata.party,_category:metadata.category,_target:target});
   if(error)throw error;if(data?.length!==ids.length)return json(req,{ok:false,error:"Agihan berubah. Refresh dan semak semula."},409);

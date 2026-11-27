@@ -14,7 +14,7 @@ function normalizePhone(value) {
 }
 function values(customer) {
  const {lead, profile} = customer;
- return {...profile.shared_fields, customer_name:lead.customer_name, phone:lead.phone_e164,
+ return {...profile.shared_fields, customer_name:lead.customer_name, phone:lead.phone_e164, additional_phones:customer.additional_phones||[],
   model:lead.model, variant:profile.variant, colour:profile.colour,
   selling_price:profile.selling_price, deposit:profile.deposit, loan_amount:profile.loan_amount};
 }
@@ -143,6 +143,7 @@ window.addEventListener('beforeunload', e => {
 });
 window.FARIS_CUSTOMER_WORKFLOW = {
  create, values, normalizePhone, fetchProfile,
+ notify(id){channel?.postMessage(id);},
  url(tool, id, suffix='') {
   const customer = idPattern.test(id ?? '') ? '&customer='+encodeURIComponent(id) : '';
   return '/?origin=staff&tool='+tool+customer+suffix;

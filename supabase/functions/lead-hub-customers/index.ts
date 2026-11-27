@@ -30,13 +30,11 @@ async function handler(req:Request){
   const {data:created,error}=await db.from("lead_hub_leads")
    .upsert({...values,assigned_id:a.id,created_by:a.id,stage:"new",consent_confirmed:false},{onConflict:"phone_e164",ignoreDuplicates:true})
    .select("id").maybeSingle();
-  if(error)throw error;
+  if(error&&error.message!=="CUSTOMER_PHONE_IN_USE")throw error;
   if(created)return json(req,{ok:true,lead_id:created.id,created:true},201);
-  let existingQuery=db.from("lead_hub_leads").select("id").eq("phone_e164",values.phone_e164);
-  if(a.role!=="admin")existingQuery=existingQuery.eq("assigned_id",a.id);
-  const {data:existing,error:lookupError}=await existingQuery.maybeSingle();
+  const {data:existing,error:lookupError}=await db.rpc("lead_hub_customer_phone_owner",{_actor:a.id,_phone:values.phone_e164});
   if(lookupError)throw lookupError;
-  if(existing)return json(req,{ok:true,lead_id:existing.id,created:false});
+  if(existing)return json(req,{ok:true,lead_id:existing,created:false});
   return json(req,{ok:false,error:"Nombor ini sudah berdaftar. Hubungi admin untuk semak agihan pelanggan."},409);
  }
  if(b.action==="shared_profile"){
@@ -69,12 +67,11 @@ async function handler(req:Request){
  if(b.action==="list"){
   const offset=Math.max(0,Math.min(100000,Math.floor(Number(b.offset)||0)));
   if(b.status&&!Object.hasOwn(STATUSES,b.status))return json(req,{ok:false,error:"Status tidak sah."},400);
-  let q=db.rpc("lead_hub_customer_list",{_actor:a.id},{count:"exact"}).select("*").order("updated_at",{ascending:false}).order("id");
+  const search=String(b.search||"").trim().slice(0,100);
+  let q=db.rpc("lead_hub_customer_list",{_actor:a.id,_search:search},{count:"exact"}).select("*").order("updated_at",{ascending:false}).order("id");
   if(b.status)q=q.eq("sales_status",b.status);
   if(b.staff_id){if(!isId(b.staff_id))return json(req,{ok:false,error:"Staff tidak sah."},400);q=q.eq("assigned_id",b.staff_id)}
   if(b.model)q=q.eq("model",String(b.model).slice(0,120));
-  const search=String(b.search||"").trim().slice(0,100).replace(/[^\p{L}\p{N} @+.-]/gu,"");
-  if(search){const digits=search.replace(/\D/g,"");q=q.or("customer_name.ilike.%"+search+"%,phone_e164.ilike.%"+(digits.length>=3?digits:search)+"%")}
   const {data,error,count}=await q.range(offset,offset+49);if(error)throw error;
   const {data:staff,error:se}=a.role==="admin"?await db.from("lead_hub_accounts").select("id,display_name,staff_code").eq("active",true).order("display_name"):{data:[],error:null};if(se)throw se;
   // Model filter options come from the actor's complete accessible list, not this page.
@@ -82,6 +79,15 @@ async function handler(req:Request){
   return json(req,{ok:true,customers:data,total:count||0,next_offset:offset+(data?.length||0)<(count||0)?offset+(data?.length||0):null,staff,models});
  }
  if(!isId(b.lead_id))return json(req,{ok:false,error:"Customer tidak sah."},400);
+ if(b.action==="save_phones"){
+  if(b.account_id!==a.id)return json(req,{ok:false,error:"Akaun telah berubah. Buka semula bahagian Pelanggan."},403);
+  let values;try{values=validate(b.action,b.data)}catch(e){return json(req,{ok:false,error:e.message},400)}
+  const {data,error}=await db.rpc("lead_hub_customer_write_phones",{_actor:a.id,_lead:b.lead_id,...values});
+  if(error?.message==="CUSTOMER_PHONE_IN_USE")return json(req,{ok:false,error:"Satu nombor sudah digunakan pada profil lain. Semak nombor atau hubungi admin."},409);
+  if(error?.message==="PHONE_CONFLICT")return json(req,{ok:false,error:"Nombor profil telah dikemas kini di tempat lain. Tutup dan tekan Refresh sebelum mencuba lagi."},409);
+  if(error)throw error;
+  return json(req,{ok:true,customer:data});
+ }
  if(b.action==="get"||b.action==="timeline"){
   const {data,error}=await db.rpc(b.action==="get"?"lead_hub_customer_get":"lead_hub_customer_timeline",{_actor:a.id,_lead:b.lead_id,...(b.action==="timeline"?{_offset:Math.max(0,Math.min(100000,Math.floor(Number(b.offset)||0)))}:{})});if(error)throw error;
   return json(req,{ok:true,...(b.action==="get"?{customer:data}:data)});

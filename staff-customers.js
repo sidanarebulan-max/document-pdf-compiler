@@ -293,7 +293,11 @@ function renderProfile(fill=true){
  $('customerFinishFollow').classList.toggle('hide',!l.follow_up_at);$('customerRescheduleFollow').classList.toggle('hide',!l.follow_up_at);
  renderBanks(customer.banks||[]);
  const wa=$('customerWhatsapp');wa.setAttribute('aria-disabled',String(!l.consent_confirmed));if(l.consent_confirmed)wa.href='https://wa.me/'+l.phone_e164;else wa.removeAttribute('href');
- if(fill){renderVehicleChoices(l.model,p.variant,p.colour);for(const [id,value] of Object.entries({cpName:l.customer_name,cpPhone:l.phone_e164,cpStatus:p.sales_status,cpFollow:l.follow_up_at,cpFollowTime:profileFollowStamp(l,p).slice(11),cpReceived:malaysiaInput(p.lead_received_at),cpDelivered:p.sales_status==='delivered'?malaysiaInput(p.delivered_at):'',cpNext:p.next_action,cpReason:p.closure_reason}))$(id).value=value??'';$('cpGuarantor').checked=p.guarantor_required;$('cpLou').checked=p.lou_received===true;$('cpTradeIn').checked=p.trade_in===true;editRevision=p.revision;editStamp=l.updated_at;dirty=false;reasonRequired();toggleDelivered()}
+ $('cpPhone').value=l.phone_e164;
+ const additional=customer.additional_phones||[],additionalLabel=$('customerAdditionalPhones');
+ additionalLabel.hidden=!additional.length;
+ additionalLabel.textContent=additional.length?'Nombor tambahan · '+additional.map(phone=>'+'+phone).join(' · '):'';
+ if(fill){renderVehicleChoices(l.model,p.variant,p.colour);for(const [id,value] of Object.entries({cpName:l.customer_name,cpStatus:p.sales_status,cpFollow:l.follow_up_at,cpFollowTime:profileFollowStamp(l,p).slice(11),cpReceived:malaysiaInput(p.lead_received_at),cpDelivered:p.sales_status==='delivered'?malaysiaInput(p.delivered_at):'',cpNext:p.next_action,cpReason:p.closure_reason}))$(id).value=value??'';$('cpGuarantor').checked=p.guarantor_required;$('cpLou').checked=p.lou_received===true;$('cpTradeIn').checked=p.trade_in===true;editRevision=p.revision;editStamp=l.updated_at;dirty=false;reasonRequired();toggleDelivered()}
  $('customerLastUpdated').innerHTML='<span>Terakhir Dikemas Kini</span><time datetime="'+esc(customer.tracking?.updated_at||p.updated_at||l.updated_at||'')+'">'+esc(when(customer.tracking?.updated_at||p.updated_at||l.updated_at))+'</time><small>Waktu Malaysia</small>';
  $('customerSourceInfo').textContent='Sumber: '+(l.source||'—')+'\nLead diterima: '+when(p.lead_received_at||l.created_at)+'\nRekod dimasukkan: '+when(l.created_at)+
  '\nKemas kini terakhir: '+when(customer.tracking?.updated_at||p.updated_at||l.updated_at)+(customer.tracking?.updated_by?' · '+customer.tracking.updated_by:'')+
@@ -357,6 +361,62 @@ function bindCustomerCreation(){
   if(await open(result.lead_id)&&gen===epoch)notice(result.created?'Pelanggan baharu berjaya ditambah.':'Nombor ini sudah berdaftar. Profil sedia ada dibuka.');
  });
 }
+function bindCustomerPhones(){
+ const dialog=$('customerPhoneDialog'),form=$('customerPhoneForm'),feedback=$('customerPhoneFeedback');
+ const primary=$('customerPhonePrimary'),additional=$('customerPhoneAdditional');
+ let snapshot;
+ function feedbackFor(message,error=false){feedback.textContent=message;feedback.classList.toggle('error',error)}
+ $('customerPhoneOpen').addEventListener('click',()=>{
+  if(!customer||busy)return;
+  if(dirty){notice('Simpan perubahan profil dahulu sebelum mengubah nombor telefon.',true);return}
+  snapshot={id:customer.lead.id,primary:customer.lead.phone_e164,additional:customer.additional_phones||[]};
+  form.reset();
+  primary.value='+'+snapshot.primary;
+  additional.value=snapshot.additional.map(phone=>'+'+phone).join('\n');
+  $('customerPhoneChangeOptions').hidden=true;
+  feedbackFor('');
+  dialog.showModal();
+ });
+ primary.addEventListener('input',()=>{
+  const next=window.FARIS_CUSTOMER_WORKFLOW.normalizePhone(primary.value);
+  const changesPrimary=!!next&&next!==snapshot?.primary;
+  $('customerPhoneChangeOptions').hidden=!changesPrimary;
+  $('customerPhoneConsent').checked=false;
+ });
+ $('customerPhoneClose').addEventListener('click',()=>{if(!busy)dialog.close()});
+ dialog.addEventListener('cancel',e=>{if(busy)e.preventDefault()});
+ dialog.addEventListener('close',()=>{snapshot=null;form.reset();feedbackFor('')});
+ form.addEventListener('submit',async e=>{
+  e.preventDefault();
+  if(!user||busy||!dialog.open||!snapshot||customer?.lead.id!==snapshot.id)return;
+  const gen=epoch,id=snapshot.id;
+  const data={primary:primary.value,additional:additional.value.split(/\r?\n/).map(line=>line.trim()).filter(Boolean),
+   previous_primary:snapshot.primary,previous_additional:snapshot.additional,
+   keep_previous:$('customerPhoneKeepPrevious').checked,consent:$('customerPhoneConsent').checked};
+  const controls=dialog.querySelectorAll('button,input,textarea');
+  busyState(true);
+  controls.forEach(control=>control.disabled=true);
+  feedbackFor('Menyimpan nombor telefon…');
+  try{
+   await sharedFlow?.flush();
+   if(gen!==epoch||customer?.lead.id!==id)return;
+   const reply=await request('save_phones',{lead_id:id,account_id:user.id,data});
+   if(gen!==epoch||customer?.lead.id!==id)return;
+   customer=reply.customer;
+   resetHistory();renderProfile();attachSharedProfile();loadSalesDates();
+   window.FARIS_CUSTOMER_WORKFLOW.notify(id);
+   dialog.close();
+   notice('Nombor telefon pelanggan disimpan.');
+  }catch(error){
+   if(gen!==epoch)return;
+   feedbackFor(error.message,true);
+   if(error.status===403){dialog.close();try{await refreshProfile()}catch{}notice(error.message,true)}
+  }finally{
+   controls.forEach(control=>control.disabled=false);
+   if(gen===epoch)busyState(false);
+  }
+ });
+}
 async function refreshProfile(force=false){
  if(!customer||!user)return;const gen=epoch,id=customer.lead.id,seq=++opening;
  let d;try{d=await request('get',{lead_id:id})}catch(e){if(gen===epoch&&customer?.lead.id===id&&e.status===403)forgetCustomer();throw e}if(gen!==epoch||seq!==opening||customer?.lead.id!==id)return;customer=d.customer;resetHistory();renderProfile(force||!dirty);if(sharedFlow&&!sharedFlow.dirty){sharedFlow.close();sharedFlow=null;attachSharedProfile()}if(tab==='history')loadHistory();loadSalesDates();
@@ -410,6 +470,7 @@ function historyDetail(event){
    Object.entries(changed).filter(([k])=>(d.before?.[k]??null)!==(d.after?.[k]??null))
     .map(([k,label])=>'<li>'+esc(label)+' · '+esc(displayField(k,d.before?.[k]))+' → '+esc(displayField(k,d.after?.[k]))+'</li>').join('')+'</ul>';
  }
+ if(event.event_type==='phone_numbers_updated')return '<p>Nombor utama · '+esc(d.primary_before)+' → '+esc(d.primary_after)+'\nNombor tambahan · '+esc((d.additional_after||[]).join(', ')||'—')+'</p>';
  if(event.event_type==='documents_linked')return '<p>'+esc(PARTIES[d.party]+' / '+CATS[d.category])+'\n'+esc((d.files||[]).map(f=>f.name).join('\n'))+'</p>';
  if(event.event_type==='document_unlinked')return '<p>'+esc(d.name)+' · Fail asal kekal dalam Fail Masuk.</p>';
  if(event.event_type==='checklist_updated')return '<p>'+esc(PARTIES[d.party]+' / '+CATS[d.category])+': '+esc(({auto:'Automatik ikut fail',missing:'Belum diterima',received:'Diterima / disemak',replace:'Perlu ganti',not_required:'Tidak diperlukan'})[d.after]||d.after)+'</p>';
@@ -418,7 +479,7 @@ function historyDetail(event){
  if(event.event_type==='whatsapp_details_updated')return '<p>'+esc(d.note_changed?'Catatan sebelum: '+(d.notes_before||'—')+'\nCatatan selepas: '+(d.notes_after||'—'):'')+'\nFollow-up: '+esc(day(d.follow_up_before))+' → '+esc(day(d.follow_up_after))+'</p>';
  if(event.event_type==='lead_created')return '<p>Sumber: '+esc(d.source||'—')+'</p>';return '';
 }
-function renderHistory(){const labels={shared_fields_updated:'Maklumat pelanggan diselaraskan',profile_updated:'Profil dikemas kini',note_added:'Nota ditambah',bank_updated:'Permohonan bank dikemas kini',bank_removed:'Rekod bank dipadam',follow_up_completed:'Follow-up selesai',contact_recorded:'Pelanggan dihubungi',documents_linked:'Dokumen dipautkan / dikategorikan',document_unlinked:'Dokumen dinyahpaut',checklist_updated:'Checklist dokumen dikemas kini',claimed:'Nombor diclaim',assigned:'Customer diagihkan',legacy_assignment:'Rekod agihan lama',pm_confirmed:'PM disahkan oleh staff',whatsapp_opened:'WhatsApp dibuka',status_updated:'Status WhatsApp berubah',whatsapp_details_updated:'Catatan / follow-up WhatsApp berubah',lead_created:'Lead diwujudkan'};
+function renderHistory(){const labels={phone_numbers_updated:'Nombor telefon dikemas kini',shared_fields_updated:'Maklumat pelanggan diselaraskan',profile_updated:'Profil dikemas kini',note_added:'Nota ditambah',bank_updated:'Permohonan bank dikemas kini',bank_removed:'Rekod bank dipadam',follow_up_completed:'Follow-up selesai',contact_recorded:'Pelanggan dihubungi',documents_linked:'Dokumen dipautkan / dikategorikan',document_unlinked:'Dokumen dinyahpaut',checklist_updated:'Checklist dokumen dikemas kini',claimed:'Nombor diclaim',assigned:'Customer diagihkan',legacy_assignment:'Rekod agihan lama',pm_confirmed:'PM disahkan oleh staff',whatsapp_opened:'WhatsApp dibuka',status_updated:'Status WhatsApp berubah',whatsapp_details_updated:'Catatan / follow-up WhatsApp berubah',lead_created:'Lead diwujudkan'};
  $('customerHistory').innerHTML=historyRows.length?historyRows.map(e=>'<article class="customer-history-item"><b>'+esc(labels[e.event_type]||e.event_type)+'</b><br><small>'+esc(when(e.created_at))+' · '+esc(e.actor_name?e.actor_name+' ('+e.actor_code+')':'Rekod sistem')+'</small>'+historyDetail(e)+'</article>').join(''):'<div class="empty">Belum ada sejarah untuk customer ini.</div>';$('customerHistoryMore').classList.toggle('hide',historyNext===null);
 }
 function resetHistory(){
@@ -502,8 +563,8 @@ function compiler(){if(!customer||!selected.size||busy)return;const files=custom
 function forgetCustomer(){
  sharedFlow?.close();sharedFlow=null;
  opening++;customer=null;dirty=false;selected.clear();resetHistory();
- for(const id of ['customerPreview','customerInboxDialog','customerCaseDialog','customerBankDialog','customerActionDialog'])if($(id).open)$(id).close();clearPreview();
- for(const id of ['customerFiles','customerHistory','customerNotes','customerName','customerIdentity','customerOwner','customerNextAction','customerSourceInfo','customerLastUpdated','customerLegacyNotes'])$(id).textContent='';
+ for(const id of ['customerPreview','customerInboxDialog','customerCaseDialog','customerBankDialog','customerActionDialog','customerPhoneDialog'])if($(id).open)$(id).close();clearPreview();
+ for(const id of ['customerFiles','customerHistory','customerNotes','customerName','customerIdentity','customerAdditionalPhones','customerOwner','customerNextAction','customerSourceInfo','customerLastUpdated','customerLegacyNotes'])$(id).textContent='';
  $('customerProfileForm').reset();$('customerCaseForm').reset();$('customerCaseFeedback').textContent='';$('customerNoteForm').reset();$('customerWhatsapp').removeAttribute('href');$('customerDetail').classList.add('hide');$('customersDirectory').classList.remove('hide');directory();
 }
 function reset(){
@@ -512,7 +573,7 @@ function reset(){
  $('customerCreateForm').reset();
  createDialog.querySelectorAll('button,input,select').forEach(control=>control.disabled=false);
  sharedFlow?.close();sharedFlow=null;epoch++;whatsappTrendListing++;$('whatsappTrendResult').innerHTML='';$('whatsappTrendResult').setAttribute('aria-busy','false');$('whatsappTrendContext').textContent='';$('whatsappTrendForm').reset();whatsappTrendPreset();$('customerInsightsResult').innerHTML='';$('customerInsightsContext').textContent='';listing++;opening++;pickerSeq++;user=null;customer=null;rows=[];next=null;resetHistory();selected.clear();pickerRows=[];pickerSelected.clear();operations.clear();linkHandoff=null;busy=false;dirty=false;
- for(const id of ['customerPreview','customerInboxDialog','customerCaseDialog','customerBankDialog','customerActionDialog'])if($(id).open)$(id).close();clearPreview();$('customerDetail').classList.add('hide');$('customersDirectory').classList.remove('hide');$('customersList').innerHTML='';$('customerFiles').innerHTML='';$('customerHistory').innerHTML='';$('customerNotes').innerHTML='';$('customerInboxList').innerHTML='';$('customerName').textContent='';$('customerIdentity').textContent='';$('customerOwner').textContent='';$('customerNextAction').textContent='';$('customerSourceInfo').textContent='';$('customerLastUpdated').textContent='';$('customerLegacyNotes').textContent='';$('customerWhatsapp').removeAttribute('href');$('customerProfileForm').reset();$('customerCaseForm').reset();$('customerCaseFeedback').textContent='';$('customerNoteForm').reset();$('customersFilterForm').reset();$('customerDateBasis').value='received';$('customerReminders').open=false;$('customerReminderItems').replaceChildren();$('customerReminderCounts').textContent='';$('customerBankList').replaceChildren();$('customerBankForm').reset();$('customerActionForm').reset();$('customerActiveFilters').textContent='';$('customersTotal').textContent='';$('customerUpload').value='';$('customersNotice').classList.add('hide');$('customersLinkBanner').classList.add('hide');$('customersRefresh').disabled=false;busyState(false)}
+ for(const id of ['customerPreview','customerInboxDialog','customerCaseDialog','customerBankDialog','customerActionDialog','customerPhoneDialog'])if($(id).open)$(id).close();clearPreview();$('customerDetail').classList.add('hide');$('customersDirectory').classList.remove('hide');$('customersList').innerHTML='';$('customerFiles').innerHTML='';$('customerHistory').innerHTML='';$('customerNotes').innerHTML='';$('customerInboxList').innerHTML='';$('customerName').textContent='';$('customerIdentity').textContent='';$('customerAdditionalPhones').textContent='';$('customerOwner').textContent='';$('customerNextAction').textContent='';$('customerSourceInfo').textContent='';$('customerLastUpdated').textContent='';$('customerLegacyNotes').textContent='';$('customerWhatsapp').removeAttribute('href');$('customerProfileForm').reset();$('customerCaseForm').reset();$('customerCaseFeedback').textContent='';$('customerNoteForm').reset();$('customersFilterForm').reset();$('customerDateBasis').value='received';$('customerReminders').open=false;$('customerReminderItems').replaceChildren();$('customerReminderCounts').textContent='';$('customerBankList').replaceChildren();$('customerBankForm').reset();$('customerActionForm').reset();$('customerActiveFilters').textContent='';$('customersTotal').textContent='';$('customerUpload').value='';$('customersNotice').classList.add('hide');$('customersLinkBanner').classList.add('hide');$('customersRefresh').disabled=false;busyState(false)}
 const malaysiaFormDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
 function malaysiaInput(value){
  if(!value)return '';
@@ -689,6 +750,7 @@ window.FARIS_CUSTOMERS={onLogin(account){reset();user=account;$('customersStaff'
 document.addEventListener('DOMContentLoaded',()=>{
  if(window.FARIS_CUSTOMER_WORKFLOW&&window.FARIS_APPLICATION_CORE)mountSharedProfile();
  insightPreset();whatsappTrendPreset();bindTracking();bindCustomerCreation();
+ bindCustomerPhones();
  document.querySelectorAll('[data-customer-tool]').forEach(button=>button.addEventListener('click',()=>leaveForTool(button.dataset.customerTool)));
  for(const id of Object.keys(sharedProfileFields)){
   if(id==='cpModel')continue;

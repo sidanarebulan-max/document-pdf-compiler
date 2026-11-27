@@ -13,15 +13,31 @@ const stamp=v=>{if(typeof v!=='string'||!Number.isFinite(Date.parse(v)))throw Er
 const months=v=>{if(v===null||v===undefined||v==='')return null;const n=Number(v);if(!Number.isInteger(n)||n<1||n>120)throw Error('Tempoh mestilah 1 hingga 120 bulan.');return n};
 const money=v=>{if(v===null||v===undefined||v==='')return null;const n=Number(v);if(!Number.isFinite(n)||n<0||n>100000000||Math.abs(n*100-Math.round(n*100))>.0001)throw Error('Jumlah wang mesti positif dengan maksimum dua titik perpuluhan.');return n};
 const manualSources=new Set(['Walk-in','Rujukan','Panggilan telefon','Media sosial','Lain-lain']);
+function requiredPhone(value){
+ const phone=typeof value==='string'&&/^\+?[0-9 ().-]+$/.test(value.trim())?normalPhone(value):null;
+ if(!phone)throw Error('Masukkan nombor telefon bimbit Malaysia yang sah.');
+ return phone;
+}
+function phoneList(values,primary){
+ if(!Array.isArray(values)||values.length>12)throw Error('Masukkan maksimum lima nombor tambahan.');
+ return [...new Set(values.map(requiredPhone).filter(phone=>phone!==primary))].sort();
+}
 export function validate(action,d={}){
  if(!d||typeof d!=='object'||Array.isArray(d))throw Error('Maklumat tidak sah.');
  if(action==='create_customer'){
-  const phone=typeof d.phone==='string'&&/^\+?[0-9 ().-]+$/.test(d.phone.trim())?normalPhone(d.phone):null;
-  if(!phone)throw Error('Masukkan nombor telefon bimbit Malaysia yang sah.');
+  const phone=requiredPhone(d.phone);
   if(typeof d.customer_name!=='string')throw Error('Nama pelanggan tidak sah.');
   if(!manualSources.has(d.source))throw Error('Pilih sumber pelanggan.');
   if(d.model!=null&&typeof d.model!=='string')throw Error('Model kereta tidak sah.');
   return {customer_name:text(d.customer_name,120,'Nama pelanggan',true),phone_e164:phone,source:d.source,model:text(d.model,100,'Model kereta')};
+ }
+ if(action==='save_phones'){
+  const primary=requiredPhone(d.primary),previousPrimary=requiredPhone(d.previous_primary);
+  if(typeof d.consent!=='boolean'||typeof d.keep_previous!=='boolean')throw Error('Pilihan nombor telefon tidak sah.');
+  const additional=phoneList(d.additional,primary),previousAdditional=phoneList(d.previous_additional,previousPrimary);
+  if(d.keep_previous&&primary!==previousPrimary&&!additional.includes(previousPrimary))additional.push(previousPrimary);
+  if(additional.length>5||previousAdditional.length>5)throw Error('Masukkan maksimum lima nombor tambahan.');
+  return {_primary:primary,_additional:additional.sort(),_previous_primary:previousPrimary,_previous_additional:previousAdditional,_consent:d.consent};
  }
  if(action==='save_profile'){
   if(!Object.hasOwn(STATUSES,d.sales_status)||!['none','pending','paid','refunded'].includes(d.booking_status))throw Error('Status tidak sah.');

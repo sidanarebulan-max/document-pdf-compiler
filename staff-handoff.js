@@ -265,7 +265,11 @@ window.FARIS_WORKSPACE_PROFILE = {
   accept(patch,Object.hasOwn(patch,'model'));
   if(flow)render(flow.data);
  },
- samePhone(phone){return !flow || !phone || api.normalizePhone(phone)===flow.data.phone;}
+ samePhone(phone){
+  if(!flow||!phone)return true;
+  const {phone:primary,additional_phones:additional}=flow.data,number=api.normalizePhone(phone);
+  return number===primary||additional.includes(number);
+ }
 };
 window.addEventListener('beforeunload',e=>{if(uploads.size){e.preventDefault();e.returnValue='';}});
 let initialId=params.get('customer');

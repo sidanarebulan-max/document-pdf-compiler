@@ -232,3 +232,11 @@ button.insights-kpi{display:block;text-align:left;color:var(--text);font:inherit
   border-top:1px solid var(--line);
  }
 }
+.customer-phone-field {display:grid;align-content:start;gap:8px;min-width:0}
+.customer-phone-field button {justify-self:start}
+.customer-phone-field p {margin:0;overflow-wrap:anywhere}
+#customerPhoneDialog {max-width:520px}
+#customerPhoneChangeOptions:not([hidden]) {display:grid;gap:8px}
+#customerPhoneChangeOptions label {display:flex;align-items:flex-start;gap:8px;margin:0}
+#customerPhoneChangeOptions input {flex:none;width:18px;height:18px;min-height:18px;margin:2px 0 0}
+#customerPhoneFeedback.error {color:var(--danger,#b42318)}
