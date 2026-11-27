@@ -59,6 +59,16 @@ if(require.main===module)(async()=>{
  const guarantor=core.parse('Nama: Pemohon Ujian\nPENJAMIN (jika ada):\nNama: Penjamin Ujian\nNo. IC: 000101-01-0002\nNo. HP: 0100000002');
  assert.deepEqual(guarantor.values,{applicant_name:'Pemohon Ujian'});
  assert.equal(guarantor.unparsed.length,4);
+ const staffTemplate='*MAKLUMAT DIRI*\nNama : Pemohon Ujian\nI/C No : 000101-01-0001\nAlamat Tetap : 10 Jalan Ujian\nNo HP : 011 0000 0001\n*MAKLUMAT PEMBIAYAAN*\nModel kereta : E mas 7 premium\nWarna kereta : Quartz rose @ Platinum silver\nTempoh pinjaman : 9 Tahun\nJumlah bayaran muka :0\n*TERIMA KASIH*';
+ for(const heading of ['*MAKLUMAT DIRI*','1. *Maklumat Diri*','• *Butiran Diri Pemohon*','Maklumat Diri (Pemohon):']){
+  const parsed=core.parse(staffTemplate.replace('*MAKLUMAT DIRI*',heading));
+  assert.equal(parsed.values.applicant_name,'Pemohon Ujian',heading);
+  assert.equal(parsed.values.applicant_nric,'000101010001',heading);
+  assert.equal(parsed.values.applicant_phone,'01100000001',heading);
+  assert.deepEqual(parsed.unparsed,['Jumlah bayaran muka :0'],heading);
+ }
+ const returnToApplicant=core.parse('MAKLUMAT PASANGAN\nNama: Pasangan Ujian\n*MAKLUMAT DIRI*\nNama: Pemohon Ujian\nNo IC: 000101010001');
+ assert.deepEqual(returnToApplicant.values,{spouse_name:'Pasangan Ujian',applicant_name:'Pemohon Ujian',applicant_nric:'000101010001'});
  assert.deepEqual(core.parse('Nama Penuh – Pemohon Ujian | No IC – 000101010001 | No HP – 0100000001').values,{applicant_name:'Pemohon Ujian',applicant_nric:'000101010001',applicant_phone:'0100000001'});
  assert.deepEqual(core.parse('Nama: Pemohon Ujian | No Telefon (+60): 011-0000-0001').values,{applicant_name:'Pemohon Ujian',applicant_phone:'01100000001'});
  assert.deepEqual(core.parse('Nama: Pemohon Ujian\nhttps://wa.me/60100000001').values,{applicant_name:'Pemohon Ujian',applicant_phone:'0100000001'});

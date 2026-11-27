@@ -1,7 +1,7 @@
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.FARIS_APPLICATION_CORE=api})(typeof globalThis!=='undefined'?globalThis:this,function(){
 'use strict';
 const sections=[
- {id:'applicant',title:'MAKLUMAT PEMOHON',aliases:['pemohon','butiran pemohon','maklumat peribadi','personal details','applicant details'],fields:[
+ {id:'applicant',title:'MAKLUMAT PEMOHON',aliases:['pemohon','butiran pemohon','maklumat diri','maklumat diri pemohon','butiran diri','butiran diri pemohon','maklumat peribadi','maklumat peribadi pemohon','personal details','applicant details'],fields:[
   ['name','Nama : ',['nama','nama penuh','nama pemohon','full name','applicant name']],
   ['nric','I/C No : ',['i c no','ic','no ic','no kad pengenalan','kad pengenalan','nric','ic no','no kp']],
   ['permanent_address','Alamat Tetap : ',['alamat tetap','permanent address','alamat']],
@@ -121,7 +121,7 @@ function parse(text){
  function read(line){
   const heading=sectionFor(line.replace(/[:：]\s*$/,''));
   if(heading){flush();section=contactScope=heading.id;return}
-  if(/^(?:application form|borang permohonan)(?:\s|$)/i.test(line))return;
+  if(/^(?:application form|borang permohonan)(?:\s|$)/i.test(line)||/^terima kasih[!.]*$/i.test(line))return;
   if(/^(?:maklumat|butiran)\b|^(?:penjamin|guarantor)\s*(?:\([^)]*\))?\s*:?$/i.test(line)){flush();section=contactScope='unknown';unparsed.push(line);return}
   const rawPhone=phoneValue(line);
   const match=rawPhone?null:line.match(/^([^:：=\t]+?)\s*[:：=\t]+\s*(.*)$/);
@@ -155,7 +155,7 @@ function parse(text){
  }
  const input=String(text||'').normalize('NFKC').replace(/[\u200b-\u200f\u202a-\u202e\u2060\ufeff]/g,'').replace(/\r\n?|[\u2028\u2029]/g,'\n');
  for(const source of input.split('\n')){
-  const line=cleanValue(source).replace(/^(?:[•▪●]\s*|-\s+|\d{1,2}[.)](?=\s|\p{L})\s*)/u,'')
+  const line=cleanValue(source.trim().replace(/^(?:[•▪●]\s*|-\s+|\d{1,2}[.)](?=\s|[\p{L}*])\s*)/u,''))
    .replace(/\*{1,2}(?=\s*[:：=])|(?<=[:：=])\*{1,2}/g,'').replace(boldLabel,'$1');
   if(!line)continue;
   const pieces=line.split(/\s*[|;]\s*/);
