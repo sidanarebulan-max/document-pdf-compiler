@@ -4,8 +4,9 @@ const host=document.getElementById('vsoWorkspace'),viewport=document.getElementB
 const E=id=>document.getElementById(id),core=window.FARIS_VSO_WORD;
 if(!host||!viewport||!core)return;
 const controlledFields=['vsoCustomer','vsoNric','vsoAddress','vsoPhone','vsoEmail','vsoModel','vsoYear','vsoColor','vsoLoan','vsoPeriod','vsoAccessoriesMode'];
+const transferButtons=['vsoToCompiler','vsoToCompilerBottom'].map(E).filter(Boolean);
 const VERSION='word-vector-v49-accessories-20261029';
-let assetsPromise=null,result=null,building=null,buildBusy=false,previewDoc=null,renderTask=null,drawSeq=0,resizeSeq=0,timer=null;
+let assetsPromise=null,result=null,building=null,buildBusy=false,transferBusy=false,previewDoc=null,renderTask=null,drawSeq=0,resizeSeq=0,timer=null;
 let downloadUrl=null,downloadStamp=null;
 const prep=document.createElement('div');prep.className='vsoExactPanel vso-template-loaded';
 prep.innerHTML=`<div class="vsoExactHeader"><strong>Format VSO Mengikut Word</strong><span class="vsoExactPill">TEMPLAT WORD</span></div>
@@ -131,24 +132,24 @@ async function drawPreview(){
   canvas.hidden=true;blankHint.hidden=false;blankHint.textContent='Pratonton belum tersedia. '+error.message;showStatus(error.message);
  }
 }
-async function createExact(){
+async function createExact(withApplication=false){
  if(buildBusy)return null;
- if(!data().customer)return exportError('Sila isi nama penuh pelanggan.');
- const d=data();
- if(!window.VSO_VARIANTS.list.some(variant=>variant.id===E('vsoModel').value))return exportError('Pilih model dan varian kereta.');
- if(!Number.isFinite(d.loan)||d.loan<=0)return exportError('Loan Amount mesti lebih daripada RM0.');
- if(!d.color||!/^\d{4}$/.test(d.year))return exportError('Lengkapkan warna dan tahun pembuatan.');
  exportMessage('Sedang menjana PDF…');
- buildBusy=true;const buttons=['vsoDownload','vsoDownloadBottom','vsoToCompiler'].map(E);buttons.forEach(b=>b.disabled=true);
+ buildBusy=true;const downloadButtons=['vsoDownload','vsoDownloadBottom'].map(E);[...downloadButtons,...transferButtons].forEach(b=>b.disabled=true);
  try{
   await window.FARIS_WORKSPACE_PROFILE?.flush();
   const d=data();
+  if(!d.customer)return exportError('Sila isi nama penuh pelanggan.');
+  if(!window.VSO_VARIANTS.list.some(variant=>variant.id===E('vsoModel').value))return exportError('Pilih model dan varian kereta.');
+  if(!Number.isFinite(d.loan)||d.loan<=0)return exportError('Loan Amount mesti lebih daripada RM0.');
+  if(!d.color||!/^\d{4}$/.test(d.year))return exportError('Lengkapkan warna dan tahun pembuatan.');
+  if(withApplication)window.FARIS_APPLICATION?.checkCarry(d);
   const next=await generate(d);
   if(stamp(data())!==next.stamp)return exportError('Maklumat berubah semasa PDF dijana. Tekan jana semula.');
   window.FARIS_GENERATED?.publish('vso',{blob:next.blob,name:next.fname,party:'HIRER',category:'VSO',valid:()=>next.stamp===stamp(data())});
   showStatus('✓ PDF VSO DRAF siap mengikut templat Word.',true);return next;
  }catch(error){return exportError('Gagal menjana PDF: '+error.message)}
- finally{buildBusy=false;buttons.forEach(b=>b.disabled=false)}
+ finally{buildBusy=false;downloadButtons.forEach(b=>b.disabled=false);transferButtons.forEach(b=>b.disabled=transferBusy)}
 }
 async function download(event){
  const entry=exportFeedback.find(item=>item.id===event.currentTarget.id);
@@ -162,12 +163,21 @@ async function download(event){
  if(canStartDownload)entry.download.click();
 }
 async function toCompiler(){
- const out=await createExact();if(!out)return;
- try{const stored=await window.FARIS_GENERATED?.saveCurrent('vso');await window.FARIS_COMPILER.importInbox([{file:new File([out.blob],out.fname,{type:'application/pdf'}),metadata:{id:stored?.files?.[0]?.id,customer_id:stored?.files?.[0]?.customer_id,party:'HIRER',category:'VSO'}}]);window.VSO_CENTER.openCompiler();showStatus('✓ VSO sudah dihantar ke Compiler.',true);exportMessage('VSO sudah dihantar ke Compiler.')}
- catch(error){exportError('Tidak berjaya hantar ke Compiler: '+error.message)}
+ if(transferBusy||buildBusy)return;
+ transferBusy=true;transferButtons.forEach(b=>b.disabled=true);
+ try{
+  const out=await createExact(true);if(!out)return;
+  const draft=data();
+  const application=await window.FARIS_APPLICATION?.carriedEntry(draft);
+  const vso=await window.FARIS_GENERATED.compilerEntry('vso',out.blob,{customer_name:draft.customer,customer_phone:draft.phone});
+  await window.FARIS_COMPILER.importInbox(application?[application,vso]:[vso]);
+  const message=application?'Application Form dan VSO tersedia di bahagian Peminjam.':'VSO tersedia di bahagian Peminjam.';
+  window.VSO_CENTER.openCompiler(message);showStatus(message,true);exportMessage(message);
+ }catch(error){exportError('Gagal hantar ke Compiler. '+error.message)}
+ finally{transferBusy=false;transferButtons.forEach(b=>b.disabled=false)}
 }
 window.FARIS_VSO_GENERATOR={create:createExact,refresh:invalidate};
-E('vsoDownload').onclick=download;E('vsoDownloadBottom').onclick=download;E('vsoToCompiler').onclick=toCompiler;
+E('vsoDownload').onclick=download;E('vsoDownloadBottom').onclick=download;transferButtons.forEach(button=>button.onclick=toCompiler);
 controlledFields.forEach(id=>{E(id)?.addEventListener('input',invalidate);E(id)?.addEventListener('change',invalidate)});
 let resizeTimer=null;const fit=()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{if(previewDoc)renderDocument(previewDoc,drawSeq).catch(e=>{if(e.name!=='RenderingCancelledException')showStatus('Pratonton: '+e.message)})},120)};
 window.addEventListener('resize',fit);if(typeof ResizeObserver!=='undefined')new ResizeObserver(fit).observe(viewport);

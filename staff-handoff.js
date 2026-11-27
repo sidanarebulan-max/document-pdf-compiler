@@ -62,6 +62,7 @@ function render(values) {
   if (selection && selection.value !== (variant?.id ?? '')) setField('vsoModel',variant?.id,'change');
   for (const [id,key] of Object.entries(ids)) {
    let value = values[key];
+   if (id === 'vsoAddress') value ||= values.applicant_current_address;
    if (id === 'vsoYear') value ||= variant?.year || '';
    if (id === 'vsoInsurance' && value == null) value = variant?.fees.insurance;
    if (id === 'vsoPeriod') {

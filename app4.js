@@ -241,23 +241,27 @@
   $('#analyzeBtn').onclick=()=>analyzeAll(true);
   $('#sortBtn').onclick=()=>sortParty(activeParty);
 
+  function resetCompiledPdf(message){
+    finalBlob=null;
+    window.FARIS_GENERATED?.clear('compiler');
+    finalPreviewPdf=null;
+    clearError();
+    if(finalUrl)URL.revokeObjectURL(finalUrl);
+    finalUrl=null;
+    const blank=document.createElement('div');blank.className='placeholder';blank.textContent=message;$('#preview').replaceChildren(blank);
+    $('#downloadBtn').disabled=true;
+    $('#openBtn').disabled=true;
+    $('#driveSaveBtn').disabled=true;
+    setProgress(0,'Belum ada proses.');
+  }
+
   $('#clearBtn').onclick=()=>{
     const label=PARTY_META[activeParty].short;
     if(confirm(`Kosongkan semua dokumen ${label}?`)){
       items=items.filter(x=>x.party!==activeParty);
       partyNames[activeParty]='';
       $('#partyName').value='';
-      finalBlob=null;
-      window.FARIS_GENERATED?.clear('compiler');
-      finalPreviewPdf=null;
-      clearError();
-      if(finalUrl) URL.revokeObjectURL(finalUrl);
-      finalUrl=null;
-      $('#preview').innerHTML='<div class="placeholder"><div><b>Belum ada PDF dijana</b>Pilih tab dan muat naik dokumen.</div></div>';
-      $('#downloadBtn').disabled=true;
-      $('#openBtn').disabled=true;
-      $('#driveSaveBtn').disabled=true;
-      setProgress(0,'Belum ada proses.');
+      resetCompiledPdf('Pilih tab dan muat naik dokumen.');
       render();
       log(`Page ${label} dikosongkan.`);
     }

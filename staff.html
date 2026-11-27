@@ -463,9 +463,9 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
  <button type="submit" class="primary">Cari</button></form></details><p id="customersTotal" class="muted small" aria-live="polite"></p><div id="customersList" class="customer-list" aria-busy="false"></div><button type="button" class="secondary hide" id="customersMore">Muat lagi customer</button></div>
  <div id="customerDetail" class="hide"><button type="button" class="secondary" id="customerBack">← Senarai Pelanggan</button><div class="customer-hero"><div><button type="button" id="customerStatusBadge" class="customer-status-button" aria-haspopup="dialog" aria-controls="customerCaseDialog" title="Tekan untuk kemas kini status kes"></button><h2 id="customerName"></h2><p id="customerIdentity" class="muted"></p><p id="customerOwner" class="muted"></p></div><a id="customerWhatsapp" class="wa" target="_blank" rel="noopener noreferrer">Buka WhatsApp</a></div>
  <div class="customer-workflow-actions" aria-label="Alatan pelanggan">
- <button type="button" class="secondary" data-customer-tool="VSO">Buka VSO</button>
- <button type="button" class="secondary" data-customer-tool="APPLICATION">Borang Permohonan</button>
- <button type="button" class="secondary" data-customer-tool="COMPILER">Compiler Dokumen</button>
+ <button type="button" class="primary" data-customer-tool="APPLICATION">1. Application Form</button>
+ <button type="button" class="secondary" data-customer-tool="VSO">2. VSO</button>
+ <button type="button" class="secondary" data-customer-tool="COMPILER">3. Compiler</button>
  </div>
  <section id="customerSalesTimeline" class="customer-sales-timeline" aria-labelledby="customerSalesTimelineTitle">
   <div class="customer-timeline-head">
@@ -508,12 +508,12 @@ html[data-theme="light"] .tg-open{background:#126c97;color:#fff!important}
 <section id="workspace-docs" class="workspace-page hide" hidden data-workspace-page="docs" aria-labelledby="workspaceDocsTitle"><section id="staffWorkflow" class="panel">
   <div class="panelhead"><div>
    <h2 id="workspaceDocsTitle">Dokumen &amp; VSO</h2>
-   <p class="muted">Susun dokumen peminjam, penjamin dan COP Rebate, atau sediakan VSO pelanggan. Maklumat pelanggan akan dibawa apabila dibuka daripada kad WhatsApp.</p>
+   <p class="muted">Mulakan dengan Application Form, teruskan ke VSO, kemudian gabungkan PDF dalam Compiler.</p>
   </div></div>
   <div class="workflow-links">
-   <button class="secondary workflow-action" id="openGenericDocs" type="button"><span class="workflow-icon">📑</span><span><b>Document Compiler</b><small>Hirer · Guarantor · COP Rebate</small></span><span aria-hidden="true">↗</span></button>
-   <button class="secondary workflow-action" id="openGenericVso" type="button"><span class="workflow-icon">🚘</span><span><b>VSO Generator</b><small>Buat dan semak dokumen jualan</small></span><span aria-hidden="true">↗</span></button>
-   <button class="secondary workflow-action" id="openGenericApplication" type="button"><span class="workflow-icon">📝</span><span><b>Application Form</b><small>Paste dari Word dan jana borang</small></span><span aria-hidden="true">↗</span></button>
+   <button class="secondary workflow-action" id="openGenericApplication" type="button"><span class="workflow-icon">📝</span><span><b>1. Application Form</b><small>Isi maklumat dan jana borang permohonan</small></span><span aria-hidden="true">↗</span></button>
+   <button class="secondary workflow-action" id="openGenericVso" type="button"><span class="workflow-icon">🚘</span><span><b>2. VSO</b><small>Semak kenderaan dan pinjaman</small></span><span aria-hidden="true">↗</span></button>
+   <button class="secondary workflow-action" id="openGenericDocs" type="button"><span class="workflow-icon">📑</span><span><b>3. Compiler</b><small>Tambah dokumen sokongan dan gabung PDF</small></span><span aria-hidden="true">↗</span></button>
   </div>
  </section><section class="panel" id="documentInbox" aria-labelledby="inboxTitle">
  <div class="panelhead"><div><h2 id="inboxTitle">Fail Masuk</h2><p class="muted">Isi nombor pelanggan untuk upload terus ke profil. Fail tanpa nombor disimpan dalam Fail Masuk.</p></div><div class="workspace-actions"><button id="inboxUploadButton" type="button" class="primary">+ Muat Naik Fail</button><button id="inboxRefresh" type="button" class="secondary">Refresh Fail</button></div></div>

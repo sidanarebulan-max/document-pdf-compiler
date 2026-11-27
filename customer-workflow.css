@@ -13,3 +13,9 @@
 .staff-workflow-banner [hidden] {display:none}
 #customerSharedTrading summary,#customerSharedPersonal summary {cursor:pointer;padding:10px 0;font-weight:650}
 #customerWorkflowStatus {font-size:.875rem;margin:8px 0}
+.docFlowBar {display:flex;align-items:center;flex-wrap:wrap;gap:10px 16px;padding:10px 0;margin-bottom:12px}
+.docFlowBar[hidden] {display:none}
+.docFlowBar p {flex:1 1 230px;margin:0;font-size:.875rem;line-height:1.55}
+.docFlowBar p:empty {display:none}
+.docFlowActions {display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.docFlowActions a {display:inline-flex;align-items:center;text-decoration:none}

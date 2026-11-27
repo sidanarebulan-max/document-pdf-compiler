@@ -34,6 +34,15 @@ window.FARIS_GENERATED={
   saveCurrent(source).catch(()=>{});
  },
  clear(source){results.delete(source);controls()},
+ async compilerEntry(source,blob,metadata={}){
+  const result=results.get(source);
+  const isCurrent=()=>result&&result.blob===blob&&results.get(source)===result&&result.valid();
+  if(!isCurrent())throw Error('Maklumat dokumen telah berubah. Jana PDF semula.');
+  const stored=(await saveCurrent(source))?.files?.[0];
+  if(!isCurrent())throw Error('Maklumat dokumen berubah semasa dipindahkan. Cuba lagi.');
+  return {file:new File([blob],result.name,{type:'application/pdf'}),isCurrent,metadata:{...metadata,
+   id:stored?.id,customer_id:stored?.customer_id,party:result.party,category:result.category,transfer_source:source,transfer_blob:blob}};
+ },
  saveCurrent
 };
 async function api(action,payload={},retried=false){

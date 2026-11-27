@@ -17,17 +17,18 @@
   };
   const nav=document.createElement('div');nav.id='mainWorkspaceNav';
   nav.innerHTML=`
-   <div class="hubBrand"><span class="hubEmblem">P</span><div><strong>Proton Document Center</strong><small>VSO · PDF Compiler · Application Form</small></div></div>
+   <div class="hubBrand"><span class="hubEmblem">P</span><div><strong>Proton Document Center</strong></div></div>
    <div class="hubSwitch" role="tablist" aria-label="Bahagian utama">
-    <button type="button" class="hubTab active" data-main="VSO" role="tab" aria-selected="true">01 <b>VSO Generator</b></button>
-    <button type="button" class="hubTab" data-main="COMPILER" role="tab" aria-selected="false">02 <b>PDF Compiler</b></button>
-    <button type="button" class="hubTab" data-main="APPLICATION" role="tab" aria-selected="false">03 <b>Application Form</b></button>
+    <button type="button" class="hubTab" data-main="APPLICATION" role="tab" aria-selected="false"><b>1. Application Form</b></button>
+    <button type="button" class="hubTab active" data-main="VSO" role="tab" aria-selected="true"><b>2. VSO</b></button>
+    <button type="button" class="hubTab" data-main="COMPILER" role="tab" aria-selected="false"><b>3. Compiler</b></button>
    </div>`;
   root.parentNode.insertBefore(nav,root);
   const workspace=document.createElement('section');workspace.id='vsoWorkspace';
   root.parentNode.insertBefore(workspace,root);
   workspace.innerHTML=`
    <div class="vsoIntro"><div><div class="vsoEyebrow">VEHICLE SALES ORDER</div><h1>VSO Format Asal</h1><p>Susun atur Word asal dikekalkan. Hanya isi butiran pelanggan, kenderaan dan pinjaman. Semak dokumen A4 sebelum muat turun atau hantar ke Compiler.</p></div><div class="vsoVersion">${variants.list.length} varian · e.MAS 5 & e.MAS 7</div></div>
+   <div class="docFlowBar"><button type="button" class="vsoSecondary" id="vsoBackToApplication">← Application Form</button><p id="vsoFlowStatus" role="status" aria-live="polite"></p></div>
    <div class="vsoGrid">
     <aside class="vsoFormPanel">
      <div class="vsoSectionHead"><b>1. Formula harga VSO</b><span>Automatik</span></div>
@@ -71,8 +72,8 @@
        <div id="vsoNotice" class="vsoCaution" role="note"></div>
        <div id="vsoError" role="alert" hidden></div>
        <div class="vsoActions">
-        <button type="button" class="vsoPrimary" id="vsoDownload">Jana &amp; Download PDF</button>
-        <button type="button" class="vsoSecondary" id="vsoToCompiler">Hantar ke Compiler</button>
+        <button type="button" class="vsoPrimary" id="vsoToCompiler">Jana VSO &amp; Teruskan ke Compiler →</button>
+        <button type="button" class="vsoSecondary" id="vsoDownload">Jana &amp; Download PDF</button>
        </div>
        <p class="vsoLegalHint">* Nilai “Govt. Approved Net Selling Price” ialah pengiraan daripada contoh, bukan pengesahan kelulusan kerajaan/pengeluar. Semua VSO yang dijana ditandakan DRAF dan memerlukan pengesahan pengedar sebelum penggunaan rasmi.</p>
      </div>
@@ -80,7 +81,7 @@
     <main class="vsoPreviewPanel">
      <div class="vsoPreviewToolbar"><div><b>Pratonton VSO</b><small>1 muka surat · A4 · dikemas kini automatik</small></div><span id="vsoModeBadge">TANPA MARKUP</span></div>
      <div id="vsoPreviewViewport"><div id="vsoSheetFrame"><article id="vsoSheet" aria-label="Pratonton VSO A4"></article></div></div>
-     <div class="vsoPreviewFooter"><span>Dokumen untuk semakan dalaman — bukan VSO yang telah diluluskan.</span><button type="button" id="vsoDownloadBottom" class="vsoSecondary">Download PDF</button></div>
+     <div class="vsoPreviewFooter"><button type="button" id="vsoToCompilerBottom" class="vsoPrimary">Jana VSO &amp; Teruskan ke Compiler →</button><button type="button" id="vsoDownloadBottom" class="vsoSecondary">Download PDF</button></div>
     </main>
    </div>`;
   const E=id=>document.getElementById(id);
@@ -265,6 +266,8 @@
     updatePreview();
   });
   E('vsoDownload').onclick=download;E('vsoDownloadBottom').onclick=download;E('vsoToCompiler').onclick=sendToCompiler;
+  E('vsoBackToApplication').onclick=()=>switchMain('APPLICATION');
+  E('compilerBackToVso').onclick=()=>switchMain('VSO');
   if(typeof ResizeObserver!=='undefined')new ResizeObserver(resize).observe(E('vsoPreviewViewport'));
   window.addEventListener('resize',resize);
   window.VSO_CENTER={
@@ -274,7 +277,34 @@
     },
     variants:variants.list.map(v=>({id:v.id,model:v.model,otr:v.baseOtr,net:v.baseNet})),
     refresh:updatePreview,
-    openVso:()=>switchMain('VSO'),openCompiler:()=>switchMain('COMPILER'),openApplication:()=>switchMain('APPLICATION')
+    prefillApplication(data){
+      const existing={customer:E('vsoCustomer').value,nric:E('vsoNric').value,phone:E('vsoPhone').value};
+      const same=window.FARIS_APPLICATION.sameApplicant(existing,data);
+      const model=variants.match(data.financing_model);
+      if(!modelSelect.querySelector('option[value=""]'))modelSelect.prepend(new Option('Pilih model & varian',''));
+      const targetModel=model?.id||'';
+      if((data.financing_model||!same)&&modelSelect.value!==targetModel){modelSelect.value=targetModel;modelSelect.dispatchEvent(new Event('change',{bubbles:true}));}
+      const period=data.financing_term.match(/^(\d+)\s*(?:tahun|years?)?$/i)?.[1]||'';
+      const term=E('vsoPeriod');
+      if(!term.querySelector('option[value=""]'))term.prepend(new Option('Pilih tempoh',''));
+      if(period&&!term.querySelector('option[value="'+period+'"]'))term.add(new Option(period+' tahun',period));
+      const fields={vsoCustomer:data.applicant_name,vsoNric:data.applicant_nric,vsoPhone:data.applicant_phone,
+        vsoEmail:data.applicant_email,vsoAddress:data.applicant_permanent_address||data.applicant_current_address};
+      if(same)for(const id of ['vsoNric','vsoPhone','vsoEmail','vsoAddress'])if(!fields[id])delete fields[id];
+      if(!same||data.financing_model)fields.vsoYear=model?.year||'';
+      if(!same||data.financing_color)fields.vsoColor=data.financing_color;
+      if(!same||data.financing_term)fields.vsoPeriod=period;
+      if(!same)fields.vsoLoan='';
+      for(const [id,value] of Object.entries(fields)){
+        E(id).value=value;
+        E(id).dispatchEvent(new Event('input',{bubbles:true}));
+      }
+      const modelHint=model||(!data.financing_model&&same&&modelSelect.value)?'':' Pilih model dan varian.';
+      return 'Maklumat pemohon sudah diisi. Application Form akan ikut ke Compiler.'+modelHint+(E('vsoLoan').value?'':' Isi amaun pinjaman untuk VSO.');
+    },
+    openVso:()=>switchMain('VSO'),
+    openCompiler(message){if(message){E('compilerFlowBar').hidden=false;E('compilerFlowStatus').textContent=message;}switchMain('COMPILER');},
+    openApplication:()=>switchMain('APPLICATION')
   };
   updatePreview();switchMain('VSO');
 })();

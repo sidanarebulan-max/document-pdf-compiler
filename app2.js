@@ -150,28 +150,49 @@
     $('#partyName').value=partyNames[activeParty];
    },
    async importInbox(entries){
+    const transfers=entries.filter(({metadata})=>metadata.transfer_source);
+    if(transfers.length)await window.FARIS_WORKSPACE_PROFILE?.ensureFilesBelong(transfers);
+    if($('#generateBtn').disabled)throw Error('Tunggu PDF gabungan siap sebelum menambah fail.');
+    if(entries.some(entry=>entry.isCurrent&&!entry.isCurrent()))throw Error('Maklumat dokumen telah berubah. Cuba pindah semula.');
+    let changed=false;
     for(const {file,metadata} of entries){
       const party=['HIRER','GUARANTOR','REBATE','TRADEIN'].includes(metadata.party)?metadata.party:'HIRER';
       switchParty(party);
-      if(metadata.id&&items.some(item=>item.profileFileId===metadata.id))continue;
+      const previous=metadata.transfer_source&&items.find(item=>item.transferSource===metadata.transfer_source);
+      const existing=metadata.id&&items.find(item=>item.profileFileId===metadata.id);
+      const duplicate=existing||(previous?.transferBlob===metadata.transfer_blob&&previous);
+      if(duplicate){
+       if(metadata.transfer_source){duplicate.transferSource=metadata.transfer_source;duplicate.transferBlob=metadata.transfer_blob;}
+       if(previous&&previous!==duplicate){items=items.filter(item=>item!==previous);changed=true;}
+       continue;
+      }
       const added=await addFiles([file],{analyze:false,profileUpload:false});
       if(added.length!==1)throw Error('Format fail tidak boleh dibuka dalam Compiler: '+file.name);
       const item=added[0],valid=categoriesFor(party).map(x=>x.id);
+      if(metadata.transfer_source){
+       item.transferSource=metadata.transfer_source;item.transferBlob=metadata.transfer_blob;
+       if(previous){item.order=previous.order;items=items.filter(row=>row!==previous);}
+      }
+      changed=true;
       if(metadata.id){item.profileFileId=metadata.id;item.profileCustomerId=metadata.customer_id||null;}
       const manual=valid.includes(metadata.category);
       const guess=classifyForParty(party,file.name,'');
       item.category=manual?metadata.category:valid.includes(guess.category)?guess.category:'OTHER';
       item.manualCategory=manual;
       item.confidence=manual?100:guess.confidence;item.review=!manual;item.analyzed=manual;
-      item.note=manual?'Kategori dipilih daripada Fail Masuk':'Dari Fail Masuk — semak kategori atau tekan Analisis';
-      if(!window.FARIS_WORKSPACE_PROFILE?.active)partyNames[party]=metadata.customer_name||'';
+      item.note=metadata.transfer_source==='application'?'Dibawa dari Application Form':metadata.transfer_source==='vso'?'Dibawa dari VSO':manual?'Kategori dipilih daripada Fail Masuk':'Dari Fail Masuk — semak kategori atau tekan Analisis';
+      if(!window.FARIS_WORKSPACE_PROFILE?.active&&metadata.customer_name)partyNames[party]=metadata.customer_name;
       $('#partyName').value=partyNames[party];
       if(!window.FARIS_WORKSPACE_PROFILE?.active){
        if(metadata.customer_name)$('#customerName').value=metadata.customer_name;
        if(metadata.customer_phone)$('#customerPhone').value=metadata.customer_phone;
       }
     }
-    render();log(entries.length+' fail dimuatkan daripada Fail Masuk. Fail asal kekal disimpan.');
+    if(transfers.length&&!selectedParties($('#compileScope').value).includes('HIRER')){
+     $('#compileScope').value='ALL';$('#compileScope').dispatchEvent(new Event('change'));
+    }
+    if(changed)resetCompiledPdf('Semak senarai fail, kemudian jana PDF gabungan.');
+    render();log(entries.length+(transfers.length?' dokumen tersedia dalam Compiler.':' fail dimuatkan daripada Fail Masuk.'));
   }};
 
   async function analyzeAll(force=true,party=activeParty){
